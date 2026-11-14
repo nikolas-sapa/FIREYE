@@ -1,15 +1,26 @@
 import * as Cesium from 'cesium';
 import type { Directive, Geo, ScenarioPack } from '../contracts';
+import { onThemeChange } from '@ds';
+import { AtmospherePass } from './atmosphere';
 import { easeServo, prefersReducedMotion } from './easing';
 import { FireOverlay, getFireField, type FireField } from './fire';
 import { createGradeStage } from './fx';
 import { loadIcons } from './glyphs';
 import { StageLayers } from './layers';
 import { FireParticles } from './particles';
+import { getProfile, type StageProfile } from './profile';
 import { RasterSampler, weatherAt, DEG2RAD } from './raster';
+import { getSampler } from './sampler';
+import { getSmokeField, type SmokeField } from './smoke';
 import type { StageBasemap, StageKey } from './types';
-import { createDarkViewer, setupBasemap } from './viewer';
+import { applySunLight, createDarkViewer, setupBasemap } from './viewer';
 import { stageWorld } from './world';
+import { getMapSettings, onMapSettingsChange } from './map-settings';
+import { OutlineMap } from './outline';
+import { daylight, sunPosition } from './sun';
+import type { BasemapResult } from './viewer';
+
+export { getSampler };
 
 export interface StageEngineOptions {
   container: HTMLElement;
@@ -31,16 +42,6 @@ export interface CameraInfo {
   center?: Geo;
 }
 
-const samplerCache = new WeakMap<ScenarioPack, RasterSampler>();
-export function getSampler(pack: ScenarioPack): RasterSampler {
-  let s = samplerCache.get(pack);
-  if (!s) {
-    s = new RasterSampler(pack);
-    samplerCache.set(pack, s);
-  }
-  return s;
-}
-
 /** Imperative owner of the main Cesium scene. React only mounts it and forwards selection. */
 export class StageEngine {
   readonly viewer: Cesium.Viewer;
@@ -49,6 +50,17 @@ export class StageEngine {
   private fire: FireOverlay | null = null;
   private particles: FireParticles | null = null;
   private layers: StageLayers | null = null;
+  private smoke: SmokeField | null = null;
+  private atmos: AtmospherePass | null = null;
+  private profile: StageProfile | null = null;
+  private sunKey = NaN;
+  private offTheme: () => void;
+  private offMap: () => void;
+  private outline: OutlineMap | null = null;
+  private satellite: BasemapResult | null = null;
+  private satelliteTask: Promise<void> | null = null;
+  private satelliteTerrain: Cesium.TerrainProvider | null = null;
+  private grade: Cesium.PostProcessStage | null = null;
   private pack: ScenarioPack | null = null;
   private pending = new Set<StageKey>();
   private handled = new Set<string>();
@@ -68,11 +80,20 @@ export class StageEngine {
   constructor(private o: StageEngineOptions) {
     this.viewer = createDarkViewer(o.container, { creditContainer: o.creditContainer, msaa: 4 });
     const scene = this.viewer.scene;
-    createGradeStage(scene, { saturation: 0.92, vignette: 0.42 });
+    // Until a pack arrives the camera sits far out; initPack frames the scenario from its profile.
+    const first = stageWorld.get().pack;
+    const c0 = first ? getProfile(first).center : { lon: 0, lat: 20 };
     this.viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(-120.55, 38.2, 420000),
+      destination: Cesium.Cartesian3.fromDegrees(c0.lon, c0.lat, first ? getProfile(first).spanM * 30 : 2.2e7),
       orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 },
     });
+    this.offTheme = onThemeChange(() => {
+      if (!this.layers) return;
+      this.layers.invalidateTheme();
+      for (const k of ['findings', 'units', 'actions', 'coverage', 'projection'] as StageKey[]) this.pending.add(k);
+      this.viewer.scene.requestRender();
+    });
+    this.offMap = onMapSettingsChange(() => { void this.applyMapSettings(); });
     scene.preRender.addEventListener(this.onPreRender);
     scene.postRender.addEventListener(this.onPostRender);
     this.handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
@@ -82,6 +103,7 @@ export class StageEngine {
       for (const k of changed) this.pending.add(k);
       if (changed.has('pack')) void this.initPack();
     });
+    if (import.meta.env.DEV) (window as unknown as { __fccStage?: StageEngine }).__fccStage = this;
     o.onStatus?.({ phase: 'boot' });
     if (stageWorld.get().pack) void this.initPack();
   }
@@ -96,28 +118,47 @@ export class StageEngine {
     try {
       const s = getSampler(pack);
       this.sampler = s;
-      const [bm] = await Promise.all([
-        setupBasemap(this.viewer, pack, s),
+      const [outline] = await Promise.all([
+        OutlineMap.create(this.viewer, pack, s),
         loadIcons(),
         document.fonts?.load('500 10px "JetBrains Mono Variable"').catch(() => undefined),
       ]);
       if (this.destroyed) return;
-      this.basemap = bm.basemap;
-      this.exaggeration = bm.exaggeration;
+      this.outline = outline;
+      this.basemap = 'offline';
+      this.exaggeration = 1;
       const scene = this.viewer.scene;
+      const prof = getProfile(pack);
+      this.profile = prof;
+      const ctrl = scene.screenSpaceCameraController;
+      ctrl.minimumZoomDistance = prof.minZoomM;
+      ctrl.maximumZoomDistance = prof.maxZoomM;
+      scene.fog.density = Math.min(2.4e-4, Math.max(4e-5, 1.6e-4 * (30000 / prof.spanM) ** 0.5));
       this.field = getFireField(pack, s);
       this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced });
-      this.particles = new FireParticles(scene, s, { maxFlames: 16, maxSmoke: 6, exaggeration: this.exaggeration });
+      this.particles = new FireParticles(scene, s, { maxFlames: 16, maxSmoke: 6, maxEmbers: 6, exaggeration: this.exaggeration, profile: prof });
       this.particles.show = !this.reduced;
-      this.layers = new StageLayers(this.viewer, s, { exaggeration: this.exaggeration });
+      this.smoke = getSmokeField(pack, s);
+      // Order matters: the atmosphere works on the scene-referred image, the grade runs last.
+      if (!/[?&]atmos=0\b/.test(location.search)) {
+        this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'stage', quality: 1, shimmer: !this.reduced });
+      }
+      this.grade = createGradeStage(scene, { saturation: 0.92, vignette: 0.42 });
+      this.layers = new StageLayers(this.viewer, s, {
+        exaggeration: this.exaggeration,
+        labelFarM: prof.labelFarM,
+        minorLabelFarM: prof.minorLabelFarM,
+        unitLabelFarM: prof.unitLabelFarM,
+      });
       this.layers.syncPlaces(pack);
       // Do not replay directives issued before the stage existed.
       for (const d of stageWorld.get().directives) this.handled.add(d.id);
       this.homeView(0);
       this.ready = true;
       for (const k of ['t', 'fireRev', 'projection', 'findings', 'units', 'coverage', 'actions', 'items'] as StageKey[]) this.pending.add(k);
-      this.o.onStatus?.({ phase: 'ready', basemap: bm.basemap });
+      await this.applyMapSettings();
     } catch (err) {
+      if (this.destroyed) return;
       console.error('[stage3d] init failed', err);
       this.o.onStatus?.({ phase: 'error', error: String(err) });
     }
@@ -127,10 +168,14 @@ export class StageEngine {
     if (this.destroyed) return;
     this.destroyed = true;
     this.unsub();
+    this.offTheme();
+    this.offMap();
     this.handler.destroy();
+    this.atmos?.destroy();
     this.fire?.destroy();
     this.particles?.destroy();
     this.layers?.destroy();
+    this.outline?.destroy();
     if (!this.viewer.isDestroyed()) this.viewer.destroy();
   }
 
@@ -145,6 +190,11 @@ export class StageEngine {
   private onPreRender = () => {
     const now = (performance.now() - this.t0) / 1000;
     this.fire?.tick(this.reduced ? 0 : now);
+    this.applyMapVisibility();
+    if (this.atmos && this.profile && this.sampler) {
+      const d = this.sampler.datumOffset;
+      this.atmos.update(stageWorld.get().t, this.reduced ? 0 : now, this.exaggeration, (this.profile.minElev + d) * this.exaggeration, d * this.exaggeration);
+    }
     if (!this.ready || !this.pending.size) return;
     const p = this.pending;
     this.pending = new Set();
@@ -169,7 +219,14 @@ export class StageEngine {
       const wx = weatherAt(pack, w.t);
       if (updated || wx.t !== this.weatherT) {
         this.weatherT = wx.t;
-        this.particles!.setHotspots(this.field!.hotspots, { dirDeg: wx.windDirDeg, kph: wx.windKph });
+        const wind = { dirDeg: wx.windDirDeg, kph: wx.windKph };
+        this.particles!.setHotspots(this.field!.hotspots, wind);
+        this.smoke!.update(this.field!.sources, wind, this.exaggeration);
+      }
+      const sk = Math.round(w.t / 120000);
+      if (sk !== this.sunKey && this.viewer.scene.globe.enableLighting) {
+        this.sunKey = sk;
+        applySunLight(this.viewer.scene, pack, w.t);
       }
       L.syncPerimeter(pack, w.t);
     }
@@ -179,6 +236,64 @@ export class StageEngine {
     if (keys.has('coverage')) L.syncCoverage(w.coverage);
     if (keys.has('actions')) L.syncActions(w.actions);
     if (keys.has('directives')) this.applyDirectives(w.directives);
+    this.applyMapVisibility();
+  }
+
+  /** Switch only this viewer. The feed renderer keeps its own scene, optics and streamed imagery. */
+  private async applyMapSettings() {
+    if (!this.ready || !this.outline || !this.pack || !this.sampler || this.destroyed) return;
+    if (getMapSettings().mode === 'satellite' && !this.satellite) {
+      if (!this.satelliteTask) {
+        this.satelliteTask = (async () => {
+          this.satellite = await setupBasemap(this.viewer, this.pack!, this.sampler!);
+          if (!this.destroyed) this.satelliteTerrain = this.viewer.terrainProvider;
+        })();
+      }
+      try { await this.satelliteTask; }
+      catch { this.satelliteTask = null; }
+    }
+    if (this.destroyed) return;
+    // Read again after the async load: an Outline click during loading must win.
+    const outline = getMapSettings().mode === 'outline' || !this.satellite;
+    const scene = this.viewer.scene;
+    this.viewer.terrainProvider = outline ? this.outline.terrain : this.satelliteTerrain!;
+    for (let i = 0; i < this.viewer.imageryLayers.length; i++) {
+      const layer = this.viewer.imageryLayers.get(i);
+      if (!this.outline.owns(layer)) layer.show = !outline;
+    }
+    if (this.satellite?.tileset) this.satellite.tileset.show = !outline;
+    scene.globe.show = outline || this.satellite?.basemap !== 'google-3d';
+    scene.globe.enableLighting = !outline && this.satellite?.basemap === 'ion-world';
+    scene.verticalExaggeration = 1;
+    this.sunKey = NaN;
+    this.basemap = outline ? 'offline' : this.satellite!.basemap;
+    this.applyMapVisibility();
+    this.o.onStatus?.({ phase: 'ready', basemap: this.basemap });
+    scene.requestRender();
+  }
+
+  private applyMapVisibility() {
+    if (!this.ready || !this.layers || !this.profile || !this.outline) return;
+    const settings = getMapSettings(), v = settings.layers;
+    const { lat, lon } = this.profile.center;
+    const day = daylight(sunPosition(stageWorld.get().t, lat, lon).elDeg);
+    this.outline.apply(settings, day);
+    const outline = settings.mode === 'outline';
+    this.layers.ds.projection.show = v.projection;
+    this.layers.ds.units.show = v.units;
+    this.layers.ds.findings.show = v.findings;
+    this.layers.ds.actions.show = v.actions;
+    this.layers.ds.coverage.show = v.coverage;
+    for (const entity of this.layers.ds.base.entities.values) entity.show = entity.id.startsWith('p:') ? v.places : v.fire;
+    if (this.fire) this.fire.show = v.fire;
+    if (this.particles) this.particles.show = !outline && v.fire && v.atmosphere && !this.reduced;
+    if (this.atmos) this.atmos.stage.enabled = !outline && v.atmosphere;
+    if (this.grade) {
+      this.grade.enabled = !outline;
+      // Keep the replay's day/night lighting even when the smoke/atmosphere layer is hidden.
+      this.grade.uniforms.daylight = v.atmosphere ? 1 : day;
+    }
+    this.viewer.scene.fog.enabled = !outline && v.atmosphere;
   }
 
   private applyDirectives(list: Directive[]) {
@@ -196,10 +311,8 @@ export class StageEngine {
 
   homeView(duration = 2.2) {
     if (!this.pack) return;
-    const b = this.pack.manifest.bbox;
-    const c = this.pack.manifest.center ?? { lon: (b[0] + b[2]) / 2, lat: (b[1] + b[3]) / 2 };
-    const spanM = Math.max((b[2] - b[0]) * 111320 * Math.cos(c.lat * DEG2RAD), (b[3] - b[1]) * 110540);
-    this.flyTo(c, { rangeM: spanM * 0.95, headingDeg: 18, pitchDeg: -40, duration });
+    const p = getProfile(this.pack);
+    this.flyTo(p.center, { rangeM: p.homeRangeM, headingDeg: 18, pitchDeg: -40, duration });
   }
 
   flyTo(target: Geo, o: { rangeM?: number; headingDeg?: number; pitchDeg?: number; duration?: number } = {}) {

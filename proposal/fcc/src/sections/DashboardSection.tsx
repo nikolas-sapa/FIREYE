@@ -8,7 +8,7 @@ export default function DashboardSection() {
       <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-10">
         <SectionHeader
           index="04"
-          eyebrow="Live Operations · REV C"
+          eyebrow="Live Operations · REV D"
           title={
             <>
               One map.
@@ -24,17 +24,17 @@ export default function DashboardSection() {
           <Brackets size={10} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <Serial>REV C · FCC-OPS / CONSOLE 02</Serial>
+              <Serial>REV D · FCC-OPS / CONSOLE 02</Serial>
               <span className="flex items-center gap-1.5 fcc-micro text-phosphor">
                 <Dot className="bg-phosphor" live size={5} />
                 Full-screen · 1920 × 1080+
               </span>
             </div>
-            <h3 className="mt-4 text-2xl text-bone">The full console replays the 2021 Caldor Fire.</h3>
+            <h3 className="mt-4 text-2xl text-bone">Replay Mati 2018 or Caldor 2021.</h3>
             <p className="mt-2 max-w-3xl text-sm text-bone-dim">
-              A 3D stage over real terrain, perimeters, hotspots and weather. Agent pools read every feed, a projection agent
+              A 3D stage over public terrain and reconstructed fire history. Simulated agent pools read every feed, a prototype projection agent
               keeps re-forecasting, and the Orchestrator decides what you see and drafts the work: drone retasks, crew moves,
-              evacuation notices, ICS-209 sitreps. A ledger counts the analyst minutes saved. Scenario built from public data;
+              evacuation notices, ICS-209 sitreps. A ledger estimates human-equivalent work, not measured time savings. Scenario built from public data;
               units, people and events are simulated.
             </p>
           </div>

@@ -1,6 +1,8 @@
 # FCC Design System
 
-**FCC-DS / REV C · 2026-11-14 · Fire Command Center**
+**FCC-DS / REV D · 2026-11-14 · Fire Command Center**
+
+REV D adds dual FCC/Team themes, provenance tags and prediction-check cards. Historical facts must be attributed; replay-area overlap must be labelled as reconstruction agreement, not observed prediction accuracy. All video and agent work is simulated.
 
 REV C adds the full-screen console (`/console.html`): console layout and patterns (section 13A) and 10 console components (section 11, "Console components"). REV B added the Orchestrator-first patterns (section 13) and 12 components. REV B is archived at `public/rev-b/` and git tag `rev-b`; REV A at `public/rev-a/` and git tag `rev-a`.
 
@@ -123,6 +125,39 @@ Rules:
 - `ember` and `signal` are both warm. Keep them apart: `signal` is "the thing you act on", `ember` is "the thing that is dangerous". A danger button uses `ember`, not `signal`.
 - Never rely on color alone; pair with a label, icon or shape (see Accessibility).
 
+### 3.6 Themes (REV D)
+
+#### Daylight appearance (2026-11-15)
+
+Brand (`fcc | team`) and appearance (`auto | light | dark`) are independent. Light uses cool mineral-white panels, graphite text, thin slate rules and darker accessible status/accent hues. Layout, fonts, spacing and the signal budget do not change. `appearance-palette.ts` defines the endpoint ramps and contrast guard; `appearance.ts` applies RGB-channel tokens on `<html>`.
+
+Auto in the console subscribes to the real replay store and uses the stage's `sunPosition` and `daylight` functions at the scenario centre: night at −6°, full day at +8°, smooth civil twilight between. It does not run a second clock. Palette changes track the curve continuously, with a 450 ms exponential settling time for seeks/manual changes. Text contrast is guarded instead of fading through invisible grey-on-grey. Reduced motion applies the current target immediately. The proposal uses the system appearance when Auto is selected.
+
+The new `--on-signal` / `text-on-signal` token keeps filled primary actions readable in both modes. Native `color-scheme` and `theme-color` follow appearance. Camera/sensor HUDs remain fixed dark instrumentation under `.fcc-sensor`; fire colours and sensor pixels are not inverted.
+
+`AppearanceToggle` and `InstallAppButton` are public `@ds` components, shown alongside `ThemeToggle` in specimen C.10. Preferences: `fcc.appearance`, with `?appearance=auto|light|dark` taking precedence on load. Runtime API: `getAppearance`, `setAppearance`, `useAppearance`, `setSolarDaylight`, `getDaylightBlend`.
+
+The main globe defaults to monochrome DEM hillshade with independently hideable contours, roads and approximate building marks. Operational overlays retain semantic colours. Satellite is a separate main-view mode; camera feeds never inherit the outline treatment. The layer panel shows hidden-layer counts and explains that hiding a finding does not clear its decision queue entry.
+
+Two themes share every token name. `<html data-theme="fcc | team">` swaps values in `tokens.css`; components never branch on theme.
+
+| Token | FCC (default) | Team |
+|---|---|---|
+| `--signal` | `#FF5A1F` fire orange | `#006BFF` blue |
+| `--signal-hot` | `#FF8A4C` | `#4D94FF` |
+| `--signal-deep` | `#C23A0C` | `#0052CC` |
+| `--signal-wash` | `#2E140C` | `#031633` |
+| `--amber` (warning) | `#FFB800` | `#F5C518` (yellow, so nothing in the chrome reads as orange) |
+| `--font-sans` | Inter Tight Variable | Geist Variable |
+| `--font-mono` | JetBrains Mono Variable | Geist Mono Variable |
+| `--font-features` | `'ss01', 'cv11', 'tnum' 0` | `'tnum' 0` |
+
+Team rule: no orange in any UI element (buttons, focus rings, badges, selection, current index). Fire data on maps (ember front, burn scar) is data, not accent, and may stay red.
+
+Selection order at load: `?theme=fcc|team` (not persisted) → localStorage `fcc.theme` → `fcc`. Switch with `ThemeToggle` (proposal Nav and console command strip) or `T` in the console.
+
+JS API (`@ds`, `src/design-system/tokens/theme.ts`): `getTheme()`, `setTheme(id, { persist? })`, `toggleTheme()`, `useTheme()`, `onThemeChange(fn) → unsubscribe`, `getAccent() → { DEFAULT, hot, deep, wash }` hex, `getThemeSpec()`, `cssToken(name)` (reads any live CSS token as hex), `THEMES`, `THEME_STORAGE_KEY`, `THEME_EVENT` (`'fcc:themechange'` on `window`, `detail: { theme, accent }`). `color.signal.*`, `color.amber`, `role.accent`, `role.warning`, `role.fireForecast` and `font.sans/mono` are getters that follow the theme: read them at draw time and redraw on `onThemeChange`. Values captured at module load (for example `hexToRgb(color.signal.DEFAULT)` at top level) do not follow a switch.
+
 ---
 
 ## 4. Semantic roles and tones
@@ -198,6 +233,8 @@ Domain mappings that recur:
 | JetBrains Mono Variable | `font-mono` | `"JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace` | Labels, data, codes, timestamps, coordinates, buttons. Uppercase for labels. |
 
 Both are self-hosted via `@fontsource-variable/*` (imported in `src/index.css`). Never load fonts from a CDN.
+
+Tailwind `font-sans` / `font-mono` resolve to `var(--font-sans)` / `var(--font-mono)`. The Team theme (3.6) swaps them to Geist Variable and Geist Mono Variable (`@fontsource-variable/geist`, `@fontsource-variable/geist-mono`); the same rules apply (mono uppercase micro labels, sans sentence case).
 
 ### 5.2 Scale
 
@@ -849,9 +886,9 @@ The "Why am I seeing this?" panel. Shows the reason line, one bar per multiplica
 
 #### TimelineScrubber
 
-`{ start; end; t; onSeek?(t); ticks?: { t; label?; major? }[]; series?: { t; v }[]; marks?: { t; kind: 'ghost' | 'beat' | 'event' | 'perimeter'; label? }[]; projectionUntil?; format?(t); compact?; label? = 'Scenario time' }`
+`{ start; end; t; onSeek?(t); ticks?: { t; label?; major? }[]; series?: { t; v }[]; marks?: { t; kind: 'ghost' | 'beat' | 'event' | 'perimeter' | 'checkpoint'; label? }[]; projectionUntil?; format?(t); compact?; label? = 'Scenario time' }`
 
-Scenario time axis: ticks (local midnights, 6 h steps), fire acres as a stepped area (`series`), real perimeter days and events as marks, projection ghosts, Director beat ticks, and the playhead. `projectionUntil` draws the projection window as an amber hatched range ahead of the playhead. Keyboard seekable when `onSeek` is set. `compact` for the command strip.
+Scenario time axis: ticks (local midnights, 6 h steps), fire acres as a stepped area (`series`), real perimeter days and events as marks, documented real moments (`checkpoint`, a full-height bone bar), projection ghosts, Director beat ticks, and the playhead. `projectionUntil` draws the projection window as an amber hatched range ahead of the playhead. Keyboard seekable when `onSeek` is set. `compact` for the command strip.
 
 #### LedgerCounter
 
@@ -878,6 +915,20 @@ Document-style card for evacuation notices, radio scripts, ICS-209 sitreps, orde
 `{ kind: ConsoleActionKind; title; summary?; risk: 'low' | 'high'; status: ConsoleActionStatus; audiences?; windowLabel?; trigger?; units?: string[]; drafted?: string; score?; compact?; primary?; onApprove?; onEdit?; onReject?; onUndo?; onLocate?; onExpand? }`
 
 An action that needs a decision (Z2). Kind icon and label (`actionKindIcon`, `actionKindLabel`), title, summary, risk badge, status (tone: proposed warning, approved/done nominal, executing telemetry, rejected/undone neutral), relay row (`AudienceRow`), units, window and trigger (trigger in amber), "Orchestrator drafted · 12 s ago" (`drafted`), optional `ScoreMeter`. Footer: Approve / Edit / Reject while proposed, Undo after execution. `primary` makes Approve the one signal button on screen; set it on the top card only.
+
+#### ProvenanceTag (REV D)
+
+`{ kind: 'real' | 'simulated' | 'model'; label? }` — says where content comes from. `real` (bone) marks real public reports, sourced facts and data sources; `simulated` (amber) marks simulated units, people and events; `model` (ice) marks model output. Put it next to every list that mixes real and simulated content.
+
+#### PredictionCheckCard (REV D)
+
+`{ status: 'pending' | 'scored'; horizonMin; issued; target; countdown?; iou? /* 0..1 */; areaPred; areaActual?; areaUnit? = 'HA'; checkpoints?: { id; label; documented; predicted?; uncertaintyMin?; errorMin? }[]; method?; compact? }`
+
+Honest scoring of one projection run against what happened (contract `PredictionCheck`). Header: `target` icon, run horizon, Scored (phosphor) / Pending (ice). Cells: IoU % with a bar (phosphor ≥ 60, amber ≥ 35, else ember) or the countdown while pending; projected and actual area with the signed difference. One row per documented checkpoint: "Predicted 18:24 · documented 18:30 ±10", error in minutes (negative = predicted early), phosphor when within the documented uncertainty, amber otherwise. Optional method line. No signal colour.
+
+### ThemeToggle (REV D)
+
+`{ compact?; hint?: string; onChange?(theme) }` in `src/design-system/components/theme.tsx`. Two segments, FCC and Team, each with a swatch of its own accent; the active segment is `bg-ink-700 text-bone`. Persists to localStorage `fcc.theme`. `hint` prints a keyboard hint (the console uses `T`). Placed in the proposal Nav and the console command strip.
 ---
 
 ## 12. Domain patterns

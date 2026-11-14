@@ -1,10 +1,29 @@
 # AGENTS.md — operating rules for AI agents
 
+## REV D integration notes (current work)
+
+2026-11-15 additions: brand and appearance are separate. Keep Auto appearance tied to the stage's solar functions and actual replay store, not wall-clock time. Preserve manual Light/Dark overrides and reduced-motion behavior. Main globe Outline mode is default; never apply its monochrome treatment or layer visibility to sensor feeds. Globe preferences (`fcc.map`) are display-only, not action/approval state.
+
+PWA: `npm run build` now generates a content-versioned `dist/sw.js` using `scripts/build-pwa.mjs`. `npm run test:pwa` runs after the build. Cache only emitted local app assets, Cesium runtime and local packs; never cache provider traffic, private APIs, environment files or revision archives. Registration is production-only. Keep the manifest standalone, preserve iOS metadata and icons, and do not claim a native Dock installation from manifest checks alone.
+
+These notes supersede Caldor-only and single-theme assumptions below. REV C remains available at git tag `rev-c`; frozen REV A/B files must remain untouched.
+
+- The default scenario is Mati 2018 (`public/data/mati/`). Caldor remains selectable with `?scenario=caldor-2021`. The shared registry and `loadScenario(id?)` live in `src/console/scenario/`.
+- The user approved both themes: FCC (orange, Inter Tight/JetBrains Mono) and Team (blue `#006bff`, Geist/Geist Mono). The added Fontsource dependencies are approved. Read theme-sensitive canvas/WebGL values at draw time, not module initialization.
+- The Mati arrival raster and intermediate perimeters are reconstructions fitted to historical anchors and constrained to the final EFFIS polygon. Do not describe them as independently observed truth or their fitted agreement as prediction skill. FIRMS observations in this pack are later than the main run.
+- Projection code may initialize from observations available at issue time but must not read future arrival times or future perimeters. Separate reconstruction IoU from documented-checkpoint errors and final-perimeter checks.
+- Sourced historical context may appear as attributed facts with conflicting totals preserved. No victim identities, locations or depictions. Simulated people remain fictional; no claim that the prototype would have prevented historical deaths.
+- Optional pack fields: `checkpoints`, `reports`, `facts`. Optional state: `scenarioId`, `predictions`. New bus member: `prediction.scored`. Mirror changes in `docs/BACKEND_CONTRACT.md`.
+- Keep FIRMS credentials script-only (`FIRMS_MAP_KEY`, never a `VITE_` variable). Browser terrain tokens are public client credentials and need provider restrictions. Do not publish `.env.local` or built bundles containing unrestricted local credentials.
+- Rebuild: `node scripts/fetch-data.mjs --scenario mati`. Consistency check: `node scripts/check-mati.mjs`. Report it as consistency, not independent validation.
+- REV D simulation and stage integration are not complete until both scenarios build, real entry points run, screenshots are reviewed and prediction provenance is checked.
+
 FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orchestrator-first command center for fire departments and first responders. The proposal site runs on a simulated incident; the REV C console replays the 2021 Caldor Fire from public data. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
 
 ## Revisions
 
-- **REV C (current)** — full-screen console at `/console.html` (entry `console.html` → `src/console/main.tsx` → `src/console/ConsoleApp.tsx`), designed for 1920 × 1080 and up. A 3D CesiumJS stage replays the Caldor Fire (El Dorado County, CA, Aug 2021) from a cached public-data pack in `public/data/caldor/`. Simulated agent pools publish typed bus events; the Orchestrator grades, places and drafts work; an Agent Work Ledger counts analyst minutes saved. The proposal site keeps the REV B embedded dashboard as the "concept preview" in `#dashboard` and links to the console. See "REV C console contract" below and `docs/`.
+- **REV D (current)** — Mati reconstruction by default, Caldor selectable, dual FCC/Team themes, richer simulated views and prototype minimum-travel-time spread with reconstruction/checkpoint checks. All high-risk drafts require a human approval click, even in the Director tour. No real LLM inference or measured time savings.
+- **REV C (frozen)** — original Caldor console at `/rev-c/console.html`, proposal at `/rev-c/index.html`, source tag `rev-c`. Built without local credentials. Never edit `public/rev-c/`. The REV C contract below remains the baseline, extended by the REV D notes above.
 - **REV B (frozen)** — Orchestrator-first. A calm default console (map, command bar, Orchestrator dock) with progressive disclosure through an icon rail and drawers. Every finding is graded 0–100 and placed by tier (`DESIGN_SYSTEM.md` section 13).
   A built copy lives in `public/rev-b/` (served at `/rev-b/index.html`) and the source is git tag `rev-b`. Never edit `public/rev-b/`.
 - **REV A (frozen)** — the original dashboard-first proposal. A built copy lives in `public/rev-a/` (served at `/rev-a/index.html`) and the source is git tag `rev-a`. Never edit `public/rev-a/`; to inspect REV A source use `git show rev-a:<path>` or `git worktree add /tmp/fcc-rev-a rev-a`.
@@ -22,8 +41,9 @@ FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orch
 ```bash
 npm install          # install deps
 npm run dev          # dev server → http://localhost:5173
-npm run build        # tsc --noEmit && vite build (must pass before you finish)
+npm run build        # tsc --noEmit && vite build && generate PWA cache
 npm run typecheck    # tsc --noEmit only
+npm run test:pwa     # validate the production PWA after building
 npm run preview      # serve the production build
 ```
 
@@ -132,7 +152,7 @@ Ownership map (one owner per path; change another owner's files only through the
 | `docs/**`, `README.md`, `AGENTS.md`, `DESIGN_SYSTEM.md` (console sections), proposal sections `Nav`, `Hero`, `Footer`, `Stack`, `Architecture`, `DashboardSection` | DOCS |
 | `public/rev-a/**`, `public/rev-b/**` | Frozen, nobody |
 
-Console rules on top of the hard rules: the 3D stage dominates; at most one Z0 interrupt; one signal-orange focal element per view; the disclaimer "Scenario built from public data; units, people and events are simulated." is always visible; no gore and no real casualty claims; people in danger are fictional and get rescued; high-risk actions never execute without user approval.
+Console rules on top of the hard rules: the 3D stage dominates; at most one Z0 interrupt; one theme-accent focal element per view; the simulation disclaimer is always visible; no gore or fictional casualty claims. Attributed historical facts may retain differing source totals. People in the tour are fictional; rescue completion depends on manual approval. High-risk drafts never execute without a human click, including in Director mode.
 
 ## PR checklist
 

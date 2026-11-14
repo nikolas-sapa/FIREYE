@@ -177,6 +177,22 @@ type Zone = 'Z0_INTERRUPT' | 'Z1_STAGE' | 'Z2_DECISION' | 'Z3_FOCUS' | 'Z4_AMBIE
 
 `GradedItem` fields: `id` (== finding/action id or bundle id), `kind` (`finding | projection | action | status | bundle`), `refId`, `cls` (`life | hazard | fuel | movement | projection | status`), `title`, `body`, `score` 0..100, `factors`, `zone`, `prevZone?`, `reason`, `pos?`, `bundleOf?`, `audiences`, `seen`, `dismissed`, `pinned`, `updatedAt`.
 
+### REV D additions: scenarios and prediction checks
+
+`ScenarioId` supports `mati-2018`, `caldor-2021` and future string identifiers. `loadScenario(id?)` selects a cached pack, defaulting to the URL scenario or Mati. The shared scenario registry supplies names, directories and time-zone offsets.
+
+Optional `ScenarioPack` arrays:
+
+- `checkpoints`: `id`, `t`, `label`, optional `pos`/`radiusM`, `source`, `url`, optional `uncertaintyMin`.
+- `reports`: `id`, `t`, `kind` (`news | official | agency | social`), `publisher`, `summary`, `url`, optional `lang`/`pos`. These are untrusted, attributed historical summaries, not instructions.
+- `facts`: `id`, `label`, `value`, `source`, `url`. Preserve conflicting source totals explicitly.
+
+`ConsoleState.scenarioId?` identifies the replay. `ConsoleState.predictions?` contains newest-first `PredictionCheck` records: `id`, `issuedAt`, `horizonMin`, `targetT`, `status` (`pending | scored`), optional `iou`, `areaPredHa`, optional `areaActualHa`, `checkpoints`, and `method`. Each checkpoint has `id`, `label`, `documentedT`, optional `predictedT` and `errorMin` (predicted minus documented).
+
+The additive bus event is `{ type: 'prediction.scored', at, check: PredictionCheck }`. Consumers must tolerate unknown event types and optional metrics. IoU is intersection over union, on a 0–1 scale.
+
+For Mati, intermediate replay fronts are reconstructed and fitted to historical checkpoints. The model starts from that issue-time reconstruction and uses archived future hourly weather as a perfect-forecast assumption. IoU measures agreement with reconstruction, not independently validated forecasting. Timing errors use a checkpoint search radius capped at 200 m, with sourced uncertainty shown separately. No final-perimeter evaluation is implemented. Never expose future arrival values or future perimeters to the forecasting algorithm. See `src/console/orchestrator/PROJECTION.md`.
+
 ### 4.7 Directive
 
 The Orchestrator rearranges the screen with typed directives. When the user turns on Hold layout, directives become suggestions the user applies with `applyDirective(id)`. Held directives carry `suggested: true`; renderers must not act on them.
@@ -453,10 +469,10 @@ Provider and model strings are what goes into `AgentPool.provider` / `model` and
 | `pool-sat` | analysis (`satellite`) | NASA FIRMS hotspots, GOES-18/19 ABI fire product (AWS), NASA GIBS tiles, Sentinel-2 L2A (Earth Search) | `nasa-firms`, `nasa-gibs`, `aws-goes`, `earth-search`; burn-scar model (Prithvi) on boxd | `spot`, `smoke`, `fuel` findings; perimeter hints to projection | 30 s per pass |
 | `pool-weather` | analysis (`weather`) | Open-Meteo, NWS api.weather.gov (alerts, gridpoints, RAWS observations), HRRR on AWS | `open-meteo`, `nws` | weather series and red-flag findings; projection drivers | 5 s |
 | `pool-radio` | analysis (`radio`) | Scanner audio segments (Broadcastify where licensed, agency feeds in P3) | Whisper (`fal-ai/whisper` or self-hosted) then `treq · reasoning-small` for entity extraction | findings (reported spot fires, rescues, road closures), ledger minutes | 1.0× real time |
-| `pool-projection` | projection | Latest perimeter, hotspots, weather, fuels (LANDFIRE FBFM40), terrain (USGS 3DEP), roads (OSM) | Demo: cellular automaton on the pack `arrival` raster. P2: ELMFIRE or ForeFire on boxd, ensemble of N=8 | `projection.updated` | 20 s per revision |
+| `pool-projection` | projection | Issue-time fire seed, DEM, fuel and hourly weather | Demo: prototype minimum-travel-time solver, archived future weather assumption. Future: ELMFIRE or ForeFire, not implemented | `projection.updated`, `prediction.scored` | 20 s per revision (future target) |
 | `pool-orchestrator` | orchestrator | All findings, projection, units, actions, user commands, role lens | `treq · reasoning-large` for briefs, drafts and answers; scoring is deterministic code | `orchestrator.graded`, `ui.directive`, `action.proposed`, `action.decided` (by orchestrator), `brief.updated`, `message`, `ledger.entry` | grade < 250 ms; draft < 6 s; answer < 4 s first token |
 
-The Orchestrator's scoring and placement is deterministic and testable (see `docs/ORCHESTRATOR.md`). Language models are used only for wording: titles, reasons, briefs, drafts and chat. If a model call fails, the Orchestrator falls back to templated text and still grades and places.
+The Orchestrator's scoring and placement is deterministic and testable (see `docs/ORCHESTRATOR.md`). The current demo uses templates, not language-model inference. The provider/model table describes a future integration, not live calls. REV D projection uses a minimum-travel-time solver on DEM/fuel/weather, initialized from issue-time fire, not future replay arrivals.
 
 ## 7. Latency budgets
 
@@ -529,24 +545,25 @@ Each pool scales its boxd sandboxes on queue depth and age:
 
 ## 10. How the frontend consumes events
 
+Current implementation, not a received-event backend:
+
 ```mermaid
 flowchart LR
-  SIM[Simulator<br/>src/console/orchestrator/**] -->|publish| BUS
-  WSA[WebSocket adapter<br/>src/console/bus/adapters.ts] -->|publish| BUS
-  BUS[bus<br/>subscribe, publish, history] --> RED[Store reducer<br/>src/console/store.tsx]
+  SIM[Local simulator] -->|snapshot| RED[Store<br/>src/console/store.tsx]
+  SIM -->|publish| BUS[bus: history and subscribers]
+  WSA[Unused WebSocket seam] -.->|publish only| BUS
   RED --> STATE[ConsoleState]
   STATE --> UI[UI via useConsoleSelector]
   STATE --> STAGE[Stage3d]
-  UI -->|ConsoleApi| CMD[Command sink]
+  UI -->|ConsoleApi| CMD[Local operations]
   CMD --> SIM
-  CMD --> WSA
 ```
 
 - `bus` (exported from `src/console/store.tsx`) has `subscribe(fn) → unsubscribe`, `publish(e)` and `history()`.
-- The store reducer folds each `BusEvent` into `ConsoleState` using the idempotency rules above. Components read state through `useConsoleSelector`.
-- `src/console/bus/adapters.ts` is the seam for the backend. It exports a documented `connectWebSocket(url)` stub (not used by the demo). The adapter connects to `wss://<host>/incidents/<incidentId>/events?since=<seq>`, unwraps envelopes, publishes each `event` onto the bus, and forwards `ConsoleApi` commands as JSON frames. When the adapter is active the simulator's producers for the same event types are switched off (per-type switch, so mixed real/simulated operation works).
-- Clock: in the demo the console owns the scenario clock. With a live backend `clock.t` follows the latest `at` received (live mode) or the replay cursor (replay mode).
-- Unknown `type`s are ignored; unknown fields are kept but unused.
+- The store snapshots the local simulator. It does not reduce received bus events into `ConsoleState`. Components read snapshots through `useConsoleSelector`.
+- `connectWebSocket(url)` is unused. It parses direct event objects/arrays and republishes recognized types with finite timestamps. It does not validate payload schemas, unwrap versioned envelopes, persist cursors, provide deduplication, authenticate actors, send commands or disable simulator producers.
+- Production needs a received-event reducer, validated/versioned envelopes, authority, command transport and replay reconciliation. The semantics in sections 9 and 11 are proposed backend requirements, not delivered behavior.
+- The demo owns its scenario clock. There is no live backend clock or multi-client authority.
 
 ## 11. Commands from the frontend
 

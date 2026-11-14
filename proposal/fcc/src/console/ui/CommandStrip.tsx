@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
-import { AutonomyDial, IconButton, Icon, LensSelect, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppearanceToggle, AutonomyDial, IconButton, Icon, InstallAppButton, LensSelect, ThemeToggle, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { acresSeries } from './derived';
-import { incidentNumber, localDay, localHour, localTime, zuluTime } from './format';
+import { incidentNumber, localDay, localHour, localTime, packTz, zuluTime } from './format';
+import { SCENARIOS, currentScenarioId, scenarioName, switchScenario } from './scenarios';
 
 const SPEEDS = [1, 10, 30, 60, 120, 300, 600, 1200];
 
@@ -37,7 +38,7 @@ export function useTimelineTicks(start: number, end: number, tz: string) {
 
 function Clock() {
   const t = useConsoleSelector((s) => Math.floor(s.clock.t / 1000) * 1000);
-  const tz = useConsoleSelector((s) => s.pack?.manifest.tz ?? 'PDT');
+  const tz = useConsoleSelector((s) => packTz(s.pack));
   return (
     <div className="flex shrink-0 flex-col justify-center leading-none" aria-label="Scenario clock">
       <span className="flex items-baseline gap-1.5 font-mono text-tiny text-bone fcc-num">
@@ -81,11 +82,14 @@ function Scrubber() {
   const projection = useConsoleSelector((s) => s.projection);
   const start = pack?.manifest.start ?? 0;
   const end = pack?.manifest.end ?? 1;
-  const tz = pack?.manifest.tz ?? 'PDT';
+  const tz = packTz(pack);
   const ticks = useTimelineTicks(start, end, tz);
   const series = useMemo(() => acresSeries(pack), [pack]);
   const marks = useMemo<TimelineMark[]>(
-    () => (pack?.perimeters ?? []).filter((p) => p.t >= start && p.t <= end).map((p) => ({ t: p.t, kind: 'perimeter' as const, label: `Perimeter · ${Math.round(p.acres).toLocaleString('en-US')} AC` })),
+    () => [
+      ...(pack?.perimeters ?? []).filter((p) => p.t >= start && p.t <= end).map((p) => ({ t: p.t, kind: 'perimeter' as const, label: `Perimeter · ${Math.round(p.acres).toLocaleString('en-US')} AC` })),
+      ...(pack?.checkpoints ?? []).filter((c) => c.t >= start && c.t <= end).map((c) => ({ t: c.t, kind: 'checkpoint' as const, label: `Documented · ${c.label}` })),
+    ],
     [pack, start, end],
   );
   const horizon = projection ? Math.max(...projection.bands.map((b) => b.horizonMin), 0) : 0;
@@ -204,6 +208,71 @@ function DirectorControls() {
   );
 }
 
+function ScenarioSelect() {
+  const pack = useConsoleSelector((s) => s.pack);
+  const active = pack?.manifest.id ?? currentScenarioId();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', close);
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', close);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative flex flex-col leading-none">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="group inline-flex items-center gap-1.5 font-mono text-nano uppercase tracking-[0.16em] text-bone hover:text-bone focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-signal"
+      >
+        {scenarioName(pack)} <span className="text-ink-500">·</span> Replay
+        <Icon name="chevron-down" size={10} className="text-bone-mute group-hover:text-bone" />
+      </button>
+      <span className="mt-1 font-mono text-micro uppercase text-bone-mute fcc-num">
+        {incidentNumber(pack)} <span className="text-ink-500">//</span> FCC REV D
+      </span>
+      {open && (
+        <ul role="listbox" aria-label="Scenario" className="absolute left-0 top-full z-modal mt-2 w-[280px] animate-rise border border-line-strong bg-ink-900 shadow-lift">
+          <li className="border-b border-line px-3 py-2 font-mono text-micro uppercase text-bone-mute">Replay scenario · reloads the console</li>
+          {SCENARIOS.map((s) => {
+            const on = s.id === active;
+            return (
+              <li key={s.id} role="option" aria-selected={on}>
+                <button
+                  type="button"
+                  onClick={() => (on ? setOpen(false) : switchScenario(s.id))}
+                  className={cn(
+                    'flex w-full items-center gap-3 border-b border-line-faint px-3 py-2 text-left transition-colors duration-quick ease-servo',
+                    on ? 'bg-ink-800' : 'hover:bg-ink-800',
+                  )}
+                >
+                  <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0', on ? 'bg-signal' : 'bg-ink-600')} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate text-sm text-bone">{s.name}</span>
+                    <span className="font-mono text-micro uppercase text-bone-mute">
+                      {s.short} · {s.tz} (UTC{s.utcOffsetMin >= 0 ? '+' : '−'}{Math.abs(s.utcOffsetMin / 60)})
+                    </span>
+                  </span>
+                  {on && <span className="font-mono text-micro uppercase text-bone-dim">Active</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function HoldToggle() {
   const api = useConsoleApi();
   const hold = useConsoleSelector((s) => s.settings.holdLayout);
@@ -234,29 +303,25 @@ export function CommandStrip() {
   const autonomy = useConsoleSelector((s) => s.settings.autonomy);
   const disclaimer = pack?.manifest.disclaimer ?? 'Scenario built from public data; units, people and events are simulated.';
   return (
-    <header className="relative z-hud flex h-12 shrink-0 items-center gap-3 border-b border-line bg-ink-950 px-3">
+    <header className="relative z-hud flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-ink-950 px-3 py-1">
       <div className="flex shrink-0 items-center gap-2.5">
         <FccMark size={22} />
-        <div className="flex flex-col leading-none">
-          <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">
-            Caldor Fire <span className="text-ink-500">·</span> Replay
-          </span>
-          <span className="mt-1 font-mono text-micro uppercase text-bone-mute fcc-num">
-            {incidentNumber(pack)} <span className="text-ink-500">//</span> FCC REV C
-          </span>
-        </div>
+        <ScenarioSelect />
       </div>
       <Sep />
       <Clock />
       <Transport />
       <Scrubber />
       <Sep />
-      <LensSelect value={lens} onChange={(l) => api.setLens(l)} />
+      <LensSelect showKeys={false} value={lens} onChange={(l) => api.setLens(l)} />
       <AutonomyDial compact value={autonomy} onChange={(a) => api.setAutonomy(a)} />
       <HoldToggle />
       <Sep />
       <OrchestratorStatus />
       <DirectorControls />
+      <ThemeToggle compact hint="T" />
+      <AppearanceToggle />
+      <InstallAppButton />
       <Tooltip content={disclaimer} side="bottom" className="shrink-0">
         <span className="inline-flex h-7 items-center gap-1.5 border border-amber/40 px-2 font-mono text-micro uppercase text-amber">
           <span aria-hidden className="h-1 w-1 bg-amber" />

@@ -1,62 +1,84 @@
-import type { Geo, Ms, ScenarioManifest, ScenarioPack } from '../contracts';
+import type { Geo, Ms, ScenarioId, ScenarioManifest, ScenarioPack } from '../contracts';
 import { arrivalAtGeo, cellToGeo, elevationAt, inBounds, weatherAt as packWeatherAt } from '../scenario';
-import { MIN, angDiff, arrivalIdx, bearingDeg, centroid, destination, distanceM, scanRadius } from './geo';
+import { MIN, angDiff, arrivalIdx, bearingDeg, destination, distanceM, scanRadius } from './geo';
+import type { ScenarioScript } from '../director/scenarios/types';
+import { scriptFor } from '../director/scenarios';
 
 export type Weather = ScenarioPack['weather'][number];
 export type Place = ScenarioManifest['places'][number] & { fictional?: boolean };
 
-/** Story anchor points, derived from the real pack (arrival raster, OSM, manifest places). */
-export interface Sites {
-  gf: Geo;
-  trailhead: Geo;
-  ranch: Geo;
-  lake: Geo;
+/** Anchor points every scenario has; scenario scripts add their own story sites by key. */
+export interface CoreSites {
+  /** Primary community (the evacuation zone the story revolves around). */
+  primary: Geo;
   ignition: Geo;
   fireCenterT0: Geo;
-  hikers: Geo;
-  hikersReported: Geo;
-  spot: Geo;
-  spotReported: Geo;
-  propane: Geo;
-  propaneRoad: Geo;
-  propaneRoadName: string;
-  school: Geo;
-  vehicles: Geo;
-  vehiclesRoadName: string;
-  powerline: Geo;
-  powerlineRoadName: string;
-  brush: Geo;
+  /** Ground staging area for EMS / rescue returns. */
   staging: Geo;
-  pollock: Geo;
-  slyPark: Geo;
+  /** Safety zone / refuge for crews. */
+  refuge: Geo;
+  /** Helicopter water source. */
+  water: Geo;
 }
+export type Sites = CoreSites & Record<string, Geo>;
 
 export interface RidgeSite { id: string; name: string; pos: Geo }
 
+/** Pack-derived helpers handed to scenario scripts while the context is being built. */
+export interface SiteHelpers {
+  pack: ScenarioPack;
+  places: Place[];
+  find(re: RegExp): Place | undefined;
+  primary: Place;
+  tPrimary: Ms;
+  T0: Ms;
+  ignition: Geo;
+  fireCenterT0: Geo;
+  /** Nearest raster cell to `target` within r whose replay arrival is in [tMin, tMax] (story placement only). */
+  pickCell(target: Geo, r: number, tMin: Ms, tMax: Ms, avoid?: (g: Geo) => boolean): Geo;
+  nearestRoadPoint(g: Geo, maxM: number, nameRe?: RegExp): Geo | null;
+  roadNamesNear(g: Geo, r: number): string[];
+  buildingsNear(g: Geo, r: number): number;
+  nearestPlace(g: Geo): Place;
+  arrivalNear(g: Geo, r: number): number;
+  /** Highest terrain per bearing sector around `center` between minM and maxM. */
+  highPoints(center: Geo, sectors: [number, number][], minM: number, maxM: number): { pos: Geo; elev: number }[];
+  /** Nearest water (FuelClass.Water) cell to g within maxM, or null. */
+  nearestWater(g: Geo, maxM: number): Geo | null;
+}
+
 export interface ScenarioContext {
+  id: ScenarioId;
+  script: ScenarioScript;
   pack: ScenarioPack;
   start: Ms;
   end: Ms;
   tzLabel: string;
   tzOffsetMin: number;
-  /** First fire arrival within 600 m of Grizzly Flats. */
-  tGF: Ms;
-  /** Demo Director t=0 (tGF - 150 min). */
+  /** First replay arrival within 600 m of the primary community (story timing only, never the projection). */
+  tPrimary: Ms;
+  /** Demo Director t=0. */
   T0: Ms;
-  /** When the Projection agent ingests the evening wind shift (T0 + 60 min). */
-  tShift: Ms;
+  /** Earliest time the Projection agent runs (fire detected). */
+  tDetect: Ms;
+  /** When the Projection agent ingests the later forecast (null = hourly forecast from the start). */
+  tShift: Ms | null;
   shiftFrom: Weather;
   shiftTo: Weather;
   places: Place[];
-  gfId: string;
-  gfName: string;
-  /** Min arrival (abs ms, Infinity = never) within 600 m of each place. */
+  primaryId: string;
+  primaryName: string;
+  /** Min replay arrival (abs ms, Infinity = never) within 600 m of each place (story timing only). */
   placeArr: Record<string, number>;
   sites: Sites;
+  /** Road and site names resolved from the pack. */
+  names: Record<string, string>;
   ridge: RidgeSite[];
-  structuresGF: number;
+  structuresPrimary: number;
   weatherAt(t: Ms): Weather;
-  acresAt(t: Ms): number;
+  /** Burned area at t in the scenario's display unit (acres or ha). */
+  areaAt(t: Ms): number;
+  areaText(t: Ms): string;
   arrivalAt(g: Geo): number;
   arrivalNear(g: Geo, r: number): number;
   elevAt(g: Geo): number;
@@ -71,26 +93,22 @@ export interface ScenarioContext {
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 export function buildContext(pack: ScenarioPack): ScenarioContext {
+  const script = scriptFor(pack.manifest.id);
   const m = pack.manifest as ScenarioManifest & { tzOffsetMin?: number; ignition?: { t: Ms; pos: Geo } };
   const start = m.start;
   const end = m.end;
-  const tzOffsetMin = m.tzOffsetMin ?? -420;
+  const tzOffsetMin = m.tzOffsetMin ?? script.tzOffsetMin;
   const places: Place[] = m.places.slice();
   const find = (re: RegExp): Place | undefined => places.find((p) => re.test(p.id) || re.test(p.name));
-  const ensure = (re: RegExp, p: Place): Place => {
-    const f = find(re);
-    if (f) return f;
-    places.push(p);
-    return p;
-  };
-  const gfP = ensure(/^grizzly[- ]flats?$/i, { id: 'grizzly-flats', name: 'Grizzly Flats', pos: { lon: -120.52742, lat: 38.63629 }, kind: 'town' });
-  const gf = gfP.pos;
+  const primary = find(script.primary.match) ?? (places.push(script.primary.fallback), script.primary.fallback);
+  const pc = primary.pos;
 
   const finite = pack.arrival.filter((v) => v === v);
   finite.sort();
   const { w: W, bbox } = pack.raster;
   const midLat = (bbox[1] + bbox[3]) / 2;
-  const cellAcres = (((bbox[2] - bbox[0]) / W) * 111320 * Math.cos((midLat * Math.PI) / 180) * ((bbox[3] - bbox[1]) / pack.raster.h) * 110574) / 4046.8564;
+  const cellHa = (((bbox[2] - bbox[0]) / W) * 111320 * Math.cos((midLat * Math.PI) / 180) * ((bbox[3] - bbox[1]) / pack.raster.h) * 110574) / 10_000;
+  const cellArea = script.areaUnit === 'acres' ? cellHa * 2.4710538 : cellHa;
 
   const arrivalNear = (g: Geo, r: number): number => {
     let best = Infinity;
@@ -155,28 +173,52 @@ export function buildContext(pack: ScenarioPack): ScenarioContext {
     });
     return best ?? target;
   };
+  const highPoints = (center: Geo, sectors: [number, number][], minM: number, maxM: number) => {
+    const best = sectors.map(() => ({ elev: -Infinity, pos: null as Geo | null }));
+    scanRadius(pack, center, maxM, 5, (x, y, i, d) => {
+      if (d < minM) return;
+      const g = cellToGeo(pack, x, y);
+      const b = bearingDeg(center, g);
+      const k = sectors.findIndex(([a, z]) => (a <= z ? b >= a && b < z : b >= a || b < z));
+      if (k < 0) return;
+      const e = pack.elevation[i];
+      if (e > best[k].elev) best[k] = { elev: e, pos: g };
+    });
+    return best.map((b, k) => ({ pos: b.pos ?? destination(center, sectors[k][0], (minM + maxM) / 2), elev: b.pos ? b.elev : 0 }));
+  };
+  const nearestWater = (g: Geo, maxM: number): Geo | null => {
+    let best: Geo | null = null;
+    let bd = Infinity;
+    scanRadius(pack, g, maxM, 2, (x, y, i, d) => {
+      if (pack.fuel[i] !== 1 || d >= bd) return;
+      bd = d;
+      best = cellToGeo(pack, x, y);
+    });
+    return best;
+  };
 
   const placeArr: Record<string, number> = {};
   for (const p of places) placeArr[p.id] = inBounds(pack, p.pos) ? arrivalNear(p.pos, 600) : Infinity;
-  let tGF = placeArr[gfP.id];
-  if (!Number.isFinite(tGF)) tGF = start + (end - start) * 0.3;
-  const T0 = Math.max(start, tGF - 150 * MIN);
-  const tShift = T0 + 60 * MIN;
+  let tPrimary = placeArr[primary.id];
+  if (!Number.isFinite(tPrimary)) tPrimary = start + (end - start) * 0.3;
+  const { T0, tShift, tDetect } = script.timeline({ start, end, tPrimary, ignitionT: m.ignition?.t });
 
   const weatherAt = (t: Ms): Weather => packWeatherAt(pack, t);
-  const shiftFrom = weatherAt(tShift);
+  const shiftFrom = weatherAt(tShift ?? T0);
   let shiftTo = shiftFrom;
-  let bestTurn = 0;
-  for (const s of pack.weather) {
-    if (s.t <= tShift || s.t > tShift + 5 * 60 * MIN) continue;
-    const turn = Math.abs(angDiff(shiftFrom.windDirDeg, s.windDirDeg));
-    if (turn > bestTurn) {
-      bestTurn = turn;
-      shiftTo = s;
+  if (tShift !== null) {
+    let bestTurn = 0;
+    for (const s of pack.weather) {
+      if (s.t <= tShift || s.t > tShift + 5 * 60 * MIN) continue;
+      const turn = Math.abs(angDiff(shiftFrom.windDirDeg, s.windDirDeg));
+      if (turn > bestTurn) {
+        bestTurn = turn;
+        shiftTo = s;
+      }
     }
   }
 
-  // Ignition and fire centroid at T0.
+  // Ignition and the fire centroid at T0 (observed state at T0; the ignition point if nothing has burned yet).
   let ignition = m.ignition?.pos;
   let sx = 0;
   let sy = 0;
@@ -203,120 +245,74 @@ export function buildContext(pack: ScenarioPack): ScenarioContext {
     }
     if (!ignition && minI >= 0) ignition = cellToGeo(pack, minI % W, Math.floor(minI / W));
   }
-  ignition = ignition ?? destination(gf, 190, 5500);
+  ignition = ignition ?? destination(pc, 190, 5500);
   const fireCenterT0 = sn ? cellToGeo(pack, sx / sn, sy / sn) : ignition;
 
-  const trailhead = find(/trailhead|cosumnes-ridge/i)?.pos ?? destination(gf, 165, 2900);
-  const hikers = pickCell(trailhead, 1400, T0 + 75 * MIN, T0 + 105 * MIN);
-  const spot = pickCell(destination(gf, 200, 2000), 2600, T0 + 70 * MIN, T0 + 90 * MIN, (g) => distanceM(g, hikers) < 900);
-  const ranch = places.find((p) => p.kind === 'ranch')?.pos ?? destination(gf, 70, 3600);
-  const lakeWater = pack.water.find((w) => /jenkinson/i.test(w.name ?? ''));
-  const lake = lakeWater ? centroid(lakeWater.polygon) : find(/jenkinson/i)?.pos ?? { lon: -120.553, lat: 38.7245 };
-
-  let propane: Geo | null = null;
-  {
-    const target = destination(gf, 170, 500);
-    let bd = Infinity;
-    for (const b of pack.buildings) {
-      if (distanceM(b.pos, gf) > 1600) continue;
-      const a = arrivalAtGeo(pack, b.pos);
-      if (a < tGF - 10 * MIN || a > tGF + 45 * MIN) continue;
-      const d = distanceM(b.pos, target);
-      if (d < bd) {
-        bd = d;
-        propane = { lon: b.pos.lon, lat: b.pos.lat };
-      }
-    }
-  }
-  const propaneP = propane ?? pickCell(destination(gf, 170, 500), 1500, tGF - 10 * MIN, tGF + 45 * MIN);
-  const propaneRoad = nearestRoadPoint(propaneP, 500) ?? propaneP;
-  const vehT = destination(gf, 290, 1400);
-  const vehicles = nearestRoadPoint(vehT, 2500, /grizzly flat/i) ?? nearestRoadPoint(vehT, 1500) ?? vehT;
-  const plT = destination(gf, 30, 1800);
-  const powerline = nearestRoadPoint(plT, 2500, /sciaroni|shingle mill/i) ?? nearestRoadPoint(plT, 1500) ?? plT;
-  const stT = destination(gf, 330, 900);
-
-  const sites: Sites = {
-    gf,
-    trailhead,
-    ranch,
-    lake,
+  const helpers: SiteHelpers = {
+    pack,
+    places,
+    find,
+    primary,
+    tPrimary,
+    T0,
     ignition,
     fireCenterT0,
-    hikers,
-    hikersReported: destination(hikers, 300, 220),
-    spot,
-    spotReported: destination(spot, 60, 140),
-    propane: propaneP,
-    propaneRoad,
-    propaneRoadName: roadNamesNear(propaneP, 300)[0] ?? 'Grizzly Flat Road',
-    school: destination(gf, 20, 300),
-    vehicles,
-    vehiclesRoadName: roadNamesNear(vehicles, 60)[0] ?? 'Grizzly Flat Road',
-    powerline,
-    powerlineRoadName: roadNamesNear(powerline, 60)[0] ?? 'Sciaroni Road',
-    brush: pickCell(destination(gf, 210, 1600), 2500, tGF - 60 * MIN, tGF + 60 * MIN),
-    staging: nearestRoadPoint(stT, 1200) ?? stT,
-    pollock: find(/pollock/i)?.pos ?? { lon: -120.5866, lat: 38.7613 },
-    slyPark: find(/^sly[- ]park$/i)?.pos ?? { lon: -120.5846, lat: 38.7213 },
+    pickCell,
+    nearestRoadPoint,
+    roadNamesNear,
+    buildingsNear,
+    nearestPlace,
+    arrivalNear,
+    highPoints,
+    nearestWater,
   };
-
-  // Two ridge cameras on the highest terrain north and east of Grizzly Flats.
-  const ridge: RidgeSite[] = [];
-  {
-    const best: { e: number; g: Geo | null }[] = [{ e: -Infinity, g: null }, { e: -Infinity, g: null }];
-    scanRadius(pack, gf, 14000, 5, (x, y, i, d) => {
-      if (d < 3000) return;
-      const g = cellToGeo(pack, x, y);
-      const b = bearingDeg(gf, g);
-      const k = b >= 300 || b < 40 ? 0 : b >= 60 && b < 150 ? 1 : -1;
-      if (k < 0) return;
-      const e = pack.elevation[i];
-      if (e > best[k].e) best[k] = { e, g };
-    });
-    best.forEach((b, k) => {
-      const g = b.g ?? destination(gf, k ? 100 : 0, 7000);
-      const pl = nearestPlace(g);
-      ridge.push({ id: `ridge-${k + 1}`, name: `RIDGE CAM ${k + 1} · ${pl.name.toUpperCase()} ${Math.round(b.e > 0 ? b.e : elevationAt(pack, g))} M`, pos: g });
-    });
-  }
+  const extra = script.sites(helpers);
+  const sites: Sites = { ...extra, primary: pc, ignition, fireCenterT0 };
+  const names = script.names?.(helpers, sites) ?? {};
+  const ridge = script.cams(helpers, sites);
 
   const fmtTime = (t: Ms): string => `${new Date(t + tzOffsetMin * MIN).toISOString().slice(11, 16)} ${m.tz}`;
   const fmtDate = (t: Ms): string => {
     const d = new Date(t + tzOffsetMin * MIN);
     return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
   };
+  const areaAt = (t: Ms): number => {
+    const rel = t - start;
+    let lo = 0;
+    let hi = finite.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (finite[mid] <= rel) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo * cellArea;
+  };
 
   return {
+    id: m.id,
+    script,
     pack,
     start,
     end,
     tzLabel: m.tz,
     tzOffsetMin,
-    tGF,
+    tPrimary,
     T0,
+    tDetect,
     tShift,
     shiftFrom,
     shiftTo,
     places,
-    gfId: gfP.id,
-    gfName: gfP.name,
+    primaryId: primary.id,
+    primaryName: primary.name,
     placeArr,
     sites,
+    names,
     ridge,
-    structuresGF: buildingsNear(gf, 2500),
+    structuresPrimary: buildingsNear(pc, script.primary.radiusM ?? 2500),
     weatherAt,
-    acresAt: (t) => {
-      const rel = t - start;
-      let lo = 0;
-      let hi = finite.length;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (finite[mid] <= rel) lo = mid + 1;
-        else hi = mid;
-      }
-      return lo * cellAcres;
-    },
+    areaAt,
+    areaText: (t) => `${Math.round(areaAt(t)).toLocaleString('en-US')} ${script.areaUnit}`,
     arrivalAt: (g) => arrivalAtGeo(pack, g),
     arrivalNear,
     elevAt: (g) => elevationAt(pack, g),

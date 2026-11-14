@@ -8,7 +8,8 @@ import { createUnits, tickUnits } from './units';
 import { createFeeds, updateFeeds, updateLive } from './feeds';
 import { rebuildCoverage } from './coverage';
 import { buildCatalog } from '../agents/catalog';
-import { createPools, poolSnapshot, prefillFindings, tickFindings, tickReveals, tickSwarm } from '../agents/swarm';
+import { createPools, poolSnapshot, prefillFindings, tickFindings, tickReports, tickReveals, tickSwarm } from '../agents/swarm';
+import { tickPredictions } from '../agents/predictions';
 import { applyProjection, tickProjection } from '../agents/projection';
 import { grade, itemMeta } from '../orchestrator/grade';
 import { runRules } from '../orchestrator/rules';
@@ -26,6 +27,7 @@ const SUBSTEP_S = 20;
 /** Agent time runs at most this many times faster than wall clock so the job stream stays readable. */
 export const AGENT_MAX_RATE = 20;
 export const DEFAULT_SPEED = 60;
+/** Fallback seed; each scenario script carries its own. */
 export const DEFAULT_SEED = 20210816;
 
 const ctxCache = new WeakMap<ScenarioPack, ScenarioContext>();
@@ -83,7 +85,7 @@ export interface CreateOpts {
 
 export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}): Sim {
   const ctx = contextFor(pack);
-  const seed = opts.seed ?? DEFAULT_SEED;
+  const seed = opts.seed ?? ctx.script.seed ?? DEFAULT_SEED;
   const rng = createRng(seed);
   const t = clamp(opts.t ?? ctx.T0, ctx.start, ctx.end);
   const { units, umeta } = createUnits(ctx, rng, t);
@@ -104,11 +106,15 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
     fmeta: new Map(),
     feeds: [],
     projection: null,
-    projBias: 1,
+    projField: null,
+    projMs: [],
+    predictions: [],
+    predRt: new Map(),
+    reportsSeen: new Set(),
     projWeather: null,
     projHead: null,
     projCenter: null,
-    shiftApplied: t >= ctx.tShift,
+    shiftApplied: ctx.tShift !== null && t >= ctx.tShift,
     intelPending: null,
     lastIntelProj: 0,
     items: [],
@@ -135,7 +141,7 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
     cues: new Set(),
     replies: [],
     seq: 0,
-    timers: { grade: 0, brief: t, proj: t + 20 * MIN, sitrep: t + 120 * MIN, orch: 0, briefReal: 0, cov: t + 10 * MIN },
+    timers: { grade: 0, brief: t, proj: t, sitrep: t + 120 * MIN, orch: 0, briefReal: 0, cov: t + 10 * MIN },
     gradeDirty: true,
     version: 0,
     notes: [],
@@ -145,6 +151,7 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
   ref = sim;
   sim.feeds = createFeeds(sim);
   prefillFindings(sim);
+  tickReports(sim, true);
   applyProjection(sim, 'initial');
   updateFeeds(sim);
   grade(sim);
@@ -152,10 +159,7 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
   updateBrief(sim, true);
   updateSuggestions(sim);
   if (opts.intro !== false) {
-    say(
-      sim,
-      `Monitoring the Caldor Fire replay from ${ctx.fmtTime(t)} ${ctx.fmtDate(t)}: ${Math.round(ctx.acresAt(t)).toLocaleString('en-US')} acres. ${sim.units.filter((u) => u.kind === 'drone').length} drones are sweeping the front and ${sim.pools.length} agent pools are ingesting web, social, camera, satellite, weather and radio sources. I will interrupt only for life safety or imminent hazards.`,
-    );
+    say(sim, ctx.script.intro(sim));
   }
   return sim;
 }
@@ -176,11 +180,13 @@ export function stepSim(sim: Sim, dtReal: number): void {
       tickReveals(sim);
       tickSwarm(sim, dScen, dAgent);
       tickProjection(sim);
+      tickPredictions(sim);
       tickActions(sim);
     }
     if (sim.t >= sim.ctx.end) sim.paused = true;
     updateFeeds(sim);
     updateLive(sim);
+    tickReports(sim);
     tickFindings(sim, (id) => !!sim.imeta.get(id)?.pinned);
     if (sim.t >= sim.timers.cov) {
       sim.timers.cov = sim.t + 10 * MIN;
@@ -345,6 +351,8 @@ export function snapshot(sim: Sim, prev: ConsoleState | null, heavy: boolean, pa
     settings: keep('settings', sim.settings),
     director: prev && sameDirector(prev.director, sim.director) ? prev.director : { ...sim.director },
     fireRev: sim.fireRev,
+    scenarioId: pack.manifest.id,
+    predictions: keep('predictions', sim.predictions),
   };
 }
 

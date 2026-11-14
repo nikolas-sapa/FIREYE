@@ -4,6 +4,15 @@
  * In JSX/CSS, prefer Tailwind utilities (bg-ink-900, text-signal, border-line).
  */
 
+import { THEMES, getTheme } from './theme';
+
+export * from './theme';
+export * from './appearance';
+
+/**
+ * `signal` and `amber` are getters that follow the active theme (see theme.ts). Read them at draw
+ * time, not once at module load, if the drawing should follow a theme switch.
+ */
 export const color = {
   void: '#050506',
   ink: {
@@ -12,9 +21,14 @@ export const color = {
   },
   bone: { DEFAULT: '#E8E6E1', dim: '#B0AEA8', mute: '#787773' },
   line: { faint: '#1C1C20', DEFAULT: '#28282D', strong: '#404046' },
-  signal: { DEFAULT: '#FF5A1F', hot: '#FF8A4C', deep: '#C23A0C', wash: '#2E140C' },
+  signal: {
+    get DEFAULT() { return THEMES[getTheme()].accent.DEFAULT; },
+    get hot() { return THEMES[getTheme()].accent.hot; },
+    get deep() { return THEMES[getTheme()].accent.deep; },
+    get wash() { return THEMES[getTheme()].accent.wash; },
+  },
   ember: '#FF3B30',
-  amber: '#FFB800',
+  get amber() { return THEMES[getTheme()].amber; },
   phosphor: '#3DDC84',
   ice: '#5CC8FF',
   violet: '#A88CFF',
@@ -22,14 +36,14 @@ export const color = {
 
 /** Semantic roles — map meaning to color. Always pick by role, not by hue. */
 export const role = {
-  accent: color.signal.DEFAULT,
+  get accent() { return color.signal.DEFAULT; },
   danger: color.ember,
-  warning: color.amber,
+  get warning() { return color.amber; },
   nominal: color.phosphor,
   telemetry: color.ice,
   detection: color.violet,
   fireFront: color.ember,
-  fireForecast: color.amber,
+  get fireForecast() { return color.amber; },
   burnScar: '#2A1610',
   drone: color.ice,
   crew: color.bone.DEFAULT,
@@ -49,9 +63,10 @@ export const toneClass: Record<Tone, { text: string; bg: string; border: string;
   detection: { text: 'text-violet',   bg: 'bg-violet/10',     border: 'border-violet/40',   dot: 'bg-violet' },
 };
 
+/** Font stacks of the active theme (FCC: Inter Tight + JetBrains Mono; Team: Geist + Geist Mono). */
 export const font = {
-  sans: '"Inter Tight Variable", ui-sans-serif, system-ui, sans-serif',
-  mono: '"JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace',
+  get sans() { return THEMES[getTheme()].sans; },
+  get mono() { return THEMES[getTheme()].mono; },
 } as const;
 
 /** Type scale. `micro`/`nano`/`tiny` are always mono + uppercase + tracked (micrographics). */

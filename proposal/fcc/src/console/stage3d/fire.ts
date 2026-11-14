@@ -1,11 +1,10 @@
 import * as Cesium from 'cesium';
 import { color as ds } from '@ds';
 import type { Geo, ScenarioPack } from '../contracts';
-import { glsl3 } from './palette';
+import { FIRE, glsl3 } from './palette';
+import { getProfile } from './profile';
 import { RasterSampler } from './raster';
 
-/** Cells that ignited within this window glow as active edge. */
-export const ACTIVE_MS = 90 * 60 * 1000;
 const SCAR_AGE_MS = 10 * 3600 * 1000;
 
 export interface Hotspot extends Geo {
@@ -20,7 +19,7 @@ export interface FireStats {
 
 /**
  * Computes the fire field (from pack.arrival) into an RGBA data image:
- * R = burned mask, G = active heat (1 at ignition, 0 after ACTIVE_MS), B = scar age.
+ * R = burned mask, G = active heat (1 at ignition, 0 after the profile's active window), B = scar age.
  * One field instance can feed several Cesium scenes (stage + feed renderer).
  */
 export class FireField {
@@ -31,7 +30,12 @@ export class FireField {
   private image: ImageData;
   rev = 0;
   lastT = -Infinity;
+  /** Hottest clusters (flames / embers). */
   hotspots: Hotspot[] = [];
+  /** Every active cluster, hottest first (smoke sources). */
+  sources: Hotspot[] = [];
+  readonly activeMs: number;
+  private readonly binCells: number;
   stats: FireStats = { burnedCells: 0, activeCells: 0, acres: 0 };
   private listeners = new Set<() => void>();
 
@@ -45,6 +49,9 @@ export class FireField {
       return c;
     };
     this.canvases = [mk(), mk()];
+    const prof = getProfile(pack);
+    this.activeMs = prof.activeMs;
+    this.binCells = Math.max(2, Math.round(prof.hotspotBinM / (pack.raster.cellM || 30)));
     this.image = new ImageData(this.w, this.h);
   }
 
@@ -73,7 +80,8 @@ export class FireField {
     const tRel = t - pack.manifest.start;
     const arr = pack.arrival;
     const d = this.image.data;
-    const bin = Math.max(4, Math.round(650 / (pack.raster.cellM || 50)));
+    const bin = this.binCells;
+    const activeMs = this.activeMs;
     const bw = Math.ceil(w / bin), bh = Math.ceil(h / bin);
     const sum = new Float32Array(bw * bh), sx = new Float32Array(bw * bh), sy = new Float32Array(bw * bh);
     let burned = 0, active = 0;
@@ -89,7 +97,7 @@ export class FireField {
         }
         const age = tRel - a;
         burned++;
-        let heat = 1 - age / ACTIVE_MS;
+        let heat = 1 - age / activeMs;
         if (heat > 0) {
           active++;
           heat = Math.sqrt(heat);
@@ -114,12 +122,13 @@ export class FireField {
     bins.sort((a, b) => sum[b] - sum[a]);
     const spots: Hotspot[] = [];
     for (const b of bins) {
-      if (spots.length >= maxHotspots) break;
+      if (spots.length >= 64) break;
       const g = this.sampler.cellGeo(sx[b] / sum[b], sy[b] / sum[b]);
       spots.push({ lon: g.lon, lat: g.lat, heat: Math.min(1, sum[b] / (bin * bin * 0.35)) });
     }
-    this.hotspots = spots;
-    const cellAcres = ((pack.raster.cellM || 50) ** 2) / 4046.86;
+    this.sources = spots;
+    this.hotspots = spots.slice(0, maxHotspots);
+    const cellAcres = ((pack.raster.cellM || 30) ** 2) / 4046.86;
     this.stats = { burnedCells: burned, activeCells: active, acres: burned * cellAcres };
     this.lastT = t;
     this.rev++;
@@ -203,14 +212,14 @@ czm_material czm_getMaterial(czm_materialInput materialInput) {
   float fine = fcc_noise(lc * 6.0 + vec2(time * 0.9, -time * 0.7)) * 0.65 + fcc_noise(lc * 17.0 - vec2(0.0, time * 1.4)) * 0.35;
   float fineMod = mix(1.0, smoothstep(0.25, 0.8, fine) * 1.5, fineK);
 
-  vec3 EMBER = ${glsl3(ds.ember)};
-  vec3 SIGNAL = ${glsl3(ds.signal.DEFAULT)};
-  vec3 AMBER = ${glsl3(ds.amber)};
+  vec3 EMBER = ${glsl3(FIRE.ember)};
+  vec3 SIGNAL = ${glsl3(FIRE.signal)};
+  vec3 AMBER = ${glsl3(FIRE.amber)};
   vec3 BONE = ${glsl3(ds.bone.DEFAULT)};
-  vec3 SCAR = ${glsl3(ds.ink[900])} * 0.7 + ${glsl3(ds.signal.wash)} * 0.3;
+  vec3 SCAR = ${glsl3(ds.ink[900])} * 0.7 + ${glsl3(FIRE.wash)} * 0.3;
 
   // Scar: charcoal, darker with age, faint red where it burned recently.
-  vec3 col = mix(SCAR * 1.2, SCAR * 0.5, age) + EMBER * heat * 0.10;
+  vec3 col = mix(SCAR * 1.2, SCAR * 0.5, age) + EMBER * heat * 0.05;
   // Interior embers: sparse flickering speckles inside recently burned ground.
   float speck = smoothstep(0.62, 0.92, fcc_noise(cell * 0.9 + vec2(time * 0.2, 0.0)) * (0.6 + 0.6 * n2));
   float ember = burned * heat * speck * 0.8;
@@ -231,7 +240,8 @@ czm_material czm_getMaterial(czm_materialInput materialInput) {
 
   float glow = max(core, max(ember, haloA));
   m.diffuse = col * 0.4;
-  m.emission = col * (0.45 + 1.2 * glow) * strength;
+  // Scar emission stays low so a fast fire's wide active window reads as charcoal, not a glowing disc.
+  m.emission = col * (0.15 + 1.5 * glow) * strength;
   m.alpha = clamp(a, 0.0, 1.0);
   return m;
 }

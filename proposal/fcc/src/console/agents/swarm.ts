@@ -90,15 +90,6 @@ export function addLedger(sim: Sim, agent: string, text: string, minutes: number
   sim.ledger = next;
 }
 
-const QUERIES = [
-  'Caldor Fire Grizzly Flats',
-  'Caldor Fire evacuation El Dorado County',
-  'CAL FIRE incident update Caldor',
-  'Caldor Fire road closures',
-  'Grizzly Flats fire',
-  'El Dorado County OES alerts',
-];
-
 function fxName(f: Feed): string {
   return f.fx === 'eo' ? 'EO' : f.fx === 'night' ? 'low-light' : 'IR';
 }
@@ -166,7 +157,7 @@ function emitPoolJob(sim: Sim, p: PoolRt): boolean {
       if (p.acc < d.minWork) return false;
       const n = Math.max(1, Math.round(p.acc));
       p.acc = 0;
-      const q = sim.rng.pick(QUERIES);
+      const q = sim.rng.pick(sim.ctx.script.queries);
       enqueue(sim, d.id, {
         input: `Search "${q}" · scrape ${n} page${n > 1 ? 's' : ''}`,
         minutes: 0,
@@ -189,7 +180,7 @@ function emitPoolJob(sim: Sim, p: PoolRt): boolean {
       const n = Math.round(p.acc);
       p.acc = 0;
       enqueue(sim, d.id, {
-        input: `Screen ${n} public posts · geofenced #CaldorFire`,
+        input: `Screen ${n} public posts · geofenced ${sim.ctx.script.socialTag}`,
         minutes: n * 0.5,
         counters: { postsScreened: n },
         durS: d.baseS + n * d.perWorkS,
@@ -217,11 +208,11 @@ function emitPoolJob(sim: Sim, p: PoolRt): boolean {
       p.acc -= 1;
       const goes = p.seq % 4 !== 3;
       enqueue(sim, d.id, {
-        input: goes ? `GOES-17 ABI FDC frame · ${sim.ctx.fmtTime(sim.t)}` : 'FIRMS VIIRS 375 m + GIBS tiles · bbox query',
+        input: goes ? `${sim.ctx.script.satellite.frame} · ${sim.ctx.fmtTime(sim.t)}` : 'FIRMS VIIRS 375 m + GIBS tiles · bbox query',
         minutes: 6,
         counters: { satellitePasses: 1 },
         durS: d.baseS + d.perWorkS,
-        text: (a) => (goes ? `${a} processed a GOES-17 fire frame` : `${a} merged FIRMS VIIRS detections with GIBS imagery`),
+        text: (a) => (goes ? `${a} ${sim.ctx.script.satellite.done}` : `${a} merged FIRMS VIIRS detections with GIBS imagery`),
       });
       return true;
     }
@@ -230,7 +221,7 @@ function emitPoolJob(sim: Sim, p: PoolRt): boolean {
       p.acc -= 1;
       const w = sim.ctx.weatherAt(sim.t);
       enqueue(sim, d.id, {
-        input: `Open-Meteo hourly + NWS alerts · ${Math.round(w.windDirDeg)}° ${Math.round(w.windKph)} kph`,
+        input: `${sim.ctx.script.weatherSource} · ${Math.round(w.windDirDeg)}° ${Math.round(w.windKph)} kph`,
         minutes: 4,
         durS: d.baseS + d.perWorkS,
         text: (a) => `${a} updated weather: ${Math.round(w.windDirDeg)}° ${Math.round(w.windKph)} kph, gusts ${Math.round(w.gustKph)}, RH ${Math.round(w.rh)}%`,
@@ -241,7 +232,8 @@ function emitPoolJob(sim: Sim, p: PoolRt): boolean {
       if (p.acc < d.minWork) return false;
       const mins = p.acc;
       p.acc = 0;
-      const ch = p.seq % 3 === 0 ? 'Div Z tactical' : p.seq % 3 === 1 ? 'Div A tactical' : 'Air-to-ground';
+      const chs = sim.ctx.script.radioChannels;
+      const ch = chs[p.seq % chs.length];
       enqueue(sim, d.id, {
         input: `${ch} · ${fmtDur(mins * 60)} audio`,
         minutes: mins * 1.5,
@@ -394,10 +386,11 @@ export function createFinding(sim: Sim, spec: FindingSpec, at: number): Finding 
     persistent: !!spec.persistent,
     poolId: spec.poolId,
     place: spec.place,
-    sourceKinds: [spec.source],
+    sourceKinds: [spec.source, ...(spec.extraSources ?? [])],
     random: false,
+    interrupt: spec.interrupt,
   });
-  if (spec.kind === 'spot') sim.intelPending = 'New spot fire ahead of the head (ridge camera)';
+  if (spec.kind === 'spot' && !spec.interrupt) sim.intelPending = 'New spot fire ahead of the head (ridge camera)';
   sim.gradeDirty = true;
   sim.briefDirty = true;
   sim.bus.publish({ type: 'analysis.finding', at: sim.t, finding: { ...f } });
@@ -514,7 +507,7 @@ export function tickFindings(sim: Sim, isPinned: (id: string) => boolean): strin
     const fm = sim.fmeta.get(f.id);
     if (f.live) f.freshness = 1;
     else f.freshness = round(Math.pow(0.5, Math.max(0, sim.t - f.observedAt) / 1000 / f.halfLifeS), 3);
-    if (fm && f.kind === 'spot' && !fm.resolved && sim.ctx.arrivalAt(fm.truePos) < sim.t - 20 * MIN) {
+    if (fm && f.kind === 'spot' && !fm.resolved && !fm.interrupt && sim.ctx.arrivalAt(fm.truePos) < sim.t - 20 * MIN) {
       fm.resolved = true;
       f.label = 'SPOT FIRE · MERGED WITH MAIN FRONT';
       f.detail = 'The main front has reached the spot fire; tracked as part of the perimeter.';
@@ -528,4 +521,34 @@ export function tickFindings(sim: Sim, isPinned: (id: string) => boolean): strin
     sim.gradeDirty = true;
   }
   return expired;
+}
+
+/* ------------------------------------------------------------------ real reports */
+
+const REPORT_KIND: Record<string, SourceKind> = { news: 'web', official: 'web', agency: 'web', social: 'social' };
+
+/**
+ * Ingests the pack's real, timestamped public reports at their real times. They are labelled as real and
+ * treated as untrusted data: summarised into the ledger, never followed as instructions.
+ */
+export function tickReports(sim: Sim, silent = false): void {
+  for (const r of sim.ctx.pack.reports ?? []) {
+    if (r.t > sim.t || sim.reportsSeen.has(r.id)) continue;
+    sim.reportsSeen.add(r.id);
+    if (silent) continue;
+    const kind = REPORT_KIND[r.kind] ?? 'web';
+    sim.bus.publish({
+      type: 'source.ingested',
+      at: sim.t,
+      source: { id: `src-report-${r.id}`, kind, label: `${r.publisher} · real report (untrusted)`, title: `REAL · ${r.publisher}`, summary: r.summary, pos: r.pos, url: r.url },
+    });
+    enqueue(sim, kind === 'social' ? 'pool-social' : 'pool-extract', {
+      input: `Real report · ${r.publisher} · ${sim.ctx.fmtTime(r.t)} (untrusted source)`,
+      source: kind,
+      minutes: 3,
+      counters: kind === 'social' ? { postsScreened: 1 } : { articlesRead: 1 },
+      durS: 4,
+      text: (a) => `${a} read a real ${r.kind} report from ${r.publisher}: "${r.summary.length > 90 ? `${r.summary.slice(0, 87)}...` : r.summary}"`,
+    });
+  }
 }

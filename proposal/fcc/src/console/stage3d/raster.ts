@@ -17,6 +17,17 @@ export class RasterSampler {
   readonly min: number;
   readonly max: number;
   private readonly elev: Float32Array;
+  /** Edge rows/columns, heavily smoothed: the surface outside the bbox settles onto these. */
+  private readonly edgeN: Float32Array;
+  private readonly edgeS: Float32Array;
+  private readonly edgeW: Float32Array;
+  private readonly edgeE: Float32Array;
+  /**
+   * Added to every height the stage places (not to the offline heightmap itself). Calibrated when a
+   * basemap uses ellipsoidal heights (Google 3D tiles, Cesium World Terrain) while the pack DEM is
+   * orthometric.
+   */
+  datumOffset = 0;
 
   constructor(readonly pack: ScenarioPack) {
     const { w, h, bbox } = pack.raster;
@@ -41,6 +52,13 @@ export class RasterSampler {
       e[i] = Number.isFinite(v) && v > -500 && v < 9000 ? v : this.mean;
     }
     this.elev = e;
+    const radius = Math.max(2, Math.round(2000 / Math.max(1, pack.raster.cellM || 30)));
+    const row = (y: number) => Float32Array.from({ length: w }, (_, x) => e[y * w + x]);
+    const col = (x: number) => Float32Array.from({ length: h }, (_, y) => e[y * w + x]);
+    this.edgeN = smooth(row(0), radius);
+    this.edgeS = smooth(row(h - 1), radius);
+    this.edgeW = smooth(col(0), radius);
+    this.edgeE = smooth(col(w - 1), radius);
   }
 
   inside(lon: number, lat: number): boolean {
@@ -66,8 +84,16 @@ export class RasterSampler {
     return o;
   }
 
-  /** Bilinear elevation in metres. Outside the bbox it eases from the edge value to the mean over ~12 km. */
+  /** Terrain height in metres as placed in the scene (DEM + datum offset). */
   elevation(lon: number, lat: number): number {
+    return this.demElevation(lon, lat) + this.datumOffset;
+  }
+
+  /**
+   * Bilinear DEM elevation in metres. Outside the bbox it eases over 3 km onto the smoothed edge
+   * profile, so coasts stay at sea level and ridges fade without streaks.
+   */
+  demElevation(lon: number, lat: number): number {
     const b = this.bbox;
     const cl = Math.min(b[2], Math.max(b[0], lon));
     const ca = Math.min(b[3], Math.max(b[1], lat));
@@ -88,7 +114,11 @@ export class RasterSampler {
     const dist = Math.hypot(dx, dy);
     const k = Math.min(1, dist / 3000);
     const s = k * k * (3 - 2 * k);
-    return v + (this.mean - v) * s;
+    const outX = cl !== lon, outY = ca !== lat;
+    const ex = outX ? sampleEdge(lon < b[0] ? this.edgeW : this.edgeE, y) : 0;
+    const ey = outY ? sampleEdge(lat > b[3] ? this.edgeN : this.edgeS, x) : 0;
+    const target = outX && outY ? (ex + ey) / 2 : outX ? ex : ey;
+    return v + (target - v) * s;
   }
 
   /** Cell size in metres (approx, at bbox centre). */
@@ -138,14 +168,53 @@ export function centroid(poly: Geo[]): Geo {
   return { lon: lon / n, lat: lat / n };
 }
 
-export function weatherAt(pack: ScenarioPack, t: number) {
+/**
+ * Hourly weather interpolated to t. `t` of the result is the bracketing sample time (stable key for
+ * "weather changed" checks); wind direction interpolates the short way round.
+ */
+export function weatherAt(pack: ScenarioPack, t: number): ScenarioPack['weather'][number] {
   const w = pack.weather;
-  if (!w.length) return { windKph: 20, windDirDeg: 225, gustKph: 30, tempC: 30, rh: 15, t };
-  let lo = 0, hi = w.length - 1;
+  if (!w.length) return { windKph: 0, windDirDeg: 0, gustKph: 0, tempC: 20, rh: 40, t: 0 };
   if (t <= w[0].t) return w[0];
-  if (t >= w[hi].t) return w[hi];
+  if (t >= w[w.length - 1].t) return w[w.length - 1];
+  let lo = 0, hi = w.length - 1;
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (w[m].t <= t) lo = m; else hi = m; }
-  return w[lo];
+  const a = w[lo], b = w[hi];
+  // Quantised to 10 minutes so consumers re-sync a few times per hour, not every frame.
+  const f = Math.round(((t - a.t) / (b.t - a.t)) * 6) / 6;
+  const dd = ((b.windDirDeg - a.windDirDeg + 540) % 360) - 180;
+  return {
+    t: a.t + (b.t - a.t) * f,
+    windKph: a.windKph + (b.windKph - a.windKph) * f,
+    windDirDeg: (a.windDirDeg + dd * f + 360) % 360,
+    gustKph: a.gustKph + (b.gustKph - a.gustKph) * f,
+    tempC: a.tempC + (b.tempC - a.tempC) * f,
+    rh: a.rh + (b.rh - a.rh) * f,
+  };
+}
+
+function smooth(a: Float32Array, r: number): Float32Array {
+  let cur = a;
+  for (let pass = 0; pass < 3; pass++) {
+    const out = new Float32Array(cur.length);
+    let acc = 0;
+    const n = cur.length;
+    const at = (i: number) => cur[Math.min(n - 1, Math.max(0, i))];
+    for (let i = -r; i <= r; i++) acc += at(i);
+    for (let i = 0; i < n; i++) {
+      out[i] = acc / (2 * r + 1);
+      acc += at(i + r + 1) - at(i - r);
+    }
+    cur = out;
+  }
+  return cur;
+}
+
+function sampleEdge(a: Float32Array, f: number): number {
+  const n = a.length;
+  const x = Math.min(n - 1, Math.max(0, f));
+  const i = Math.floor(x), j = Math.min(n - 1, i + 1);
+  return a[i] + (a[j] - a[i]) * (x - i);
 }
 
 export const DEG2RAD = DEG;

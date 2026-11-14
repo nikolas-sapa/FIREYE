@@ -3,6 +3,10 @@
  * Values are space-separated RGB channels so Tailwind can apply alpha:
  *   bg-signal/20  ->  rgb(var(--signal) / 0.2)
  * Mirror: src/design-system/tokens/index.ts (keep both in sync).
+ *
+ * Themes: <html data-theme="fcc | team">. "fcc" is the default below. "team" overrides only the
+ * accent (signal ramp), the warning hue and the font stacks; every token name stays the same, so
+ * components never branch on theme. Runtime switch + JS mirror: src/design-system/tokens/theme.ts.
  */
 :root {
   /* Surfaces — "ink" ramp, cool-neutral graphite */
@@ -34,6 +38,8 @@
   --signal-hot: 255 138 76;  /* #FF8A4C  hover / glow core */
   --signal-deep: 194 58 12;  /* #C23A0C  pressed */
   --signal-wash: 46 20 12;   /* #2E140C  tinted bg */
+  --on-signal: 10 10 11;
+  --daylight: 0;
 
   /* Semantic status */
   --ember: 255 59 48;        /* #FF3B30  danger / critical / active fire front */
@@ -41,6 +47,11 @@
   --phosphor: 61 220 132;    /* #3DDC84  nominal / contained / online */
   --ice: 92 200 255;         /* #5CC8FF  drones / AI / telemetry / water */
   --violet: 168 140 255;     /* #A88CFF  human detections / POIs */
+
+  /* Type — swapped per theme */
+  --font-sans: "Inter Tight Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
+  --font-features: 'ss01', 'cv11', 'tnum' 0;
 
   /* Layout */
   --gutter: 24px;
@@ -57,4 +68,38 @@
   --dur-slow: 420ms;
 
   color-scheme: dark;
+}
+
+/*
+ * Theme B — "Team". Geist Sans / Geist Mono, accent #006BFF. No orange anywhere in the UI chrome:
+ * signal becomes blue and the warning hue moves to a clean yellow. Fire data colours on maps
+ * (ember front, burn scar) are data, not accent, and stay as they are.
+ */
+:root[data-theme='team'] {
+  --signal: 0 107 255;       /* #006BFF */
+  --signal-hot: 77 148 255;  /* #4D94FF */
+  --signal-deep: 0 82 204;   /* #0052CC */
+  --signal-wash: 3 22 51;    /* #031633 */
+
+  --amber: 245 197 24;       /* #F5C518  warning, yellow not orange */
+
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
+  --font-features: 'tnum' 0;
+}
+
+/* Sensor HUDs are burned-in instrumentation, not app chrome. Never invert them over footage. */
+.fcc-sensor {
+  --void: 5 5 6;
+  --ink-950: 10 10 11;
+  --ink-900: 15 15 17;
+  --ink-400: 110 110 118;
+  --bone: 232 230 225;
+  --bone-dim: 176 174 168;
+  --bone-mute: 160 159 155;
+  --ember: 255 59 48;
+  --ice: 92 200 255;
+  --phosphor: 61 220 132;
+  --violet: 168 140 255;
+  --amber: 245 197 24;
 }

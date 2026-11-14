@@ -69,6 +69,10 @@ export interface LayerOptions {
   exaggeration: number;
   /** Draw labels for places. */
   places?: boolean;
+  /** Camera distances beyond which labels hide (scenario-scaled, see profile.ts). */
+  labelFarM?: number;
+  minorLabelFarM?: number;
+  unitLabelFarM?: number;
 }
 
 /**
@@ -135,7 +139,7 @@ export class StageLayers {
           outlineColor: pal.void.withAlpha(0.9),
           outlineWidth: 3,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, major ? 160000 : 45000),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, major ? this.opts.labelFarM ?? 160000 : this.opts.minorLabelFarM ?? 45000),
         }),
       });
     }
@@ -377,7 +381,7 @@ export class StageLayers {
           font: FONT_SM,
           fillColor: Cesium.Color.fromCssColorString(color),
           pixelOffset: new Cesium.Cartesian2(19, 0),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 70000),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, this.opts.unitLabelFarM ?? 70000),
         }),
       });
       ents.push(main);
@@ -605,6 +609,14 @@ export class StageLayers {
   invalidateSelection() {
     for (const r of this.findings.values()) r.sig = '';
     for (const r of this.units.values()) r.sig = '';
+  }
+
+  /** Force a rebuild of everything coloured by the theme accent. */
+  invalidateTheme() {
+    this.invalidateSelection();
+    for (const r of this.actions.values()) r.sig = '';
+    for (const r of this.coverage.values()) r.sig = '';
+    this.projSig = '';
   }
 
   destroy() {

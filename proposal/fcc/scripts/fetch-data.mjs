@@ -5,6 +5,7 @@
  *   node scripts/fetch-data.mjs            # uses the download cache in $TMPDIR/fcc-caldor-cache
  *   node scripts/fetch-data.mjs --fresh    # ignores the cache
  *   FIRMS_MAP_KEY=... node scripts/fetch-data.mjs   # real FIRMS VIIRS archive hotspots
+ *   node scripts/fetch-data.mjs --scenario mati     # Mati 2018 pack (scripts/fetch-mati.mjs -> public/data/mati/)
  *
  * Node 22+, no dependencies (global fetch, node:zlib for PNG decoding).
  * Every source, licence and synthesized element is documented in public/data/caldor/README.md.
@@ -755,4 +756,16 @@ async function main() {
   log(`done: ${(total / 1048576).toFixed(1)} MB core payload, hotspots=${hotspots.length} (${mode})`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+const scenarioArg = (() => {
+  const i = process.argv.findIndex((a) => a === '--scenario' || a.startsWith('--scenario='));
+  if (i < 0) return 'caldor';
+  return process.argv[i].includes('=') ? process.argv[i].split('=')[1] : process.argv[i + 1];
+})();
+if (scenarioArg === 'mati' || scenarioArg === 'mati-2018') {
+  import('./fetch-mati.mjs').catch((e) => { console.error(e); process.exit(1); });
+} else if (scenarioArg === 'caldor' || scenarioArg === 'caldor-2021') {
+  main().catch((e) => { console.error(e); process.exit(1); });
+} else {
+  console.error(`unknown --scenario ${scenarioArg} (use caldor or mati)`);
+  process.exit(1);
+}

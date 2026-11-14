@@ -2,7 +2,7 @@ import type { Geo, Unit, UnitKind } from '../contracts';
 import { nearestRoadPath } from '../scenario';
 import type { ScenarioContext } from './context';
 import type { Rng } from './rng';
-import type { Plan, Sim, UnitMeta } from './sim';
+import type { Sim, UnitMeta } from './sim';
 import { MIN, bearingDeg, clamp, destination, distanceM } from './geo';
 
 /** Road-following route (OSM graph via DATA's nearestRoadPath); straight line if no road is near. */
@@ -21,57 +21,8 @@ export function roadRoute(ctx: ScenarioContext, from: Geo, to: Geo): Geo[] {
 const CRUISE: Record<UnitKind, number> = { drone: 18, engine: 13, crew: 1.3, dozer: 4, helo: 55, tanker: 80, ems: 15, law: 15 };
 export const AIRBORNE = new Set<UnitKind>(['drone', 'helo', 'tanker']);
 
-interface Spec {
-  id: string;
-  callsign: string;
-  kind: UnitKind;
-  division?: Unit['division'];
-  pos: Geo;
-  plan?: Plan;
-  patrol?: Geo[];
-  alt?: number;
-}
-
 export function createUnits(ctx: ScenarioContext, rng: Rng, t0: number): { units: Unit[]; umeta: Map<string, UnitMeta> } {
-  const S = ctx.sites;
-  const gf = S.gf;
-  const road = (g: Geo): Geo => ctx.nearestRoadPoint(g, 1500) ?? g;
-  const divA = [gf, destination(gf, 180, 1500), destination(gf, 215, 2300), destination(gf, 120, 1100), destination(gf, 260, 1600)].map(road);
-  const divZ = [destination(gf, 250, 4200), destination(gf, 230, 5200), destination(gf, 275, 3600)].map(road);
-  const crew7 = destination(gf, 190, 1200);
-  const crew12 = destination(gf, 240, 3300);
-  const specs: Spec[] = [];
-  for (let i = 1; i <= 6; i++) {
-    specs.push({ id: `hawk-${i}`, callsign: `HAWK-${i}`, kind: 'drone', division: 'AIR', pos: destination(gf, 150 + i * 22, 2000 + i * 250), alt: 120 });
-  }
-  specs.push(
-    { id: 'e-41', callsign: 'E-41', kind: 'engine', division: 'A', pos: road(destination(gf, 200, 1800)), patrol: divA },
-    { id: 'e-42', callsign: 'E-42', kind: 'engine', division: 'A', pos: road(gf), patrol: divA },
-    { id: 'e-37', callsign: 'E-37', kind: 'engine', division: 'Z', pos: divZ[0], patrol: divZ },
-    {
-      id: 'dz-2',
-      callsign: 'DZ-2',
-      kind: 'dozer',
-      division: 'A',
-      pos: road(destination(gf, 220, 2500)),
-      patrol: [destination(gf, 220, 2500), destination(gf, 200, 3000), destination(gf, 240, 2200)].map(road),
-    },
-    { id: 'crew-7', callsign: 'CREW-7', kind: 'crew', division: 'A', pos: crew7, plan: { mode: 'wander', anchor: crew7, radiusM: 220, target: crew7 } },
-    { id: 'crew-12', callsign: 'CREW-12', kind: 'crew', division: 'Z', pos: crew12, plan: { mode: 'wander', anchor: crew12, radiusM: 220, target: crew12 } },
-    { id: 'm-12', callsign: 'M-12', kind: 'ems', division: 'EMS', pos: S.staging },
-    { id: 'm-14', callsign: 'M-14', kind: 'ems', division: 'EMS', pos: road(S.slyPark) },
-    { id: 'so-5', callsign: 'SO-5', kind: 'law', pos: road(destination(gf, 300, 1200)), patrol: [gf, destination(gf, 300, 2800), destination(gf, 20, 1500)].map(road) },
-    { id: 'h-205', callsign: 'H-205', kind: 'helo', division: 'AIR', pos: S.lake, alt: 250, plan: { mode: 'circuit', pts: [S.lake, S.fireCenterT0], i: 1 } },
-    {
-      id: 't-88',
-      callsign: 'T-88',
-      kind: 'tanker',
-      division: 'AIR',
-      pos: destination(S.fireCenterT0, 0, 4000),
-      alt: 650,
-      plan: { mode: 'orbit', center: S.fireCenterT0, radiusM: 4000, ang: 0 },
-    },
-  );
+  const specs = ctx.script.units(ctx);
   const units: Unit[] = [];
   const umeta = new Map<string, UnitMeta>();
   for (const s of specs) {
@@ -96,7 +47,9 @@ export function createUnits(ctx: ScenarioContext, rng: Rng, t0: number): { units
       home: { lon: s.pos.lon, lat: s.pos.lat },
       nextTrailT: t0,
       altAGL: s.alt ?? 0,
-      cruise: CRUISE[s.kind],
+      cruise: s.cruise ?? CRUISE[s.kind],
+      marine: s.marine,
+      helmetCam: s.helmetCam,
       holdUntil: s.patrol ? t0 + rng.range(1, 6) * MIN : 0,
       phase: rng.range(0, 45),
     });
@@ -139,7 +92,7 @@ function stepUnit(sim: Sim, u: Unit, m: UnitMeta, dt: number): void {
       if (m.patrol.length && m.holdUntil > 0 && sim.t >= m.holdUntil && !u.taskId) {
         let target = sim.rng.pick(m.patrol);
         if (distanceM(target, u.pos) < 200) target = sim.rng.pick(m.patrol);
-        m.plan = { mode: 'path', path: roadRoute(sim.ctx, u.pos, target), i: 1, after: 'patrol' };
+        m.plan = { mode: 'path', path: m.marine ? [{ lon: u.pos.lon, lat: u.pos.lat }, target] : roadRoute(sim.ctx, u.pos, target), i: 1, after: 'patrol' };
       }
       break;
     }
@@ -224,7 +177,7 @@ export function sendTo(sim: Sim, id: string, target: Geo, opts: { road?: boolean
   const u = unitById(sim, id);
   const m = sim.umeta.get(id);
   if (!u || !m) return [];
-  const ground = !AIRBORNE.has(u.kind);
+  const ground = !AIRBORNE.has(u.kind) && !m.marine;
   const path = ground && opts.road !== false ? roadRoute(sim.ctx, u.pos, target) : [{ lon: u.pos.lon, lat: u.pos.lat }, { lon: target.lon, lat: target.lat }];
   m.plan = { mode: 'path', path, i: 1, after: opts.after ?? 'hold' };
   m.override = undefined;
@@ -272,8 +225,10 @@ export function resumePatrol(sim: Sim, id: string): void {
 
 /** Keeps aircraft circuits on the active head (called after each projection). */
 export function retargetAircraft(sim: Sim, head: Geo): void {
-  const h = sim.umeta.get('h-205');
-  if (h && h.plan.mode === 'circuit') h.plan.pts = [sim.ctx.sites.lake, head];
-  const t = sim.umeta.get('t-88');
-  if (t && t.plan.mode === 'orbit') t.plan.center = { lon: head.lon, lat: head.lat };
+  for (const u of sim.units) {
+    const m = sim.umeta.get(u.id);
+    if (!m || u.taskId) continue;
+    if (u.kind === 'helo' && m.plan.mode === 'circuit') m.plan.pts = [sim.ctx.sites.water, head];
+    else if (u.kind === 'tanker' && m.plan.mode === 'orbit') m.plan.center = { lon: head.lon, lat: head.lat };
+  }
 }

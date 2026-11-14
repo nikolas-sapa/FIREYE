@@ -1,20 +1,42 @@
 import type { Audience, GradedItem, Ms, ScenarioPack } from '../contracts';
 import type { OrchAudience, OrchTier } from '@ds';
+import { SCENARIOS, scenarioEntry } from './scenarios';
 
-const IANA: Record<string, string> = { PDT: 'America/Los_Angeles', PST: 'America/Los_Angeles', MDT: 'America/Denver', MST: 'America/Denver' };
+/** Minutes east of UTC for common display labels; packs override through `registerZone`. */
+const OFFSETS = new Map<string, number>([
+  ['UTC', 0], ['Z', 0], ['GMT', 0],
+  ['PDT', -420], ['PST', -480], ['MDT', -360], ['MST', -420], ['CDT', -300], ['EDT', -240],
+  ['EEST', 180], ['EET', 120], ['CEST', 120], ['CET', 60], ['BST', 60], ['AEST', 600],
+]);
+for (const s of SCENARIOS) OFFSETS.set(s.tz, s.utcOffsetMin);
 
-const fmtCache = new Map<string, Intl.DateTimeFormat>();
-function dtf(tz: string, opts: Intl.DateTimeFormatOptions, key: string) {
-  const k = `${tz}|${key}`;
-  let f = fmtCache.get(k);
-  if (!f) {
-    f = new Intl.DateTimeFormat('en-US', { timeZone: IANA[tz] ?? 'America/Los_Angeles', hourCycle: 'h23', ...opts });
-    fmtCache.set(k, f);
-  }
-  return f;
+/** Registers the pack's own label → offset so every clock follows the manifest. */
+export function registerZone(label: string, offsetMin: number) {
+  if (label && Number.isFinite(offsetMin)) OFFSETS.set(label, offsetMin);
+}
+
+/** Display zone of a pack: label from the manifest, offset from manifest extras or the scenario registry. */
+export function packZone(pack: ScenarioPack | null): { label: string; offsetMin: number } {
+  const m = pack?.manifest as (ScenarioPack['manifest'] & { tzOffsetMin?: number; utcOffsetMin?: number }) | undefined;
+  const entry = scenarioEntry(m?.id);
+  const label = m?.tz ?? entry?.tz ?? 'UTC';
+  const offsetMin = m?.tzOffsetMin ?? m?.utcOffsetMin ?? entry?.utcOffsetMin ?? OFFSETS.get(label) ?? 0;
+  return { label, offsetMin };
+}
+
+/** Zone label for a pack (fallback "UTC"). */
+export function packTz(pack: ScenarioPack | null) {
+  return packZone(pack).label;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+/** Shifts t into the zone so UTC getters read local wall time. Fixed offset: replay windows never cross a DST change. */
+function wall(t: Ms, tz: string) {
+  return new Date(t + (OFFSETS.get(tz) ?? 0) * 60000);
+}
 
 /** "21:04:12Z" */
 export function zuluTime(t: Ms, seconds = true) {
@@ -23,25 +45,26 @@ export function zuluTime(t: Ms, seconds = true) {
 }
 
 /** "14:04" in the scenario's local zone. */
-export function localTime(t: Ms, tz = 'PDT', seconds = false) {
-  return dtf(tz, seconds ? { hour: '2-digit', minute: '2-digit', second: '2-digit' } : { hour: '2-digit', minute: '2-digit' }, seconds ? 'hms' : 'hm').format(new Date(t));
+export function localTime(t: Ms, tz = 'UTC', seconds = false) {
+  const d = wall(t, tz);
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}${seconds ? ':' + pad2(d.getUTCSeconds()) : ''}`;
 }
 
 /** "AUG 16" */
-export function localDay(t: Ms, tz = 'PDT') {
-  return dtf(tz, { month: 'short', day: '2-digit' }, 'md').format(new Date(t)).toUpperCase();
+export function localDay(t: Ms, tz = 'UTC') {
+  const d = wall(t, tz);
+  return `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}`;
 }
 
 /** "MON" */
-export function localWeekday(t: Ms, tz = 'PDT') {
-  return dtf(tz, { weekday: 'short' }, 'wd').format(new Date(t)).toUpperCase();
+export function localWeekday(t: Ms, tz = 'UTC') {
+  return WEEKDAYS[wall(t, tz).getUTCDay()]!;
 }
 
 /** Local hour 0..23 for tick generation. */
-export function localHour(t: Ms, tz = 'PDT') {
-  return Number(dtf(tz, { hour: '2-digit' }, 'h').format(new Date(t))) % 24;
+export function localHour(t: Ms, tz = 'UTC') {
+  return wall(t, tz).getUTCHours();
 }
-
 /** Scenario-relative "12 S AGO" / "4 MIN AGO" / "2 H AGO". */
 export function ago(now: Ms, then: Ms) {
   const s = Math.max(0, Math.round((now - then) / 1000));
@@ -90,10 +113,26 @@ export function tierOfZone(item: Pick<GradedItem, 'zone' | 'score'>): OrchTier {
   }
 }
 
-/** Incident number, real if the pack provides one. */
+export interface AreaUnit {
+  unit: 'AC' | 'HA';
+  /** Converts acres (the pack's native perimeter unit) to this unit. */
+  from: (acres: number) => number;
+}
+const ACRES: AreaUnit = { unit: 'AC', from: (a) => a };
+const HECTARES: AreaUnit = { unit: 'HA', from: (a) => a * 0.40468564 };
+
+/** Display area unit: manifest `areaUnit` if present, else acres for the Americas and hectares elsewhere. */
+export function areaUnit(pack: ScenarioPack | null): AreaUnit {
+  const m = pack?.manifest as (ScenarioPack['manifest'] & { areaUnit?: 'ac' | 'ha' }) | undefined;
+  if (m?.areaUnit === 'ac') return ACRES;
+  if (m?.areaUnit === 'ha') return HECTARES;
+  return packZone(pack).offsetMin <= -180 ? ACRES : HECTARES;
+}
+
+/** Incident number if the pack provides one, else the scenario id ("MATI-2018"). */
 export function incidentNumber(pack: ScenarioPack | null) {
   const m = pack?.manifest as (ScenarioPack['manifest'] & { incidentNumber?: string; irwinId?: string }) | undefined;
-  return m?.incidentNumber ?? 'CA-ENF-024030';
+  return m?.incidentNumber ?? m?.irwinId ?? (m?.id ?? 'scenario').toUpperCase();
 }
 
 export const prefersReducedMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);

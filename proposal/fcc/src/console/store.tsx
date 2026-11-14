@@ -28,7 +28,7 @@ function initialState(): ConsoleState {
     jobs: [],
     ledger: emptyLedger(),
     messages: [],
-    brief: { headline: 'Loading the Caldor scenario pack', bullets: [], changed: [], at: 0 },
+    brief: { headline: 'Loading the scenario pack', bullets: [], changed: [], at: 0 },
     suggestions: [],
     directives: [],
     stage: { mode: 'globe', dimmed: false, highlight: [] },

@@ -118,19 +118,22 @@ function execute(sim: Sim, id: string, by: 'user' | 'orchestrator'): void {
       break;
     }
     case 'rescue': {
-      const ems = a.unitIds[0];
-      const u = unitById(sim, ems);
-      if (u && a.target) {
-        const path = sendTo(sim, ems, a.target, { road: true, after: 'hold', speed: 16 });
+      const crew = a.unitIds.filter((uid) => unitById(sim, uid)?.kind !== 'drone');
+      const drone = a.unitIds.find((uid) => unitById(sim, uid)?.kind === 'drone');
+      crew.forEach((uid, k) => {
+        const u = unitById(sim, uid);
+        if (!u || !a.target) return;
+        const marine = !!sim.umeta.get(uid)?.marine;
+        const path = sendTo(sim, uid, k ? destination(a.target, 90 * k, 120) : a.target, { road: true, after: 'hold', speed: marine ? undefined : 16 });
         u.taskId = a.id;
-        patch(sim, id, { route: path });
-      }
+        if (!k) patch(sim, id, { route: path });
+      });
       decide(sim, id, 'executing', by);
-      say(sim, `Rescue tasking sent: ${cs(ems)} is rolling, ${a.unitIds[1] ? `${cs(a.unitIds[1])} stays overhead.` : ''}`, [id]);
+      say(sim, `Rescue tasking sent: ${crew.map(cs).join(' and ')} ${crew.length > 1 ? 'are' : 'is'} under way${drone ? `, ${cs(drone)} stays overhead` : ''}.`, [id]);
       break;
     }
     case 'move-group': {
-      const center = a.safetyZone?.center ?? a.target ?? sim.ctx.sites.gf;
+      const center = a.safetyZone?.center ?? a.target ?? sim.ctx.sites.primary;
       a.unitIds.forEach((uid, k) => {
         const u = unitById(sim, uid);
         if (!u) return;
@@ -142,19 +145,21 @@ function execute(sim: Sim, id: string, by: 'user' | 'orchestrator'): void {
     }
     case 'evac-notice': {
       emitDirective(sim, { kind: 'notify', audiences: ['public', 'law'], message: `${a.title} issued (simulated)`, reason: a.summary, itemId: a.itemId });
-      sendTo(sim, 'so-5', sim.ctx.sites.gf, { road: true, after: 'patrol' });
+      const evac = sim.ctx.script.plans.evac;
+      const traffic = a.unitIds[0] ?? evac?.trafficUnitId;
+      if (traffic && unitById(sim, traffic)) sendTo(sim, traffic, a.target ?? sim.ctx.sites.primary, { road: true, after: 'patrol' });
       decide(sim, id, 'done', by);
-      say(sim, `${a.title} is out to the public alert channel and law enforcement (simulated). SO-5 is moving to traffic control.`, [id]);
+      say(sim, a.itemId === 'proj-head' && evac ? evac.doneText(a.title) : `${a.title} is out to the public alert channel and law enforcement (simulated).`, [id]);
       break;
     }
     case 'radio-script': {
-      emitDirective(sim, { kind: 'notify', audiences: ['ops'], message: 'Div A hazard advisory transmitted', reason: a.summary, itemId: a.itemId });
+      emitDirective(sim, { kind: 'notify', audiences: ['ops'], message: sim.ctx.script.plans.hazard?.transmitted ?? 'Hazard advisory transmitted', reason: a.summary, itemId: a.itemId });
       decide(sim, id, 'done', by);
       break;
     }
     case 'resource-order': {
       decide(sim, id, 'done', by);
-      say(sim, 'Resource order transmitted to the ordering manager (simulated): 2 Type 1 engines and 1 VLAT.', [id]);
+      say(sim, sim.ctx.script.plans.resource?.doneText ?? 'Resource order transmitted (simulated).', [id]);
       break;
     }
     case 'sitrep': {
@@ -210,6 +215,7 @@ export function tickActions(sim: Sim): void {
       const stale = !f || !fm || fm.resolved || (f.kind !== 'human' && fm.confirmed && sim.t - a.proposedAt > 15 * MIN) || (!fm.confirmed && sim.t - a.proposedAt > 30 * MIN);
       if (stale) releaseDrone(sim, did);
     } else if (a.kind === 'rescue' && a.status === 'executing') {
+      const plan = sim.ctx.script.plans.rescue;
       const ems = unitById(sim, a.unitIds[0]);
       const m = ems ? sim.umeta.get(ems.id) : undefined;
       const f = sim.findings.find((x) => x.id === a.itemId);
@@ -219,14 +225,20 @@ export function tickActions(sim: Sim): void {
         fm.rescueStart ??= sim.t;
         if (sim.t - fm.rescueStart >= 6 * MIN) {
           fm.resolved = true;
-          f.label = `${f.count ?? 2} HIKERS · SAFE WITH EMS ${ems.callsign}`;
-          f.detail = `${ems.callsign} reached the hikers at ${sim.ctx.fmtTime(fm.rescueStart)}; both ambulatory, walked out to the ambulance. Simulated.`;
+          f.label = plan.doneLabel(f, ems);
+          f.detail = plan.doneDetail(f, ems, sim.ctx.fmtTime(fm.rescueStart));
           sim.bus.publish({ type: 'analysis.finding', at: sim.t, finding: { ...f } });
           decide(sim, a.id, 'done', 'orchestrator');
           addLedger(sim, 'ORCH', `Rescue complete: ${f.label}`, 0);
-          say(sim, `${ems.callsign} has the hikers. Both are walking out with the crew; ${a.unitIds[1] ? `${unitById(sim, a.unitIds[1])?.callsign} is released back to its sweep.` : ''}`, [a.id, f.id]);
-          ems.taskId = undefined;
-          sendTo(sim, ems.id, sim.ctx.sites.staging, { road: true, after: 'hold' });
+          const droneId = a.unitIds.find((uid) => unitById(sim, uid)?.kind === 'drone');
+          say(sim, plan.doneSay(f, ems, droneId ? `${unitById(sim, droneId)?.callsign} is released back to its sweep.` : 'all units accounted for.'), [a.id, f.id]);
+          const home = plan.returnTo(sim.ctx);
+          a.unitIds.forEach((uid, k) => {
+            const u = unitById(sim, uid);
+            if (!u || u.kind === 'drone') return;
+            u.taskId = undefined;
+            sendTo(sim, uid, k ? destination(home, 90 * k, 80) : home, { road: true, after: 'hold' });
+          });
         }
       }
     } else if (a.kind === 'move-group' && a.status === 'executing') {

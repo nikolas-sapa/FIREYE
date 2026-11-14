@@ -20,7 +20,8 @@ function Harness() {
     let pack: ScenarioPack;
     let id = 0;
     const t0 = performance.now();
-    loadScenario().then((p) => {
+    // `?pack=<id>` is forwarded to the loader (ignored by loaders that only know one pack).
+    (loadScenario as (id?: string) => Promise<ScenarioPack>)(qs.get('pack') ?? undefined).then((p) => {
       pack = p;
       const coverage = mockCoverage(p);
       const actions = mockActions(p);

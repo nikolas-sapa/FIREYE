@@ -2,6 +2,7 @@ import type { Geo } from '../contracts';
 import type { Sim } from './sim';
 import { MIN, bboxOf, distanceM } from './geo';
 import { sweepUnit } from './units';
+import { fieldMinAt } from '../agents/spread';
 
 const CELL_M = 1600;
 const MAX_CELLS = 30;
@@ -58,7 +59,7 @@ export function rebuildCoverage(sim: Sim): void {
   const iy0 = Math.max(0, Math.floor((b[3] - n) / g0.dLat));
   const iy1 = Math.floor((b[3] - s) / g0.dLat);
   const t = sim.t;
-  const bias = sim.projBias;
+  const field = sim.projField;
   const cells: { id: string; polygon: Geo[]; interest: number; unitId?: string; center: Geo }[] = [];
   for (let iy = iy0; iy <= iy1; iy++) {
     for (let ix = ix0; ix <= ix1; ix++) {
@@ -67,13 +68,19 @@ export function rebuildCoverage(sim: Sim): void {
       for (let a = 0; a < 5; a++) {
         for (let c = 0; c < 5; c++) {
           const p = { lon: g.poly[0].lon + g.dLon * ((a + 0.5) / 5), lat: g.poly[0].lat - g.dLat * ((c + 0.5) / 5) };
-          const arr = sim.ctx.arrivalAt(p);
-          if (!Number.isFinite(arr)) continue;
-          const dt = (arr - t) / MIN;
+          // Burned-by-now is observed; anything later comes from the projection field.
+          const obs = sim.ctx.arrivalAt(p);
+          let dt: number;
+          if (obs <= t) dt = (obs - t) / MIN;
+          else {
+            const m = field ? fieldMinAt(field, p) : -1;
+            if (m < 0 || !Number.isFinite(m) || !field) continue;
+            dt = Math.max(0.01, (field.issuedAt - t) / MIN + m);
+          }
           if (dt <= 0 && dt > -90) acc += 1;
-          else if (dt > 0 && dt <= 60 * bias) acc += 0.9;
-          else if (dt > 0 && dt <= 180 * bias) acc += 0.6;
-          else if (dt > 0 && dt <= 360 * bias) acc += 0.3;
+          else if (dt > 0 && dt <= 60) acc += 0.9;
+          else if (dt > 0 && dt <= 180) acc += 0.6;
+          else if (dt > 0 && dt <= 360) acc += 0.3;
         }
       }
       let interest = acc / 25;

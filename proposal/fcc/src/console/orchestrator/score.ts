@@ -1,6 +1,6 @@
 import type { FindingKind, GradedItem, Geo, RoleLens, SourceKind } from '../contracts';
 import type { Sim } from '../world/sim';
-import { MIN, destination } from '../world/geo';
+import { modelEtaMin } from '../agents/projection';
 
 export type Cls = GradedItem['cls'];
 
@@ -54,16 +54,11 @@ export function clsOf(kind: FindingKind): Cls {
 }
 
 /**
- * Minutes until the fire reaches `pos` (min over the uncertainty ring), scaled by the projection model bias.
- * 0 = inside the active edge, -1 = burned long ago, Infinity = not reached in the data.
+ * Minutes until the fire reaches `pos` according to the current projection (never the replay's future).
+ * 0 = inside the active edge, -1 = burned long ago, Infinity = not reached within the model horizon.
  */
 export function etaMin(sim: Sim, pos: Geo, uncM: number): number {
-  let arr = sim.ctx.arrivalAt(pos);
-  if (uncM > 50) for (let k = 0; k < 8; k++) arr = Math.min(arr, sim.ctx.arrivalAt(destination(pos, k * 45, uncM * 0.7)));
-  if (!Number.isFinite(arr)) return Infinity;
-  const dt = arr - sim.t;
-  if (dt <= 0) return dt > -90 * MIN ? 0 : -1;
-  return dt / MIN / sim.projBias;
+  return modelEtaMin(sim, pos, uncM);
 }
 
 /** Exposure from minutes to impact: <30 min 1.0 ... >6 h 0.1. */

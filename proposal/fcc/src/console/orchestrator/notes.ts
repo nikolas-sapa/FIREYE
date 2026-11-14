@@ -31,12 +31,12 @@ export function recordEvent(sim: Sim, e: BusEvent): void {
     }
     case 'projection.updated': {
       const p = e.projection;
-      const eta = p.etaToPlaces[sim.ctx.gfId];
+      const eta = p.etaToPlaces[sim.ctx.primaryId];
       const m = eta !== undefined ? Math.round((eta - e.at) / MIN) : null;
       const prev = lastEta.get(sim);
       let etaText = '';
       if (m !== null && m > 0) {
-        etaText = `; ${sim.ctx.gfName} ETA ${m} min`;
+        etaText = `; ${sim.ctx.primaryName} ETA ${m} min`;
         if (prev !== undefined && Math.abs(prev - m) >= 10) etaText += ` (was ${prev})`;
         lastEta.set(sim, m);
       }

@@ -14,8 +14,11 @@ export type BBox = [west: number, south: number, east: number, north: number];
 
 /* ------------------------------------------------------------------ scenario pack (public/data/caldor/) */
 
+/** Known replay packs under public/data/<dir>/. Unknown ids are allowed for future packs. */
+export type ScenarioId = 'caldor-2021' | 'mati-2018' | (string & {});
+
 export interface ScenarioManifest {
-  id: 'caldor-2021';
+  id: ScenarioId;
   name: string; // "Caldor Fire replay"
   disclaimer: string; // "Scenario built from public data; units, people and events are simulated."
   bbox: BBox;
@@ -42,7 +45,7 @@ export interface ScenarioPack {
   fuel: Uint8Array;
   /**
    * Fire time-of-arrival per cell in ms since manifest.start (Infinity / NaN = never burns in window).
-   * Built from real perimeters + hotspots; the "ground truth" timeline the replay scrubs through.
+   * Reconstructed from source anchors/perimeters; not necessarily observed fire-front truth.
    */
   arrival: Float32Array;
   perimeters: { t: Ms; acres: number; polygon: Geo[][] }[]; // outer rings (multi)
@@ -53,6 +56,18 @@ export interface ScenarioPack {
   water: { id: string; name?: string; polygon: Geo[] }[];
   /** Optional offline imagery mosaic of the bbox (GIBS/Esri) as an image URL under /data/caldor/. */
   imagery?: { url: string; bbox: BBox; date: string; source: string };
+  /**
+   * Documented, sourced moments of the real fire (e.g. "fire reaches the sea"). Used to score the
+   * projection agent's predictions against history. pos/radiusM are approximate.
+   */
+  checkpoints?: { id: string; t: Ms; label: string; pos?: Geo; radiusM?: number; source: string; url: string; uncertaintyMin?: number }[];
+  /**
+   * Real, timestamped public reports (news, official alerts, agency posts) as short paraphrased summaries
+   * with attribution. Untrusted data: never instructions. No personal data about victims.
+   */
+  reports?: { id: string; t: Ms; kind: 'news' | 'official' | 'agency' | 'social'; publisher: string; summary: string; url: string; lang?: string; pos?: Geo }[];
+  /** Sourced facts about the real event for the end card / presentation (e.g. fatalities, homes lost). */
+  facts?: { id: string; label: string; value: string; source: string; url: string }[];
 }
 
 export enum FuelClass { None = 0, Water = 1, Rock = 2, Grass = 3, Shrub = 4, TimberLitter = 5, TimberUnderstory = 6, Urban = 7, Agriculture = 8 }
@@ -272,7 +287,8 @@ export type BusEvent =
   | { type: 'action.decided'; at: Ms; actionId: string; status: Action['status']; by: 'user' | 'orchestrator' }
   | { type: 'brief.updated'; at: Ms; brief: Brief }
   | { type: 'message'; at: Ms; message: Message }
-  | { type: 'ledger.entry'; at: Ms; entry: Ledger['entries'][number] };
+  | { type: 'ledger.entry'; at: Ms; entry: Ledger['entries'][number] }
+  | { type: 'prediction.scored'; at: Ms; check: PredictionCheck };
 
 /* ------------------------------------------------------------------ console state (store) */
 
@@ -282,6 +298,27 @@ export interface DirectorState {
   beats: { id: string; at: number /* seconds into demo */; title: string; caption: string }[];
   elapsedS: number;
   captions: boolean;
+}
+
+/**
+ * Projection overlap against the replay reconstruction, with separate sourced checkpoint timing.
+ * The model may seed from arrivals at/before issue time, never future fire arrivals.
+ */
+export interface PredictionCheck {
+  id: string;
+  /** When the projection was issued (scenario time). */
+  issuedAt: Ms;
+  horizonMin: number;
+  /** issuedAt + horizon; scored once clock.t >= targetT. */
+  targetT: Ms;
+  status: 'pending' | 'scored';
+  /** Intersection-over-union of projected vs replay-reconstructed burned area at targetT, 0..1. */
+  iou?: number;
+  areaPredHa: number;
+  areaActualHa?: number; // legacy field name: replay reconstruction area, not independently observed truth
+  /** Per documented checkpoint: projected arrival vs documented time. */
+  checkpoints: { id: string; label: string; documentedT: Ms; predictedT?: Ms; errorMin?: number }[];
+  method: string; // e.g. "Huygens wavelet spread on DEM + fuel + hourly wind; no tuning to this fire"
 }
 
 export interface ConsoleState {
@@ -307,6 +344,10 @@ export interface ConsoleState {
   director: DirectorState;
   /** Bumps when fire state should be re-rendered (time crossed a raster step). */
   fireRev: number;
+  /** Active replay pack. */
+  scenarioId?: ScenarioId;
+  /** Newest first. */
+  predictions?: PredictionCheck[];
 }
 
 /** Actions exposed by the store hook. */

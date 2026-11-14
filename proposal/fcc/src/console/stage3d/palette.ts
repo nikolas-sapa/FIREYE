@@ -1,8 +1,30 @@
 import * as Cesium from 'cesium';
-import { color as ds, role } from '@ds';
+import { THEMES, color as ds, getAccent, role } from '@ds';
 
 /** Cesium colors derived from design tokens. Never hardcode colors in the stage. */
-const c = (hex: string, a = 1) => Cesium.Color.fromCssColorString(hex).withAlpha(a);
+const cache = new Map<string, Cesium.Color>();
+const c = (hex: string, a = 1) => {
+  const k = `${hex}|${a}`;
+  let v = cache.get(k);
+  if (!v) {
+    v = Cesium.Color.fromCssColorString(hex).withAlpha(a);
+    cache.set(k, v);
+  }
+  return v;
+};
+
+/**
+ * Fire and thermal colours are scenario data, not UI accent: they stay on the FCC fire ramp whatever
+ * theme is active (the Team theme only swaps the chrome accent).
+ */
+export const FIRE = {
+  ember: ds.ember,
+  signal: THEMES.fcc.accent.DEFAULT,
+  hot: THEMES.fcc.accent.hot,
+  deep: THEMES.fcc.accent.deep,
+  wash: THEMES.fcc.accent.wash,
+  amber: THEMES.fcc.amber,
+} as const;
 
 export const pal = {
   void: c(ds.void),
@@ -17,11 +39,13 @@ export const pal = {
   boneMute: c(ds.bone.mute),
   line: c(ds.line.DEFAULT),
   lineStrong: c(ds.line.strong),
-  signal: c(ds.signal.DEFAULT),
-  signalHot: c(ds.signal.hot),
-  signalDeep: c(ds.signal.deep),
+  /** Live UI accent (follows the theme). */
+  get signal() { return c(getAccent().DEFAULT); },
+  get signalHot() { return c(getAccent().hot); },
+  get signalDeep() { return c(getAccent().deep); },
   ember: c(ds.ember),
-  amber: c(ds.amber),
+  /** Forecast / warning hue (follows the theme). */
+  get amber() { return c(ds.amber); },
   phosphor: c(ds.phosphor),
   ice: c(ds.ice),
   violet: c(ds.violet),

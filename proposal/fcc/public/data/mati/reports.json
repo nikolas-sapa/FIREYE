@@ -1,0 +1,183 @@
+{
+ "reports": [
+  {
+   "id": "r-1641-199",
+   "t": 1532353260000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via Kathimerini)",
+   "summary": "Fire reported to the 199 line in Daou, Penteli.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1650-heli",
+   "t": 1532353800000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via thetoc.gr)",
+   "summary": "The only available helicopter starts water drops; it works the fire until 18:20.",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1652-engines",
+   "t": 1532353920000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via cretalive.gr)",
+   "summary": "First fire engines logged at Daou between 16:52 and 16:56.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1710-s64",
+   "t": 1532355000000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via cretalive.gr)",
+   "summary": "S-64 helicopter crew reports fire around houses at Daou.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1730-s64",
+   "t": 1532356200000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via cretalive.gr)",
+   "summary": "Same helicopter: fire near houses, moving east, will threaten more houses.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1730-alert",
+   "t": 1532356200000,
+   "kind": "official",
+   "publisher": "Prosecutor's report (via Kathimerini)",
+   "summary": "General alert of forces ordered; the prosecutor assesses it as about one hour late.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1730-ferries",
+   "t": 1532356200000,
+   "kind": "official",
+   "publisher": "Prosecutor's report (via Kathimerini)",
+   "summary": "Ferries arriving at Rafina port from 17:30 were not diverted.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1800-divert",
+   "t": 1532358000000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via cretalive.gr)",
+   "summary": "Helicopter diverted to a separate fire at Kalamaki / Motor Oil installations.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1810-evac",
+   "t": 1532358600000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via thetoc.gr)",
+   "summary": "Fire Service asks the mayor of Rafina to evacuate.",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1813-call",
+   "t": 1532358780000,
+   "kind": "agency",
+   "publisher": "199 call record, per the prosecutor's report (via Kathimerini)",
+   "summary": "Caller in Neos Voutzas reports fire burning all around them.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1820-noair",
+   "t": 1532359200000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via thetoc.gr)",
+   "summary": "No aircraft operating over the fire between 18:20 and 18:45.",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1844-engine",
+   "t": 1532360640000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via Kathimerini)",
+   "summary": "First fire engine on Marathonos Ave at Agia Varvara.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1850-coastguard",
+   "t": 1532361000000,
+   "kind": "agency",
+   "publisher": "Prosecutor's report (via cretalive.gr)",
+   "summary": "Coast Guard notified only after people had already sought refuge in the sea.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1900-civprot",
+   "t": 1532361600000,
+   "kind": "official",
+   "publisher": "Prosecutor's report (via thetoc.gr)",
+   "summary": "Regional civil-protection coordinating body is called.",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1909-engine",
+   "t": 1532362140000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via Kathimerini)",
+   "summary": "Second fire engine reaches Marathonos Ave at Fleming St.",
+   "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+   "lang": "el"
+  },
+  {
+   "id": "r-1911-cl415",
+   "t": 1532362260000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via cretalive.gr)",
+   "summary": "CL-415 crew reports one large front with 10-20 m flames heading to the sea.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el"
+  },
+  {
+   "id": "r-1917-agia-varvara",
+   "t": 1532362620000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via thetoc.gr)",
+   "summary": "Fire logged at Agia Varvara, Rafina (log time, not first arrival).",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el",
+   "pos": {
+    "lon": 23.98238,
+    "lat": 38.02735
+   }
+  },
+  {
+   "id": "r-1923-112",
+   "t": 1532362980000,
+   "kind": "agency",
+   "publisher": "112 call record, per the prosecutor's report (via cretalive.gr)",
+   "summary": "About 100 people have taken refuge in the sea at Argyra Akti, next to Kokkino Limanaki.",
+   "url": "https://www.cretalive.gr/ellada/porisma-kolafos-gia-mati-ypirhe-hronos-gia-ekkenosi-me-aneto-badisma",
+   "lang": "el",
+   "pos": {
+    "lon": 23.997,
+    "lat": 38.04
+   }
+  },
+  {
+   "id": "r-2330-over",
+   "t": 1532377800000,
+   "kind": "agency",
+   "publisher": "Fire Service operations log, per the prosecutor's report (via thetoc.gr)",
+   "summary": "Duty officer reports the fire phenomenon is over.",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "lang": "el"
+  }
+ ]
+}

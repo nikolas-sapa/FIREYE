@@ -9,6 +9,15 @@ export function isNight(ctx: ScenarioContext, t: number): boolean {
   return h < 6.2 || h >= 20;
 }
 
+/** Aim the ridge camera at terrain, not above a fire hundreds of metres below its mount. */
+function ridgeAim(ctx: ScenarioContext, pos: Geo, target: Geo) {
+  const range = Math.max(1, distanceM(pos, target));
+  return {
+    headingDeg: bearingDeg(pos, target),
+    pitchDeg: clamp(Math.atan2(ctx.elevAt(target) - ctx.elevAt(pos) - 18, range) * 180 / Math.PI, -60, 15),
+  };
+}
+
 export function createFeeds(sim: Sim): Feed[] {
   const feeds: Feed[] = [];
   for (const u of sim.units) {
@@ -21,7 +30,7 @@ export function createFeeds(sim: Sim): Feed[] {
         unitId: u.id,
         kind: gimbal ? 'uav-oblique' : 'uav-nadir',
         fx,
-        label: n === 3 ? `${u.callsign} · EO/IR GIMBAL` : `${u.callsign} · ${fx === 'eo' ? 'EO' : 'IR'} ${gimbal ? 'GIMBAL' : 'NADIR'}`,
+        label: `${u.callsign} · ${fx === 'eo' ? 'EO' : 'IR'} ${gimbal ? 'GIMBAL' : 'NADIR'}`,
         live: true,
         pose: { mode: 'unit', pitchDeg: gimbal ? -40 : -90, fovDeg: gimbal ? 45 : 60 },
         relevance: 10,
@@ -29,7 +38,7 @@ export function createFeeds(sim: Sim): Feed[] {
       });
     } else if (u.kind === 'engine' || u.kind === 'dozer') {
       feeds.push({ id: `feed-${u.id}`, unitId: u.id, kind: 'dash-cam', fx: 'eo', label: `${u.callsign} · DASH CAM`, live: true, pose: { mode: 'unit', pitchDeg: -6, fovDeg: 75 }, relevance: 8, findingIds: [] });
-    } else if (u.id === 'crew-7') {
+    } else if (sim.umeta.get(u.id)?.helmetCam) {
       feeds.push({ id: `feed-${u.id}`, unitId: u.id, kind: 'helmet-cam', fx: 'eo', label: `${u.callsign} · HELMET CAM`, live: true, pose: { mode: 'unit', pitchDeg: -12, fovDeg: 85 }, relevance: 8, findingIds: [] });
     }
   }
@@ -40,7 +49,7 @@ export function createFeeds(sim: Sim): Feed[] {
       fx: 'eo',
       label: r.name,
       live: true,
-      pose: { mode: 'fixed', pos: { lon: r.pos.lon, lat: r.pos.lat, alt: sim.ctx.elevAt(r.pos) + 18 }, headingDeg: bearingDeg(r.pos, sim.ctx.sites.fireCenterT0), pitchDeg: -3, fovDeg: 50 },
+      pose: { mode: 'fixed', pos: { lon: r.pos.lon, lat: r.pos.lat, alt: sim.ctx.elevAt(r.pos) + 18 }, ...ridgeAim(sim.ctx, r.pos, sim.ctx.sites.fireCenterT0), fovDeg: 50 },
       relevance: 20,
       findingIds: [],
     });
@@ -50,8 +59,8 @@ export function createFeeds(sim: Sim): Feed[] {
     id: 'feed-sat',
     kind: 'satellite',
     fx: 'sat',
-    label: 'GOES-17 · ABI FIRE/HOT SPOT (5 MIN)',
-    live: true,
+    label: 'SATELLITE · LATEST ARCHIVED SCENE',
+    live: false,
     pose: { mode: 'fixed', pos: { lon: c.lon, lat: c.lat, alt: 700_000 }, target: c, pitchDeg: -90, fovDeg: 3, rangeM: 60_000 },
     relevance: 12,
     findingIds: [],
@@ -165,7 +174,7 @@ export function updateFeeds(sim: Sim): void {
       f.fx = night ? 'night' : 'eo';
     } else if (f.kind === 'ridge-cam' && f.pose.pos) {
       f.fx = night ? 'night' : 'eo';
-      f.pose = { ...f.pose, headingDeg: bearingDeg(f.pose.pos, look) };
+      f.pose = { ...f.pose, ...ridgeAim(sim.ctx, f.pose.pos, look) };
     }
     if (f.kind !== 'social') {
       const ids: string[] = [];

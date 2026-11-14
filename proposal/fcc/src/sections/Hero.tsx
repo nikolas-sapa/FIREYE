@@ -502,7 +502,7 @@ export default function Hero() {
         <div className="flex h-10 items-center justify-between gap-4 border-b border-line">
           <span className="truncate font-mono text-micro uppercase text-bone-mute">
             FCC <span className="text-ink-500">//</span> Proposal <span className="text-ink-500">//</span>{' '}
-            <span className="text-bone-dim">Unclassified</span> <span className="text-ink-500">//</span> Rev C · 2026-11-14
+            <span className="text-bone-dim">Unclassified</span> <span className="text-ink-500">//</span> Rev D · 2026-11-14
           </span>
           <span className="hidden font-mono text-micro uppercase text-bone-mute fcc-num md:inline">
             {fmtLat(ORIGIN.lat)} {fmtLon(ORIGIN.lon)} · Sheet 01/05

@@ -107,7 +107,7 @@ export function useIncidentMetrics() {
   }, [findings, items, actions]);
 
   const containment = useMemo(() => {
-    // Simulated: a point per completed or executing line/resource action. Caldor was 0 % through Aug 18.
+    // Simulated: a point per completed or executing line/resource action. Real containment is not modelled.
     const done = actions.filter((a) => (a.kind === 'move-group' || a.kind === 'resource-order') && (a.status === 'done' || a.status === 'executing')).length;
     return Math.min(9, done);
   }, [actions]);

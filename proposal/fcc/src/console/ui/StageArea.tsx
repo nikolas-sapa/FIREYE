@@ -4,7 +4,8 @@ import type { Directive, Feed, GradedItem } from '../contracts';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { Stage } from '../stage3d';
 import { useIncidentMetrics } from './derived';
-import { fmtInt, minutesFrom, toOrchAudiences, zuluTime } from './format';
+import { areaUnit, fmtInt, minutesFrom, toOrchAudiences, zuluTime } from './format';
+import { PredictionMetric } from './Prediction';
 import { SurfaceBoundary } from './SurfaceBoundary';
 import { useUi, type PanelId } from './UiContext';
 
@@ -184,6 +185,7 @@ function MetricStrip() {
   const projection = useConsoleSelector((s) => s.projection);
   const t = useConsoleSelector((s) => Math.floor(s.clock.t / 60000) * 60000);
   const places = useConsoleSelector((s) => s.pack?.manifest.places);
+  const area = useConsoleSelector((s) => areaUnit(s.pack));
   const eta = useMemo(() => {
     if (!projection) return null;
     const list = Object.entries(projection.etaToPlaces)
@@ -194,7 +196,7 @@ function MetricStrip() {
   }, [projection, places, t]);
   return (
     <div className="pointer-events-auto flex gap-px border border-line bg-line shadow-panel">
-      <MetricCell label="Burned" value={fmtInt(m.acres)} unit="AC" tone="text-ember" sub="NIFC perimeter interp." />
+      <MetricCell label="Burned" value={fmtInt(area.from(m.acres))} unit={area.unit} tone="text-ember" sub="Perimeter interp." />
       <MetricCell label="Containment" value={String(m.containment)} unit="%" sub="Simulated" />
       <MetricCell
         label="ROS · head"
@@ -214,6 +216,7 @@ function MetricStrip() {
         />
       )}
       {eta && <MetricCell label={`Head ETA · ${eta.name}`} value={`${minutesFrom(t, eta.at)}`} unit="MIN" tone="text-amber" sub={`Proj rev ${projection?.rev ?? 0}`} />}
+      <PredictionMetric />
     </div>
   );
 }
@@ -330,7 +333,7 @@ export function StageArea() {
         </button>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-1.5 z-overlay flex justify-center font-mono text-micro uppercase text-bone-dim">{disclaimer}</div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-1.5 z-overlay flex justify-center bg-ink-950/90 font-mono text-micro uppercase text-bone-dim">{disclaimer}</div>
     </div>
   );
 }

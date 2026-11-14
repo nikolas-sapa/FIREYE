@@ -12,6 +12,15 @@ const R_EARTH = 6371008.8;
 /** Window for the "active edge" state in fireFieldAt (cells that ignited within this many ms). */
 export const ACTIVE_EDGE_MS = 90 * 60e3;
 
+/**
+ * Active-edge window for a pack: manifest `activeEdgeMin` when present (Mati: 15 min, a fast two-hour run),
+ * else ACTIVE_EDGE_MS (Caldor).
+ */
+export function activeEdgeMs(pack: ScenarioPack): number {
+  const m = (pack.manifest as { activeEdgeMin?: number }).activeEdgeMin;
+  return typeof m === 'number' && m > 0 ? m * 60e3 : ACTIVE_EDGE_MS;
+}
+
 export const FIRE_UNBURNED = 0;
 export const FIRE_ACTIVE = 1;
 export const FIRE_BURNED = 2;
@@ -82,7 +91,7 @@ export function isBurnedAt(pack: ScenarioPack, x: number, y: number, t: Ms): boo
 }
 
 /**
- * Fire state per cell at absolute time t: 0 unburned, 1 active edge (ignited within ACTIVE_EDGE_MS), 2 burned.
+ * Fire state per cell at absolute time t: 0 unburned, 1 active edge (ignited within activeEdgeMs(pack)), 2 burned.
  * Pass `out` (length w*h) to avoid allocation; ~2-4 ms for the full grid.
  */
 export function fireFieldAt(pack: ScenarioPack, t: Ms, out?: Uint8Array): Uint8Array {
@@ -90,7 +99,7 @@ export function fireFieldAt(pack: ScenarioPack, t: Ms, out?: Uint8Array): Uint8A
   const n = arr.length;
   const field = out && out.length === n ? out : new Uint8Array(n);
   const rel = t - pack.manifest.start;
-  const edge = rel - ACTIVE_EDGE_MS;
+  const edge = rel - activeEdgeMs(pack);
   for (let i = 0; i < n; i++) {
     const a = arr[i];
     // NaN compares false on both branches -> unburned.
@@ -114,6 +123,11 @@ export function burnedAcresAt(pack: ScenarioPack, t: Ms): number {
     acres += (n * cellM2) / 4046.8564224;
   }
   return acres;
+}
+
+/** Burned area (hectares) at absolute time t. */
+export function burnedHaAt(pack: ScenarioPack, t: Ms): number {
+  return burnedAcresAt(pack, t) * 0.40468564224;
 }
 
 /* ------------------------------------------------------------------ spherical geometry */
