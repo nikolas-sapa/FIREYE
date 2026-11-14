@@ -1,0 +1,814 @@
+{
+ "id": "caldor-2021",
+ "name": "Caldor Fire replay",
+ "disclaimer": "Scenario built from public data; units, people and events are simulated.",
+ "bbox": [
+  -120.7,
+  38.52,
+  -120.24,
+  38.82
+ ],
+ "center": {
+  "lon": -120.51,
+  "lat": 38.64
+ },
+ "start": 1629140400000,
+ "end": 1629226800000,
+ "tz": "PDT",
+ "tzOffsetMin": -420,
+ "dataStart": 1628992464000,
+ "dataEnd": 1629361800000,
+ "ignition": {
+  "t": 1628992464000,
+  "pos": {
+   "lon": -120.537833,
+   "lat": 38.586
+  }
+ },
+ "replayNote": "Replay window Aug 16 12:00 PDT -> Aug 17 12:00 PDT. Arrival values < 0 burned before the replay start; the full data range runs from ignition (Aug 14 18:54 PDT) to the last FEDS perimeter.",
+ "places": [
+  {
+   "id": "grizzly-flats",
+   "name": "Grizzly Flats",
+   "kind": "town",
+   "pos": {
+    "lon": -120.52742,
+    "lat": 38.63629
+   },
+   "osm": "node/150958411"
+  },
+  {
+   "id": "omo-ranch",
+   "name": "Omo Ranch",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.57326,
+    "lat": 38.5813
+   },
+   "osm": "node/150941172"
+  },
+  {
+   "id": "pollock-pines",
+   "name": "Pollock Pines",
+   "kind": "town",
+   "pos": {
+    "lon": -120.58659,
+    "lat": 38.7613
+   },
+   "osm": "node/141036013"
+  },
+  {
+   "id": "somerset",
+   "name": "Somerset",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.68576,
+    "lat": 38.64768
+   },
+   "osm": "node/150959959"
+  },
+  {
+   "id": "sly-park",
+   "name": "Sly Park",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.58465,
+    "lat": 38.72129
+   },
+   "osm": "node/150946780"
+  },
+  {
+   "id": "capps-crossing",
+   "name": "Capps Crossing",
+   "kind": "landmark",
+   "pos": {
+    "lon": -120.40794,
+    "lat": 38.6506
+   },
+   "osm": "node/3712258134"
+  },
+  {
+   "id": "jenkinson-area",
+   "name": "Jenkinson Area",
+   "kind": "landmark",
+   "pos": {
+    "lon": -120.54697,
+    "lat": 38.72882
+   },
+   "osm": "way/718134804"
+  },
+  {
+   "id": "bridgeport-school",
+   "name": "Bridgeport School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.69743,
+    "lat": 38.53685
+   },
+   "osm": "node/358762431"
+  },
+  {
+   "id": "fair-play-school",
+   "name": "Fair Play School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.65826,
+    "lat": 38.58685
+   },
+   "osm": "node/358765663"
+  },
+  {
+   "id": "indian-diggings-school",
+   "name": "Indian Diggings School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.57687,
+    "lat": 38.58074
+   },
+   "osm": "node/358768008"
+  },
+  {
+   "id": "big-bend-school",
+   "name": "Big Bend School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.50076,
+    "lat": 38.78074
+   },
+   "osm": "node/358796846"
+  },
+  {
+   "id": "camino-union-school",
+   "name": "Camino Union School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.67826,
+    "lat": 38.73296
+   },
+   "osm": "node/358797142"
+  },
+  {
+   "id": "river-school",
+   "name": "River School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.69215,
+    "lat": 38.64574
+   },
+   "osm": "node/358799420"
+  },
+  {
+   "id": "willow-school",
+   "name": "Willow School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.61271,
+    "lat": 38.61963
+   },
+   "osm": "node/358800648"
+  },
+  {
+   "id": "pinewood-elementary-school",
+   "name": "Pinewood Elementary School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.58854,
+    "lat": 38.76601
+   },
+   "osm": "node/358827603"
+  },
+  {
+   "id": "pollock-pines-elementary-school",
+   "name": "Pollock Pines Elementary School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.58548,
+    "lat": 38.76101
+   },
+   "osm": "node/358827653"
+  },
+  {
+   "id": "sly-park-conservation-and-environmental-education-school",
+   "name": "Sly Park Conservation and Environmental Education School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.59132,
+    "lat": 38.71435
+   },
+   "osm": "node/358828021"
+  },
+  {
+   "id": "wakeley-special-education-center",
+   "name": "Wakeley Special Education Center",
+   "kind": "school",
+   "pos": {
+    "lon": -120.67743,
+    "lat": 38.73324
+   },
+   "osm": "node/358828033"
+  },
+  {
+   "id": "sierra-springs-fire-station",
+   "name": "Sierra Springs Fire Station",
+   "kind": "station",
+   "pos": {
+    "lon": -120.59492,
+    "lat": 38.71033
+   },
+   "osm": "node/3618399942"
+  },
+  {
+   "id": "pleasant-valley-school",
+   "name": "Pleasant Valley School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.67896,
+    "lat": 38.69206
+   },
+   "osm": "way/125603655"
+  },
+  {
+   "id": "silver-fork-elementary-school",
+   "name": "Silver Fork Elementary School",
+   "kind": "school",
+   "pos": {
+    "lon": -120.31074,
+    "lat": 38.77247
+   },
+   "osm": "way/977105460"
+  },
+  {
+   "id": "el-dorado-county-fire-district",
+   "name": "El Dorado County Fire District",
+   "kind": "station",
+   "pos": {
+    "lon": -120.66719,
+    "lat": 38.68645
+   },
+   "osm": "way/1290816129"
+  },
+  {
+   "id": "spring-valley",
+   "name": "Spring Valley",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.5277,
+    "lat": 38.77935
+   },
+   "osm": "node/141026824"
+  },
+  {
+   "id": "cedar-grove",
+   "name": "Cedar Grove",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.63332,
+    "lat": 38.75264
+   },
+   "osm": "node/141026841"
+  },
+  {
+   "id": "old-pino",
+   "name": "Old Pino",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.64715,
+    "lat": 38.81796
+   },
+   "osm": "node/141029442"
+  },
+  {
+   "id": "white-hall",
+   "name": "White Hall",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.4052,
+    "lat": 38.77518
+   },
+   "osm": "node/141030011"
+  },
+  {
+   "id": "kyburz",
+   "name": "Kyburz",
+   "kind": "town",
+   "pos": {
+    "lon": -120.29686,
+    "lat": 38.77463
+   },
+   "osm": "node/141036978"
+  },
+  {
+   "id": "mcconnel-place",
+   "name": "McConnel Place",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.44798,
+    "lat": 38.79685
+   },
+   "osm": "node/141038113"
+  },
+  {
+   "id": "ditch-camp-five",
+   "name": "Ditch Camp Five",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.54826,
+    "lat": 38.76518
+   },
+   "osm": "node/141039190"
+  },
+  {
+   "id": "fresh-pond",
+   "name": "Fresh Pond",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.52992,
+    "lat": 38.76018
+   },
+   "osm": "node/141042252"
+  },
+  {
+   "id": "short-place",
+   "name": "Short Place",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.47409,
+    "lat": 38.7799
+   },
+   "osm": "node/141042314"
+  },
+  {
+   "id": "van-vleck",
+   "name": "Van Vleck",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.51548,
+    "lat": 38.77796
+   },
+   "osm": "node/141042462"
+  },
+  {
+   "id": "pacific",
+   "name": "Pacific",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.50715,
+    "lat": 38.76018
+   },
+   "osm": "node/141044051"
+  },
+  {
+   "id": "riverton",
+   "name": "Riverton",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.44937,
+    "lat": 38.77102
+   },
+   "osm": "node/141047716"
+  },
+  {
+   "id": "mcmanus",
+   "name": "McManus",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.53409,
+    "lat": 38.79907
+   },
+   "osm": "node/141047852"
+  },
+  {
+   "id": "griminger",
+   "name": "Griminger",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.4102,
+    "lat": 38.71963
+   },
+   "osm": "node/150936666"
+  },
+  {
+   "id": "darlington",
+   "name": "Darlington",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.40159,
+    "lat": 38.72907
+   },
+   "osm": "node/150938400"
+  },
+  {
+   "id": "sweeneys-crossing",
+   "name": "Sweeneys Crossing",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.62493,
+    "lat": 38.65268
+   },
+   "osm": "node/150939572"
+  },
+  {
+   "id": "newtown",
+   "name": "Newtown",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.6791,
+    "lat": 38.70435
+   },
+   "osm": "node/150940792"
+  },
+  {
+   "id": "croft",
+   "name": "Croft",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.43464,
+    "lat": 38.58157
+   },
+   "osm": "node/150945234"
+  },
+  {
+   "id": "rancho-del-sol",
+   "name": "Rancho del Sol",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.65271,
+    "lat": 38.72018
+   },
+   "osm": "node/150945238"
+  },
+  {
+   "id": "fair-play",
+   "name": "Fair Play",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.66049,
+    "lat": 38.59352
+   },
+   "osm": "node/150949521"
+  },
+  {
+   "id": "camino",
+   "name": "Camino",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.67493,
+    "lat": 38.73824
+   },
+   "osm": "node/150950164"
+  },
+  {
+   "id": "voss",
+   "name": "Voss",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.3877,
+    "lat": 38.65713
+   },
+   "osm": "node/150952738"
+  },
+  {
+   "id": "meiss",
+   "name": "Meiss",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.33631,
+    "lat": 38.63824
+   },
+   "osm": "node/150954404"
+  },
+  {
+   "id": "pleasant-valley",
+   "name": "Pleasant Valley",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.66299,
+    "lat": 38.68296
+   },
+   "osm": "node/150954744"
+  },
+  {
+   "id": "bonetti",
+   "name": "Bonetti",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.45464,
+    "lat": 38.67463
+   },
+   "osm": "node/150960379"
+  },
+  {
+   "id": "coyoteville",
+   "name": "Coyoteville",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.68993,
+    "lat": 38.5513
+   },
+   "osm": "node/150961705"
+  },
+  {
+   "id": "caldor",
+   "name": "Caldor",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.4327,
+    "lat": 38.60602
+   },
+   "osm": "node/150962922"
+  },
+  {
+   "id": "tylers-corner",
+   "name": "Tylers Corner",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.68632,
+    "lat": 38.52824
+   },
+   "osm": "node/150966381"
+  },
+  {
+   "id": "morrison",
+   "name": "Morrison",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.32436,
+    "lat": 38.70963
+   },
+   "osm": "node/150966444"
+  },
+  {
+   "id": "avinsino-corner",
+   "name": "Avinsino Corner",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.6766,
+    "lat": 38.69352
+   },
+   "osm": "node/150967324"
+  },
+  {
+   "id": "bryants",
+   "name": "Bryants",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.47804,
+    "lat": 38.71954
+   },
+   "osm": "node/150971327"
+  },
+  {
+   "id": "happy-valley",
+   "name": "Happy Valley",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.56326,
+    "lat": 38.68185
+   },
+   "osm": "node/150974053"
+  },
+  {
+   "id": "sierra-springs",
+   "name": "Sierra Springs",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.61159,
+    "lat": 38.70685
+   },
+   "osm": "node/150976776"
+  },
+  {
+   "id": "grizzly-peak",
+   "name": "Grizzly Peak",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.54409,
+    "lat": 38.63241
+   },
+   "osm": "node/150979159"
+  },
+  {
+   "id": "pilliken",
+   "name": "Pilliken",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.35436,
+    "lat": 38.6863
+   },
+   "osm": "node/150980206"
+  },
+  {
+   "id": "gilberts",
+   "name": "Gilberts",
+   "kind": "hamlet",
+   "pos": {
+    "lon": -120.4927,
+    "lat": 38.63685
+   },
+   "osm": "node/150982024"
+  },
+  {
+   "id": "ignition",
+   "name": "Caldor origin (Middle Fork Cosumnes)",
+   "kind": "landmark",
+   "pos": {
+    "lon": -120.537833,
+    "lat": 38.586
+   },
+   "note": "IRWIN initial lat/lon"
+  },
+  {
+   "id": "cosumnes-ridge-th",
+   "name": "Cosumnes Ridge Trailhead",
+   "kind": "trailhead",
+   "pos": {
+    "lon": -120.5075,
+    "lat": 38.6115
+   },
+   "fictional": true,
+   "note": "Fictional trailhead for the simulated rescue storyline"
+  },
+  {
+   "id": "bear-hollow-ranch",
+   "name": "Bear Hollow Ranch",
+   "kind": "ranch",
+   "pos": {
+    "lon": -120.4885,
+    "lat": 38.642
+   },
+   "fictional": true,
+   "note": "Fictional ranch (livestock) for the simulated storyline"
+  }
+ ],
+ "sources": [
+  {
+   "id": "open-meteo",
+   "name": "Open-Meteo Historical Weather API (ERA5 / ERA5-Land reanalysis), hourly",
+   "url": "https://archive-api.open-meteo.com/v1/archive?latitude=38.67&longitude=-120.47&start_date=2021-08-14&end_date=2021-08-19&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=GMT",
+   "license": "CC BY 4.0 (Open-Meteo.com); contains modified Copernicus Climate Change Service information",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Grid point 38.69947,-120.40871 (model elev 1498 m). Reanalysis winds are smoother than observed ridge-top gusts."
+  },
+  {
+   "id": "calfire-final",
+   "name": "CAL FIRE / NIFC Caldor final perimeter (Wildfire Daily Fire Perimeter, 2021-09-16)",
+   "url": "https://services2.arcgis.com/iq8zYa0SRsvIFFKz/arcgis/rest/services/Caldor_Fire_Progression_Polygons/FeatureServer/0/query",
+   "license": "Public (CAL FIRE / NIFC open data)",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "218857 acres; reference only (outside replay window)"
+  },
+  {
+   "id": "feds-perimeters",
+   "name": "NASA FEDS (Fire Event Data Suite) 12-hourly VIIRS fire perimeters, event F11645",
+   "url": "https://openveda.cloud/api/features/collections/public.eis_fire_lf_perimeter_archive/items?bbox=-120.7,38.52,-120.24,38.82&datetime=2021-08-14T00:00:00Z/2021-08-19T12:00:00Z&limit=500",
+   "license": "NASA open data (no restrictions); cite Chen et al. 2022, Sci. Data 9:249",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Perimeter slot T00 -> 01:30 PDT night overpass, T12 -> 13:30 PDT day overpass (FEDS convention). Acres = FEDS farea (km2) x 247.105; VIIRS-derived areas run higher than official IR-mapped acreage."
+  },
+  {
+   "id": "terrarium",
+   "name": "Mapzen/AWS Terrain Tiles (Terrarium encoding), zoom 12",
+   "url": "https://registry.opendata.aws/terrain-tiles/",
+   "license": "Various open sources (USGS 3DEP/NED public domain in the US); attribution per https://github.com/tilezen/joerd/blob/master/docs/attribution.md",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Bilinear resample of 30 tiles to 1000x833 grid"
+  },
+  {
+   "id": "osm",
+   "name": "OpenStreetMap via Overpass API (roads, buildings, water, places)",
+   "url": "https://overpass-api.de/api/interpreter",
+   "license": "ODbL 1.0 - (c) OpenStreetMap contributors",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Current OSM snapshot (2026-11-14T16:20:58Z), not a 2021 snapshot: some buildings lost in 2021 may be missing or rebuilt. Roads simplified (Douglas-Peucker 8 m, tracks 15 m, junction vertices preserved); buildings reduced to centroids."
+  },
+  {
+   "id": "landfire",
+   "name": "LANDFIRE LF2016 Remap FBFM40 (40 Scott & Burgan fire behavior fuel models)",
+   "url": "https://lfps.usgs.gov/arcgis/rest/services/Landfire_LF2016/LF2016_FBFM40_CONUS/ImageServer",
+   "license": "Public domain (USGS / USDA Forest Service / DOI LANDFIRE)",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "exportImage 1000x833, nearest neighbour; pre-fire vintage chosen deliberately (LF2022+ already contain the Caldor burn scar). FBFM40 codes mapped to FuelClass; raw codes kept in fbfm40.bin"
+  },
+  {
+   "id": "feds-firepix",
+   "name": "NASA FEDS new active-fire pixels (VIIRS 375 m) per 12-hour slot",
+   "url": "https://openveda.cloud/api/features/collections/public.eis_fire_lf_newfirepix_archive/items?bbox=-120.7,38.52,-120.24,38.82&datetime=2021-08-14T00:00:00Z/2021-08-19T12:00:00Z&limit=500",
+   "license": "NASA open data (no restrictions)",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Pixel positions and slot times are real; per-pixel FRP and confidence are synthesized from the slot mean FRP (FIRMS archive needs FIRMS_MAP_KEY). Times jittered +/-3 min around the overpass."
+  },
+  {
+   "id": "s2cloudless",
+   "name": "Sentinel-2 cloudless 2020 (EOX), WMS GetMap",
+   "url": "https://s2maps.eu",
+   "license": "CC BY-NC-SA 4.0 - Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020). Non-commercial use; replace for commercial deployments.",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "4096x3409 JPEG, EPSG:4326, ~10 m/px, pre-fire"
+  },
+  {
+   "id": "gibs",
+   "name": "NASA GIBS WMS: VIIRS S-NPP Corrected Reflectance True Color and Thermal Anomalies 375 m",
+   "url": "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
+   "license": "NASA open data (no restrictions); acknowledge NASA EOSDIS GIBS",
+   "fetchedAt": "2026-11-14T16:25:35.562Z",
+   "note": "Daily dated snapshots for Aug 16-18 2021 (smoke plume, thermal anomalies)"
+  }
+ ],
+ "imagery": {
+  "url": "/data/caldor/imagery.jpg",
+  "bbox": [
+   -120.7,
+   38.52,
+   -120.24,
+   38.82
+  ],
+  "date": "2020 (pre-fire cloudless composite)",
+  "source": "Sentinel-2 cloudless 2020 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2020)"
+ },
+ "imageryExtra": [
+  {
+   "url": "/data/caldor/gibs-viirs-truecolor-2021-08-16.jpg",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-16",
+   "source": "NASA GIBS VIIRS_SNPP_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 426
+  },
+  {
+   "url": "/data/caldor/gibs-viirs-thermal-2021-08-16.png",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-16",
+   "source": "NASA GIBS VIIRS_SNPP_Thermal_Anomalies_375m_All",
+   "width": 1024,
+   "height": 852
+  },
+  {
+   "url": "/data/caldor/gibs-viirs-truecolor-2021-08-17.jpg",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-17",
+   "source": "NASA GIBS VIIRS_SNPP_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 426
+  },
+  {
+   "url": "/data/caldor/gibs-viirs-thermal-2021-08-17.png",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-17",
+   "source": "NASA GIBS VIIRS_SNPP_Thermal_Anomalies_375m_All",
+   "width": 1024,
+   "height": 852
+  },
+  {
+   "url": "/data/caldor/gibs-viirs-truecolor-2021-08-18.jpg",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-18",
+   "source": "NASA GIBS VIIRS_SNPP_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 426
+  },
+  {
+   "url": "/data/caldor/gibs-viirs-thermal-2021-08-18.png",
+   "bbox": [
+    -120.7,
+    38.52,
+    -120.24,
+    38.82
+   ],
+   "date": "2021-08-18",
+   "source": "NASA GIBS VIIRS_SNPP_Thermal_Anomalies_375m_All",
+   "width": 1024,
+   "height": 852
+  }
+ ],
+ "hotspotMode": "feds",
+ "notes": [
+  "Arrival-time raster: cells inside FEDS perimeter k but not k-1 get a time between the two overpasses from the ratio of fuel/slope/wind-weighted travel time from the previous perimeter vs to the new edge, with a diurnal (peak ~18:00 PDT, gust-scaled) time warp and light deterministic noise. Before the first perimeter the fire grows from the IRWIN ignition point at discovery time.",
+  "Hotspot positions are real VIIRS pixels from NASA FEDS; FRP/confidence per pixel synthesized. Set FIRMS_MAP_KEY to use the FIRMS archive instead."
+ ],
+ "generatedAt": "2026-11-14T16:25:35.562Z"
+}
