@@ -23,7 +23,7 @@ const base =
 const disabledFilled = 'disabled:border-line disabled:bg-ink-850 disabled:text-ink-500';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: cn('border-signal bg-signal text-ink-950 hover:border-signal-hot hover:bg-signal-hot active:border-signal-deep active:bg-signal-deep', disabledFilled),
+  primary: cn('border-signal bg-signal text-on-signal hover:border-signal-hot hover:bg-signal-hot active:border-signal-deep active:bg-signal-deep', disabledFilled),
   secondary: cn('border-line-strong bg-ink-800 text-bone hover:border-ink-400 hover:bg-ink-700 active:bg-ink-850', disabledFilled),
   ghost: 'border-transparent bg-transparent text-bone-dim hover:bg-ink-800 hover:text-bone active:bg-ink-850 disabled:text-ink-500',
   danger: cn('border-ember/50 bg-ember/10 text-ember hover:border-ember hover:bg-ember/20 active:bg-ember/30', disabledFilled),
@@ -75,7 +75,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         <span
           className={cn(
             'ml-1 inline-flex h-4 min-w-4 items-center justify-center border px-1 text-micro leading-none tracking-normal',
-            variant === 'primary' ? 'border-ink-950/30 text-ink-950/70' : 'border-line-strong text-bone-mute',
+            variant === 'primary' ? 'border-on-signal/30 text-on-signal/70' : 'border-line-strong text-bone-mute',
           )}
         >
           {kbd}

@@ -2,7 +2,7 @@
 
 How to run the proposal site and full-screen console, add optional credentials, and rebuild the Mati or Caldor scenario pack.
 
-Every token is optional. Without tokens the console still runs: the 3D stage uses a heightmap built from the scenario pack (`pack.elevation`) and the offline imagery mosaic or NASA GIBS imagery, which needs no key.
+Every token is optional. The default Outline globe uses the scenario DEM and cached OSM outlines. Satellite uses streamed Google/ion imagery when configured, otherwise the cached imagery mosaic. Both local modes work without a key.
 
 ## 1. Requirements
 
@@ -43,7 +43,7 @@ cp .env.example .env.local
 
 Variables prefixed with `VITE_` are embedded in the client bundle. Treat them as public and restrict them as described below.
 
-The console's status bar shows which providers are active (for example `CESIUM ION · ON`, `GOOGLE 3D · OFF`), from `getStageCapabilities()`.
+The map HUD names the active basemap. Select **Satellite** to use Google/ion imagery; the clean **Outline** default intentionally uses the local DEM, even when credentials are configured. `getStageCapabilities()` reports configured credentials, not successful provider access.
 
 ## 4. Cesium ion token (free, non-commercial)
 
@@ -115,7 +115,7 @@ The Demo Director plays a scripted three-minute tour for judges, with scenario-s
 
 Captions, speed, autonomy and hold layout are controls in the command strip. Bindings are defined in `src/console/ui/**`; if one does not respond, check there.
 
-For an offline basemap test, use `?tokens=0` (even with local credentials configured). `?tokens=ion` selects ion without Google. Google 3D coverage has not been verified. Prediction assumptions and limitations are in `src/console/orchestrator/PROJECTION.md`: archived future weather, reconstructed initial fire, no spotting, and substantial underprediction of Mati's speed.
+For an offline basemap test, use `?tokens=0` (even with local credentials configured). `?tokens=ion` selects ion without Google. Google 3D rendering over Mati was verified on 2026-11-15 after a key was supplied. Prediction assumptions and limitations are in `src/console/orchestrator/PROJECTION.md`: archived future weather, reconstructed initial fire, no spotting, and substantial underprediction of Mati's speed.
 
 ## 7. Rebuilding the scenario pack
 
@@ -139,3 +139,32 @@ Be polite to public endpoints (Overpass, Open-Meteo): the script fetches once an
 | Google tiles 403 | Map Tiles API not enabled, billing not linked, or referrer restriction missing `http://localhost:5173/*`. |
 | Black stage | WebGL disabled; in Chrome check `chrome://gpu`. |
 | Console says the scenario failed to load | `public/data/caldor/` missing; run `node scripts/fetch-data.mjs`. |
+
+## 9. Install as a standalone app (PWA)
+
+```bash
+npm run build
+npm run test:pwa
+npm run preview -- --host localhost
+# Open http://localhost:4173
+```
+
+Deploy the contents of `dist/` at the origin root over **HTTPS**. Localhost is also a secure context. Do not deploy `.env.local`; browser-prefixed provider credentials must be restricted to the actual website origin. The service worker is generated only by the production build, never registered by Vite development mode.
+
+- **Chrome / Edge:** click **Install** in FCC when the native prompt is available, or use the address-bar install icon/browser menu.
+- **Safari on Mac:** File → Add to Dock.
+- **iPhone / iPad:** Share → Add to Home Screen, keeping Open as Web App enabled where offered.
+- Launch the installed app from the Dock, desktop or home screen. It starts at `/console.html?source=pwa` in standalone mode, without a browser tab/address bar. An OS window title bar, mobile status bar or home indicator may remain; those are not controlled by a website.
+
+The initial offline download is approximately **33.4 MiB / 418 local files** for this build, including both scenario packs, app/fonts and Cesium runtime. Allow it to finish online. The console, proposal and scenario switching then work offline. Google/ion streamed imagery, Google 3D and external APIs are deliberately **never** cached; use Outline or the local Satellite fallback offline. Revision archives are online-only. Browser storage can be evicted by the OS; reconnect and reinstall/reload if that happens.
+
+Updates use a content-versioned cache. A new worker finishes downloading before activation; existing windows keep their version until closed, so an update never forcibly reloads a pending decision.
+
+## 10. Appearance and globe controls
+
+- FCC/Team chooses the accent and font. **Auto / Light / Dark** independently chooses appearance.
+- Auto follows the replay sun in the console, not your local computer time. Dawn/dusk gradually blends the palettes; seeks and manual changes settle smoothly. Reduced motion applies the current target immediately. On the proposal, Auto follows your system appearance.
+- Optional override: `?appearance=light`, `?appearance=dark`, or `?appearance=auto`. A URL override takes precedence on reload; remove it to use the saved `fcc.appearance` preference.
+- **Outline / Satellite** appears at the top-right of the globe. Outline is monochrome DEM hillshade with metre-spaced contours, roads and basic incident overlays. Satellite loads configured Google/ion imagery or cached imagery. Provider imagery is current/archived as documented, not a live fire image.
+- **Layers** independently controls contours, roads, approximate building marks, labels, units, findings, fire/perimeter, prediction bands, routes, coverage and Satellite smoke/atmosphere. Outline details are intentionally unavailable in Satellite mode. Reset restores the clean defaults. Hiding a layer does not acknowledge an alert or approve anything.
+- Map preferences persist under `fcc.map`; camera feeds always retain their own imagery, telemetry and synthetic-sensor treatment.

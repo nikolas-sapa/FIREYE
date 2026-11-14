@@ -2,6 +2,10 @@
 
 ## REV D integration notes (current work)
 
+2026-11-15 additions: brand and appearance are separate. Keep Auto appearance tied to the stage's solar functions and actual replay store, not wall-clock time. Preserve manual Light/Dark overrides and reduced-motion behavior. Main globe Outline mode is default; never apply its monochrome treatment or layer visibility to sensor feeds. Globe preferences (`fcc.map`) are display-only, not action/approval state.
+
+PWA: `npm run build` now generates a content-versioned `dist/sw.js` using `scripts/build-pwa.mjs`. `npm run test:pwa` runs after the build. Cache only emitted local app assets, Cesium runtime and local packs; never cache provider traffic, private APIs, environment files or revision archives. Registration is production-only. Keep the manifest standalone, preserve iOS metadata and icons, and do not claim a native Dock installation from manifest checks alone.
+
 These notes supersede Caldor-only and single-theme assumptions below. REV C remains available at git tag `rev-c`; frozen REV A/B files must remain untouched.
 
 - The default scenario is Mati 2018 (`public/data/mati/`). Caldor remains selectable with `?scenario=caldor-2021`. The shared registry and `loadScenario(id?)` live in `src/console/scenario/`.
@@ -37,8 +41,9 @@ FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orch
 ```bash
 npm install          # install deps
 npm run dev          # dev server → http://localhost:5173
-npm run build        # tsc --noEmit && vite build (must pass before you finish)
+npm run build        # tsc --noEmit && vite build && generate PWA cache
 npm run typecheck    # tsc --noEmit only
+npm run test:pwa     # validate the production PWA after building
 npm run preview      # serve the production build
 ```
 

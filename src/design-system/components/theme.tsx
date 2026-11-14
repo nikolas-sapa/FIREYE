@@ -1,4 +1,4 @@
-import { THEMES, THEME_IDS, setTheme, useTheme, type ThemeId } from '../tokens';
+import { THEMES, THEME_IDS, setTheme, useTheme, setAppearance, useAppearance, type Appearance, type ThemeId } from '../tokens';
 import { cn } from '../utils';
 
 export interface ThemeToggleProps {
@@ -8,6 +8,27 @@ export interface ThemeToggleProps {
   hint?: string;
   className?: string;
   onChange?: (theme: ThemeId) => void;
+}
+
+/** Independent of FCC / Team branding. Auto follows replay daylight in the console. */
+export function AppearanceToggle({ className }: { className?: string }) {
+  const mode = useAppearance();
+  return (
+    <label className={cn('inline-flex h-7 shrink-0 items-center gap-1.5 border border-line-strong bg-ink-900 px-2 font-mono text-micro uppercase text-bone-dim', className)}>
+      <span className="h-2 w-2 border border-current" aria-hidden />
+      <select
+        aria-label="Appearance"
+        title="Auto follows map daylight in the console, system appearance on the proposal"
+        value={mode}
+        onChange={(e) => setAppearance(e.target.value as Appearance)}
+        className="max-w-[78px] cursor-pointer bg-transparent font-mono text-micro uppercase text-bone focus-visible:outline-signal"
+      >
+        <option value="auto">Auto · sun</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+  );
 }
 
 /**

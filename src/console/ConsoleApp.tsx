@@ -12,6 +12,7 @@ import { UiProvider, useUi } from './ui/UiContext';
 import type { RoleLens } from './contracts';
 import { packZone, registerZone } from './ui/format';
 import { scenarioEntry, scenarioName } from './ui/scenarios';
+import { DaylightSync } from './ui/DaylightSync';
 
 const LENS_KEYS: Record<string, RoleLens> = { '1': 'ic', '2': 'ops', '3': 'air', '4': 'ems' };
 
@@ -146,7 +147,8 @@ export default function ConsoleApp() {
   return (
     <ConsoleProvider>
       <UiProvider>
-        <div className="h-screen w-screen overflow-hidden">
+        <DaylightSync />
+        <div className="fcc-console-shell h-dvh w-full overflow-hidden">
           <Shell />
         </div>
       </UiProvider>

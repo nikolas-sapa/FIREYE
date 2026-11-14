@@ -42,7 +42,7 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
   const showHud = hud !== 'none';
 
   return (
-    <div className={cn('relative h-full w-full overflow-hidden bg-void', className)}>
+    <div className={cn('fcc-sensor relative h-full w-full overflow-hidden bg-void', className)}>
       <canvas
         ref={canvasRef}
         width={full ? FULL_W : THUMB_W}

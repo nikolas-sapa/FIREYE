@@ -14,6 +14,12 @@ The Mati timeline is a reconstruction fitted to documented checkpoints and the E
 
 Switch between FCC (orange, Inter Tight) and Team (blue, Geist) with the theme toggle, `T` in the console, or `?theme=team`.
 
+**Daylight appearance:** Auto follows the replay sun through a continuous light/dark palette, using the same solar curve as the map. Light and Dark are manual overrides, independent of the FCC/Team accent. The proposal's Auto follows the system appearance. `?appearance=auto|light|dark` overrides the saved preference. Reduced-motion users get immediate changes.
+
+**Globe:** Outline is the clean default: monochrome DEM relief, elevation contours, road outlines and essential incident overlays. Satellite restores Google 3D, ion imagery or cached imagery, depending on available credentials. The Layers menu hides labels, units, findings, fire, predictions, routes, coverage and outline details independently. Building marks are approximate, not surveyed footprints. These are display preferences, not changes to incident state.
+
+**Install:** FCC is a standalone PWA with an Install button. Build and serve over HTTPS or localhost, then launch it from your Dock/home screen to remove the browser address bar. The app and both replay packs work offline after the initial download; streamed Google/Cesium maps still need a connection. [Installation details](docs/SETUP.md#9-install-as-a-standalone-app-pwa).
+
 The model starts from reconstructed issue-time fire and uses archived future weather as a perfect forecast. It substantially underpredicts Mati's speed. IoU is against reconstructed spread; checkpoint timing is against sourced moments. No final-perimeter evaluation is implemented. See [`PROJECTION.md`](src/console/orchestrator/PROJECTION.md) for assumptions and results.
 
 > Scenario built from public data; units, people and events are simulated.
@@ -34,6 +40,7 @@ npm install
 npm run dev        # http://localhost:5173  (proposal)  ·  /console.html  (console)
 npm run build      # typecheck + production build
 npm test           # both scenarios: tours, approvals, prediction independence
+npm run test:pwa   # after build: manifest, icons, precache and provider exclusion
 ```
 
 Tokens are optional. Copy `.env.example` to `.env.local` and add `VITE_CESIUM_ION_TOKEN` and/or `VITE_GOOGLE_MAPS_KEY` for world terrain and photoreal 3D tiles; without them the console uses the pack's own heightmap and cached imagery. Step by step: [`docs/SETUP.md`](docs/SETUP.md).

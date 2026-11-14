@@ -13,6 +13,7 @@ export default {
     extend: {
       colors: {
         void: v('void'),
+        'on-signal': v('on-signal'),
         ink: {
           950: v('ink-950'), 900: v('ink-900'), 850: v('ink-850'), 800: v('ink-800'),
           700: v('ink-700'), 600: v('ink-600'), 500: v('ink-500'), 400: v('ink-400'),

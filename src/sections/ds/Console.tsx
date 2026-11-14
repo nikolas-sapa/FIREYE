@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   AutonomyDial, Brackets, CaptionBar, DecisionCard, DirectiveToast, DraftDocument, GridBg, LedgerCounter, LensSelect, PredictionCheckCard, ProvenanceTag,
-  THEMES, ThemeToggle, TimelineScrubber, WhyPopover, ZoneTag, useTheme,
+  AppearanceToggle, InstallAppButton, THEMES, ThemeToggle, TimelineScrubber, WhyPopover, ZoneTag, useTheme,
   zoneMeta, type ConsoleActionStatus, type ConsoleAutonomy, type ConsoleLens, type ConsoleZone,
 } from '@ds';
 import { GroupTitle, Spec, SubSection } from './Spec';
@@ -353,8 +353,11 @@ function ThemeDemo() {
   const theme = useTheme();
   return (
     <div className="grid grid-cols-1 gap-px border border-line bg-line md:grid-cols-[auto_1fr_1fr]">
-      <div className="flex items-center bg-ink-900 p-5">
+      <div className="flex flex-col items-start gap-3 bg-ink-900 p-5">
         <ThemeToggle />
+        <AppearanceToggle />
+        <InstallAppButton />
+        <span className="fcc-micro max-w-48 leading-4">Auto follows map daylight in the console. Install opens a standalone app.</span>
       </div>
       {(['fcc', 'team'] as const).map((id) => {
         const t = THEMES[id];

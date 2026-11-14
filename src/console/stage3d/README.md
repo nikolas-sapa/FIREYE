@@ -17,6 +17,25 @@ Owner: STAGE worker. Public API (`src/console/stage3d/index.ts`):
 - `hud` — camera readout and basemap tag, bottom-right (default on).
 - `creditsClassName` — reposition the credits container (bottom-left by default).
 
+## Main globe appearance and layers (2026-11-15)
+
+The main globe starts in **Outline** mode: `outline.ts` makes a grayscale hillshade from the
+actual pack DEM, with separate contour, road and approximate-building image layers. Terrain
+uses 1× vertical scale. Relief edges fade to a constant border to avoid regional image
+edge-sampling streaks. Contour interval comes from the scenario profile; building squares
+are approximate marks, not surveyed footprints.
+
+`MapControls.tsx` switches Outline/Satellite without replacing the viewer. Satellite setup
+is lazy and cached; switching back hides its imagery/tiles and restores the local terrain.
+`map-settings.ts` validates and persists display preferences in `fcc.map`. Contours, roads,
+places, units, findings and fire/perimeter start visible. Building marks, predictions,
+action routes and coverage start hidden. Atmosphere/smoke starts enabled for Satellite
+only, and Outline remains clean. Hiding a finding never removes it from the decision queue.
+
+The main stage's solar curve also drives the console's Auto light/dark appearance through
+`DaylightSync`. Manual Light/Dark changes chrome, not the replay clock. Sensor feeds retain
+their independent basemap/effects and dark instrumentation, regardless of main globe mode.
+
 ## How the stage consumes state
 
 `useStageSync()` (called by `Stage` and every `FeedSurface`) copies `pack`, `clock.t`, `clock.paused`, `units`, `findings`, `feeds`, `projection`, `items`, `actions`, `coverage`, `stage`, `directives` and `fireRev` into `stageWorld` (reference-compared). `StageEngine` and the shared `FeedRenderer` subscribe to it and apply changes once per frame, diffing every layer by a signature so 5 Hz store updates only touch what changed. Unit positions are interpolated between store updates (`world.ts`).
@@ -67,6 +86,10 @@ distinctions and keeps source/date/nominal-pass details above the metric strip.
 
 ## Tokens and fallbacks
 
+The table describes **Satellite mode and sensor feeds**. Outline always uses local data,
+even when a provider key is configured. Configured credentials do not prove provider access;
+Google 3D over Mati was separately verified on 2026-11-15.
+
 | Configuration | Terrain | Imagery | Notes |
 | --- | --- | --- | --- |
 | none, or `?tokens=0` | `CustomHeightmapTerrainProvider` from `pack.elevation`, profile vertical exaggeration | Offline relief composite over the bbox (uses `pack.imagery` when present, else fuel colors), procedural detail below ~4 km tiles | No network requests. Outside the bbox the surface eases to the mean height over a dark ink base, so the scenario reads as a lit terrain model. |
@@ -83,7 +106,7 @@ Optional regional context: `setupBasemap(viewer, pack, sampler, { gibs: true })`
 - Fire field: one pass over the raster per `fireRev` (about 10 ms at 1000 × 833); texture double-buffered so Cesium re-uploads.
 - Particles capped (16 flame + 6 smoke on the stage, 12 + 5 in feeds). Layers diff by signature; freshness alpha is quantized to 1/8 steps to avoid ground-primitive rebuilds.
 - `prefers-reduced-motion`: no particles, frozen fire flicker, instant camera moves, static highlight rings, no shimmer or camera shake.
-- Measured (Apple M4, 10-core GPU, Chrome/ANGLE Metal, 1920×1080 at DPR 1, Mati, ion): stage with all eight feed thumbnails 41.8 fps average (p50 16.7 ms, p95 33.4 ms); stage alone 37.8 fps; offline with thumbnails 39.7 fps. Feed render cost about 5 ms per frame.
+- Earlier measurement, before Outline/daylight/PWA changes (Apple M4, 10-core GPU, Chrome/ANGLE Metal, 1920×1080 at DPR 1, Mati, ion): stage with all eight feed thumbnails 41.8 fps average (p50 16.7 ms, p95 33.4 ms); stage alone 37.8 fps; offline with thumbnails 39.7 fps. Feed render cost about 5 ms per frame. This is not a measurement of the latest default mode.
 
 ## Dev harness
 

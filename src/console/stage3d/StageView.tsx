@@ -7,6 +7,9 @@ import { FeedSurfaceView } from './feeds/FeedSurfaceView';
 import { StageEngine, type StageStatus } from './StageEngine';
 import { useStageWorld } from './world';
 import './stage.css';
+import { MapControls } from './MapControls';
+import { useMapSettings } from './map-settings';
+import { getProfile } from './profile';
 
 export type StageSelectKind = 'unit' | 'finding' | 'place' | 'action';
 
@@ -47,6 +50,7 @@ export function StageView({
   cbRef.current = { onSelect, onFocusRequest };
   const sel = selectedId !== undefined ? selectedId : localSel;
   const webgl = hasWebGL();
+  const pack = useStageWorld((s) => s.pack);
 
   useEffect(() => {
     if (!hostRef.current || !webgl) return;
@@ -111,6 +115,7 @@ export function StageView({
     <div className={cn('fcc-stage relative h-full w-full overflow-hidden bg-void', className)}>
       <div ref={hostRef} className="absolute inset-0" />
       {status.phase === 'ready' && <StageOverlay engineRef={engineRef} />}
+      {status.phase === 'ready' && !feedOn && <MapControls contourM={pack ? getProfile(pack).contourM : 40} />}
       {!webgl || status.phase === 'error' ? (
         <StageFallback reason={!webgl ? 'WebGL unavailable' : status.error ?? 'Renderer error'} />
       ) : (
@@ -205,6 +210,7 @@ function StageOverlay({ engineRef }: { engineRef: React.MutableRefObject<StageEn
 /* ------------------------------------------------------------------ HUD + states */
 
 function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<StageEngine | null>; basemap?: string }) {
+  const settings = useMapSettings();
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const engine = engineRef.current;
@@ -219,9 +225,9 @@ function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<S
     });
   }, [engineRef]);
   return (
-    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex items-center gap-3 whitespace-nowrap font-mono text-micro uppercase text-bone-mute">
+    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex items-center gap-3 whitespace-nowrap bg-ink-950/85 px-1 font-mono text-micro uppercase text-bone-mute">
       <span ref={ref} className="fcc-num" />
-      {basemap && <span className="text-ink-400">{BASEMAP_SHORT[basemap] ?? basemap}</span>}
+      {basemap && <span className="text-bone-dim">{settings.mode === 'outline' ? 'Outline · DEM' : BASEMAP_SHORT[basemap] ?? basemap}</span>}
     </div>
   );
 }

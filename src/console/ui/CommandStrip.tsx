@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AutonomyDial, IconButton, Icon, LensSelect, ThemeToggle, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
+import { AppearanceToggle, AutonomyDial, IconButton, Icon, InstallAppButton, LensSelect, ThemeToggle, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { acresSeries } from './derived';
 import { incidentNumber, localDay, localHour, localTime, packTz, zuluTime } from './format';
@@ -303,7 +303,7 @@ export function CommandStrip() {
   const autonomy = useConsoleSelector((s) => s.settings.autonomy);
   const disclaimer = pack?.manifest.disclaimer ?? 'Scenario built from public data; units, people and events are simulated.';
   return (
-    <header className="relative z-hud flex h-12 shrink-0 items-center gap-3 border-b border-line bg-ink-950 px-3">
+    <header className="relative z-hud flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-ink-950 px-3 py-1">
       <div className="flex shrink-0 items-center gap-2.5">
         <FccMark size={22} />
         <ScenarioSelect />
@@ -313,13 +313,15 @@ export function CommandStrip() {
       <Transport />
       <Scrubber />
       <Sep />
-      <LensSelect value={lens} onChange={(l) => api.setLens(l)} />
+      <LensSelect showKeys={false} value={lens} onChange={(l) => api.setLens(l)} />
       <AutonomyDial compact value={autonomy} onChange={(a) => api.setAutonomy(a)} />
       <HoldToggle />
       <Sep />
       <OrchestratorStatus />
       <DirectorControls />
       <ThemeToggle compact hint="T" />
+      <AppearanceToggle />
+      <InstallAppButton />
       <Tooltip content={disclaimer} side="bottom" className="shrink-0">
         <span className="inline-flex h-7 items-center gap-1.5 border border-amber/40 px-2 font-mono text-micro uppercase text-amber">
           <span aria-hidden className="h-1 w-1 bg-amber" />

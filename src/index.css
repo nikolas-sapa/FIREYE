@@ -21,6 +21,11 @@
   *::-webkit-scrollbar { width: 6px; height: 6px; }
   *::-webkit-scrollbar-thumb { background: rgb(var(--ink-600)); }
   *::-webkit-scrollbar-track { background: transparent; }
+  /* Match installed/mobile viewport and avoid placing controls under display cutouts. */
+  .fcc-console-shell {
+    min-height: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
 }
 
 @layer components {

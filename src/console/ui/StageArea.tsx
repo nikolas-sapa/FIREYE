@@ -333,7 +333,7 @@ export function StageArea() {
         </button>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-1.5 z-overlay flex justify-center font-mono text-micro uppercase text-bone-dim">{disclaimer}</div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-1.5 z-overlay flex justify-center bg-ink-950/90 font-mono text-micro uppercase text-bone-dim">{disclaimer}</div>
     </div>
   );
 }

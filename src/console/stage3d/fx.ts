@@ -266,6 +266,7 @@ export function createGradeStage(scene: Cesium.Scene, opts: { saturation: number
 uniform sampler2D colorTexture;
 uniform float saturation;
 uniform float vignette;
+uniform float daylight;
 in vec2 v_textureCoordinates;
 void main() {
   vec2 uv = v_textureCoordinates;
@@ -276,9 +277,10 @@ void main() {
   c = mix(${glsl3(ds.ink[950])}, vec3(1.0), c);
   vec2 d = uv - 0.5;
   c *= 1.0 - vignette * dot(d, d) * 2.0;
+  c *= mix(0.32, 1.0, daylight);
   out_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`,
-    uniforms: { saturation: opts.saturation, vignette: opts.vignette },
+    uniforms: { saturation: opts.saturation, vignette: opts.vignette, daylight: 1 },
   });
   scene.postProcessStages.add(st);
   return st;

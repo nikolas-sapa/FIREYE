@@ -18,8 +18,9 @@ export type {
   OrchTier, OrchAlertClass, OrchAudience, MovementStatus, ScoreMeterProps, AlertCardProps, InterruptBannerProps, FreshnessProps,
   OrchBubbleProps, DrawerProps, IconRailItem, IconRailProps, FeedTileProps, PoolBarProps, MovementCardProps,
 } from './orchestrator';
-export { ThemeToggle } from './theme';
+export { ThemeToggle, AppearanceToggle } from './theme';
 export type { ThemeToggleProps } from './theme';
+export { InstallAppButton } from './install';
 export {
   ZoneTag, WhyPopover, AutonomyDial, LensSelect, TimelineScrubber, LedgerCounter, DraftDocument, DirectiveToast, CaptionBar, DecisionCard,
   AudienceRow, ProvenanceTag, PredictionCheckCard, zoneMeta, actionKindIcon, actionKindLabel, consoleAudienceLabel,

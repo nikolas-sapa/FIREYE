@@ -127,6 +127,18 @@ Rules:
 
 ### 3.6 Themes (REV D)
 
+#### Daylight appearance (2026-11-15)
+
+Brand (`fcc | team`) and appearance (`auto | light | dark`) are independent. Light uses cool mineral-white panels, graphite text, thin slate rules and darker accessible status/accent hues. Layout, fonts, spacing and the signal budget do not change. `appearance-palette.ts` defines the endpoint ramps and contrast guard; `appearance.ts` applies RGB-channel tokens on `<html>`.
+
+Auto in the console subscribes to the real replay store and uses the stage's `sunPosition` and `daylight` functions at the scenario centre: night at −6°, full day at +8°, smooth civil twilight between. It does not run a second clock. Palette changes track the curve continuously, with a 450 ms exponential settling time for seeks/manual changes. Text contrast is guarded instead of fading through invisible grey-on-grey. Reduced motion applies the current target immediately. The proposal uses the system appearance when Auto is selected.
+
+The new `--on-signal` / `text-on-signal` token keeps filled primary actions readable in both modes. Native `color-scheme` and `theme-color` follow appearance. Camera/sensor HUDs remain fixed dark instrumentation under `.fcc-sensor`; fire colours and sensor pixels are not inverted.
+
+`AppearanceToggle` and `InstallAppButton` are public `@ds` components, shown alongside `ThemeToggle` in specimen C.10. Preferences: `fcc.appearance`, with `?appearance=auto|light|dark` taking precedence on load. Runtime API: `getAppearance`, `setAppearance`, `useAppearance`, `setSolarDaylight`, `getDaylightBlend`.
+
+The main globe defaults to monochrome DEM hillshade with independently hideable contours, roads and approximate building marks. Operational overlays retain semantic colours. Satellite is a separate main-view mode; camera feeds never inherit the outline treatment. The layer panel shows hidden-layer counts and explains that hiding a finding does not clear its decision queue entry.
+
 Two themes share every token name. `<html data-theme="fcc | team">` swaps values in `tokens.css`; components never branch on theme.
 
 | Token | FCC (default) | Team |

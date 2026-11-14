@@ -12,7 +12,7 @@ const TILE = 33;
  * Token-less terrain: a CustomHeightmapTerrainProvider fed from pack.elevation. Outside the scenario
  * bbox the surface settles onto the smoothed edge profile (coasts stay at sea level).
  */
-export function createHeightmapTerrain(s: RasterSampler): Cesium.CustomHeightmapTerrainProvider {
+export function createHeightmapTerrain(s: RasterSampler, sceneDatum = false): Cesium.CustomHeightmapTerrainProvider {
   const ts = new Cesium.GeographicTilingScheme();
   return new Cesium.CustomHeightmapTerrainProvider({
     width: TILE,
@@ -26,7 +26,7 @@ export function createHeightmapTerrain(s: RasterSampler): Cesium.CustomHeightmap
         const lat = north - (j / (TILE - 1)) * (north - south);
         for (let i = 0; i < TILE; i++) {
           const lon = west + (i / (TILE - 1)) * (east - west);
-          out[j * TILE + i] = s.demElevation(lon, lat);
+          out[j * TILE + i] = s.demElevation(lon, lat) + (sceneDatum ? s.datumOffset : 0);
         }
       }
       return out;

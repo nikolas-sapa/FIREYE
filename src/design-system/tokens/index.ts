@@ -7,6 +7,7 @@
 import { THEMES, getTheme } from './theme';
 
 export * from './theme';
+export * from './appearance';
 
 /**
  * `signal` and `amber` are getters that follow the active theme (see theme.ts). Read them at draw

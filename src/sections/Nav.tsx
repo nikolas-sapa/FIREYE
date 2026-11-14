@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Dot, Icon, Serial, ThemeToggle, cn, zulu } from '@ds';
+import { AppearanceToggle, Button, Dot, Icon, InstallAppButton, Serial, ThemeToggle, cn, zulu } from '@ds';
 
 export const REV_A_HREF = '/rev-a/index.html';
 export const REV_B_HREF = '/rev-b/index.html';
@@ -66,7 +66,7 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-hud border-b border-line bg-ink-950/80 backdrop-blur-md">
-      <div className="mx-auto flex h-12 max-w-[1440px] items-center justify-between gap-6 px-6 lg:px-10">
+      <div className="mx-auto flex min-h-12 max-w-[1440px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-2 lg:px-10">
         <a href="#top" className="group flex items-center gap-3" aria-label="Fire Command Center — back to top">
           <FccMark />
           <span className="hidden font-mono text-nano uppercase text-bone sm:inline">Fire Command Center</span>
@@ -101,7 +101,7 @@ export default function Nav() {
           })}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="hidden items-center gap-2 xl:flex">
             <Dot className="bg-phosphor" live size={5} />
             <span className="font-mono text-tiny text-bone fcc-num" aria-label="Zulu time">{clock}</span>
@@ -123,6 +123,8 @@ export default function Nav() {
             </a>
           ))}
           <ThemeToggle compact className="hidden sm:inline-flex" />
+          <AppearanceToggle className="hidden sm:inline-flex" />
+          <InstallAppButton />
           <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole} title="Open the full-screen console">
             Console
           </Button>
