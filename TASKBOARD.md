@@ -2,7 +2,7 @@
 
 Snapshot: 2026-11-14, Europe/Athens. This repository board is the shared truth for future task claims and status updates. It preserves the 37 original task identities, adds 3 setup cards and updates stale administrative facts. The earlier local board remains an untouched historical snapshot.
 
-40 cards: 12 done, 1 draft-ready, 2 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
+40 cards: 14 done, 1 draft-ready, 0 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
 
 [Brief and non-goals](README.md) · [Resident collaboration rules](AGENTS.md)
 
@@ -22,7 +22,7 @@ Prior [wildfire-sweep](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3
 
 | Lane | Accountable owner | Branch / exact file boundary |
 |---|---|---|
-| Shared planning docs | Planning docs worker | `chore/hackathon-planning`: `README.md`, `AGENTS.md`, `TASKBOARD.md`, `.gitignore`, ignored `.scratch/planning-pr-body.md` only |
+| Shared planning receipts | Planning docs worker | `chore/hackathon-planning`: `TASKBOARD.md` and ignored `.scratch/planning-pr-body.md` only; other planning files already published |
 | Repository delivery | Git specialist | Git/GitHub operations only on the planning branch; explicit approved paths, coordinator review before integration |
 | Scoped backend setup | Backend setup agent, coordinator supervised | Local Boxd/Treg auth/config only, outside this repository; exact private paths belong in the setup handoff, no repository file claim |
 | Teammate application work | Unassigned, GitHub handle unknown | No app files or branch claimed; invitation and file ownership still pending |
@@ -46,7 +46,7 @@ No application role below is assigned. App file boundaries will be set in the ap
 - [x] D07 · P0 · Status: done · OSS rendering and SDK options
   - Owner: coordinator. Receipt: 1 license-aware rendering/SDK review completed; 0 dependencies chosen or components imported.
 - [x] D08 · P0 · Status: done · Command-center visual references
-  - Owner: coordinator. Receipt: 2 reference families reviewed (Anduril/Palantir); 0 copied branding or approved UI choices.
+  - Owner: coordinator. Receipt: 2 reference families reviewed (Anduril/Palantir); current Anduril mission cycle checked. One-screen UI draft refined with objective/rehearsal strip and debrief, still outside this repository and unapproved. 0 copied branding or approved prototype/UI choices.
 - [x] D09 · P0 · Status: done · Fact-check and provenance workflow
   - Owner: coordinator. Receipt: 1 attribution/new-work workflow defined; 0 fabricated milestones.
 - [x] D10 · P0 · Status: done · Original taskboard document
@@ -60,10 +60,10 @@ No application role below is assigned. App file boundaries will be set in the ap
 
 - [ ] A01 · P0 · Status: draft-ready · Latest architecture draft, approval pending
   - Owner: architecture draft writer, coordinator review. Scope: architecture note outside this repository only. Receipt: latest incident-intelligence draft written with 16 named proposed numeric tests and non-goals. Completion gate: 1 owner-approved product/fidelity/runtime decision set and test plan; draft is not an approved implementation spec.
-- [ ] SETUP-01 · P0 · Status: active · Publish shared planning board and governance
-  - Owner: planning docs worker; delivery by Git specialist. Files/branch: exact shared-docs claim above. Acceptance: 37 preserved original IDs plus 3 setup cards, 0 duplicates; 4 tracked planning files in 1 reviewed planning PR; all local Markdown links resolve; 0 app source or credential artifacts included.
-- [ ] SETUP-03 · P0 · Status: active · Scoped local backend access setup
-  - Owner: backend setup agent, coordinator supervised. Scope: Boxd/Treg local auth/config only, no repo app files or global MCP settings. Current evidence: Boxd v0.3.5 installed, version/integrity checked; restricted-permission auth artifacts present, live validity untested. Onboarding rerun skipped after security review; scoped Treg auth path reviewed, setup starting. Acceptance: 1 redacted status receipt per authorized service, scope preserved, 0 paid model calls or leaked credentials; explicitly report untested access.
+- [x] SETUP-01 · P0 · Status: done · Publish shared planning board and governance
+  - Owner: planning docs worker; delivery by Git specialist. Receipt: 4 reviewed planning files published at `59ee562` in private [draft PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1); all 4 remote file blobs verified exactly, main unchanged. 37 original IDs plus 3 setup cards preserved; local links checked; 0 app source or credential artifacts included. Later receipt updates still require Git-specialist delivery.
+- [x] SETUP-03 · P0 · Status: done · Scoped local backend access setup
+  - Owner: backend setup agent, coordinator supervised. Receipt: Boxd v0.3.5 live authentication verified behind a read-only guard; Treg v0.30.0 scoped authentication and CLI identity verified for the intended team. Private local configuration stays outside this repository, directories `0700` and files `0600`. Unsafe onboarding rerun skipped. 0 global MCP/skill/model-routing changes, paid model calls or VM creation. Authentication checks do not verify application/provider inference; no private paths, balances, team IDs or credentials published.
 
 ## Owner actions
 
