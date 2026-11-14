@@ -2,7 +2,7 @@
 
 Snapshot: 2026-11-14, Europe/Athens. This repository board is the shared truth for future task claims and status updates. It preserves the 37 original task identities, adds 3 setup cards and updates stale administrative facts. The earlier local board remains an untouched historical snapshot.
 
-40 cards: 14 done, 1 draft-ready, 0 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
+41 cards: 14 done, 1 draft-ready, 1 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
 
 [Brief and non-goals](README.md) · [Resident collaboration rules](AGENTS.md)
 
@@ -26,6 +26,7 @@ Prior [wildfire-sweep](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3
 | Repository delivery | Git specialist | Git/GitHub operations only on the planning branch; explicit approved paths, coordinator review before integration |
 | Scoped backend setup | Backend setup agent, coordinator supervised | Local Boxd/Treg auth/config only, outside this repository; exact private paths belong in the setup handoff, no repository file claim |
 | Teammate application work | Unassigned, GitHub handle unknown | No app files or branch claimed; invitation and file ownership still pending |
+| FCC console proposal (PROP-01) | marcseli (Droid agent) | `proposal/fcc-console`: `proposal/**` only, plus this claim row and card PROP-01. Submitted for owner review; not merged into `main` |
 
 No application role below is assigned. App file boundaries will be set in the approved spec. Any later worker must claim a task, exact files and branch before coding.
 
@@ -55,6 +56,11 @@ No application role below is assigned. App file boundaries will be set in the ap
   - Owner: setup research role. Receipt: all 8 pages of local organizer instructions read; 1 registration abstract written and verified at 1,137 characters. No Google/Oumi account registration or API calls; access confirmation remains pending. No credentials/private account details copied into shared docs.
 - [x] O02 · P0 · Status: done · New-repo identity and creation
   - Owner: Nikolas, Git specialist. Receipt: `nikolas-sapa/fire-command-center`, private visibility and new project location chosen; private repo created and fresh planning branch checked. No old-repo mutations or application code implied.
+
+## Active proposal
+
+- [ ] PROP-01 · P0 · Status: active · FCC console proposal for owner review
+  - Owner: marcseli with Factory Droid agent. Branch: `proposal/fcc-console`. Files: `proposal/**` (app in `proposal/fcc/`, `proposal/HANDOFF.md`, `proposal/AGENT_PROTOCOL.md`). Receipt: `npm run build` in `proposal/fcc` passes with 0 TypeScript errors; 6 demo beats screenshot-reviewed at 1920 × 1080 on a MacBook (darwin 25.2), Chromium headless, seed 20210816, run 2026-11-14. The team's numeric acceptance tests have not been run. Execution is simulated; 0 provider inference calls. Pushed with marcseli's explicit instruction ahead of the planning gate; adoption, merge and architecture approval remain with Nikolas (O01). Agent messages follow `proposal/AGENT_PROTOCOL.md`.
 
 ## Drafting and setup
 
