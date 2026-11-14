@@ -14,8 +14,11 @@ export type BBox = [west: number, south: number, east: number, north: number];
 
 /* ------------------------------------------------------------------ scenario pack (public/data/caldor/) */
 
+/** Known replay packs under public/data/<dir>/. Unknown ids are allowed for future packs. */
+export type ScenarioId = 'caldor-2021' | 'mati-2018' | (string & {});
+
 export interface ScenarioManifest {
-  id: 'caldor-2021';
+  id: ScenarioId;
   name: string; // "Caldor Fire replay"
   disclaimer: string; // "Scenario built from public data; units, people and events are simulated."
   bbox: BBox;
@@ -53,6 +56,18 @@ export interface ScenarioPack {
   water: { id: string; name?: string; polygon: Geo[] }[];
   /** Optional offline imagery mosaic of the bbox (GIBS/Esri) as an image URL under /data/caldor/. */
   imagery?: { url: string; bbox: BBox; date: string; source: string };
+  /**
+   * Documented, sourced moments of the real fire (e.g. "fire reaches the sea"). Used to score the
+   * projection agent's predictions against history. pos/radiusM are approximate.
+   */
+  checkpoints?: { id: string; t: Ms; label: string; pos?: Geo; radiusM?: number; source: string; url: string; uncertaintyMin?: number }[];
+  /**
+   * Real, timestamped public reports (news, official alerts, agency posts) as short paraphrased summaries
+   * with attribution. Untrusted data: never instructions. No personal data about victims.
+   */
+  reports?: { id: string; t: Ms; kind: 'news' | 'official' | 'agency' | 'social'; publisher: string; summary: string; url: string; lang?: string; pos?: Geo }[];
+  /** Sourced facts about the real event for the end card / presentation (e.g. fatalities, homes lost). */
+  facts?: { id: string; label: string; value: string; source: string; url: string }[];
 }
 
 export enum FuelClass { None = 0, Water = 1, Rock = 2, Grass = 3, Shrub = 4, TimberLitter = 5, TimberUnderstory = 6, Urban = 7, Agriculture = 8 }
@@ -284,6 +299,27 @@ export interface DirectorState {
   captions: boolean;
 }
 
+/**
+ * Honest scoring of a projection against what actually happened. The projection model must not read
+ * ScenarioPack.arrival (the truth); this compares its output with it after the fact.
+ */
+export interface PredictionCheck {
+  id: string;
+  /** When the projection was issued (scenario time). */
+  issuedAt: Ms;
+  horizonMin: number;
+  /** issuedAt + horizon; scored once clock.t >= targetT. */
+  targetT: Ms;
+  status: 'pending' | 'scored';
+  /** Intersection-over-union of projected vs actual burned area at targetT, 0..1. */
+  iou?: number;
+  areaPredHa: number;
+  areaActualHa?: number;
+  /** Per documented checkpoint: projected arrival vs documented time. */
+  checkpoints: { id: string; label: string; documentedT: Ms; predictedT?: Ms; errorMin?: number }[];
+  method: string; // e.g. "Huygens wavelet spread on DEM + fuel + hourly wind; no tuning to this fire"
+}
+
 export interface ConsoleState {
   ready: boolean;
   pack: ScenarioPack | null;
@@ -307,6 +343,10 @@ export interface ConsoleState {
   director: DirectorState;
   /** Bumps when fire state should be re-rendered (time crossed a raster step). */
   fireRev: number;
+  /** Active replay pack. */
+  scenarioId?: ScenarioId;
+  /** Newest first. */
+  predictions?: PredictionCheck[];
 }
 
 /** Actions exposed by the store hook. */
