@@ -1,8 +1,10 @@
 import { Badge, Brackets, Icon, Rule, SectionHeader, Serial, cn, type IconName, type Tone } from '@ds';
 
-type Status = 'verified' | 'confirm' | 'optional';
+type Status = 'demo' | 'cached' | 'verified' | 'confirm' | 'optional';
 
 const statusMeta: Record<Status, { label: string; tone: Tone }> = {
+  demo: { label: 'In demo', tone: 'telemetry' },
+  cached: { label: 'In demo (cached)', tone: 'detection' },
   verified: { label: 'Verified', tone: 'nominal' },
   confirm: { label: 'To confirm', tone: 'warning' },
   optional: { label: 'Optional', tone: 'neutral' },
@@ -48,8 +50,8 @@ const ROWS: Row[] = [
   },
   {
     id: 'S-05', job: 'Active-fire hotspots', icon: 'satellite', vendor: 'NASA FIRMS',
-    what: 'Near-real-time MODIS and VIIRS active-fire detections through a keyed API.',
-    status: 'verified', refs: [{ label: 'firms.modaps.eosdis.nasa.gov/api', href: 'https://firms.modaps.eosdis.nasa.gov/api/' }],
+    what: 'Near-real-time MODIS and VIIRS active-fire detections through a keyed API. The console replays cached Caldor 2021 VIIRS detections (via NASA FEDS); the pack script uses FIRMS when a key is set.',
+    status: 'cached', refs: [{ label: 'firms.modaps.eosdis.nasa.gov/api', href: 'https://firms.modaps.eosdis.nasa.gov/api/' }],
   },
   {
     id: 'S-06', job: 'Multispectral imagery', icon: 'image', vendor: 'Sentinel-2 · Copernicus',
@@ -62,14 +64,34 @@ const ROWS: Row[] = [
     status: 'verified', refs: [{ label: 'api.weather.gov', href: 'https://api.weather.gov' }],
   },
   {
-    id: 'S-08', job: 'Terrain', icon: 'map', vendor: 'USGS 3DEP',
+    id: 'S-08', job: 'Historical weather', icon: 'wind', vendor: 'Open-Meteo',
+    what: 'Hourly wind, gusts, temperature and humidity for the replay window from the archive API. No key; non-commercial use is free.',
+    status: 'cached', refs: [{ label: 'open-meteo.com', href: 'https://open-meteo.com/' }],
+  },
+  {
+    id: 'S-09', job: 'Daily satellite imagery', icon: 'satellite', vendor: 'NASA GIBS',
+    what: 'Date-addressed WMTS imagery (MODIS, VIIRS true color and fire layers) with no key. The console caches dated Caldor snapshots for smoke and thermal context.',
+    status: 'cached', refs: [{ label: 'nasa-gibs.github.io', href: 'https://nasa-gibs.github.io/gibs-api-docs/' }],
+  },
+  {
+    id: 'S-10', job: 'Roads, buildings, places', icon: 'map', vendor: 'OpenStreetMap · Overpass',
+    what: 'Roads, structures, water and named places inside the scenario box, used for routing, exposure and labels. ODbL.',
+    status: 'cached', refs: [{ label: 'overpass-api.de', href: 'https://overpass-api.de/' }],
+  },
+  {
+    id: 'S-11', job: 'Terrain', icon: 'map', vendor: 'USGS 3DEP',
     what: 'National elevation data for slope and aspect, which drive spread rate in the projection agent.',
     status: 'verified', refs: [{ label: 'usgs.gov · 3DEP', href: 'https://www.usgs.gov/3d-elevation-program' }],
   },
   {
-    id: 'S-09', job: 'Photoreal map layer', icon: 'layers', vendor: 'Google Earth Engine / Map Tiles',
-    what: 'Optional photoreal 3D base layer for orientation. Licensing for operational use is to be confirmed.',
-    status: 'optional', refs: [],
+    id: 'S-12', job: '3D globe & terrain', icon: 'layers', vendor: 'CesiumJS · Cesium ion',
+    what: 'The console stage. With an ion Community token it streams world terrain and imagery; without one it falls back to a local heightmap and cached imagery.',
+    status: 'demo', refs: [{ label: 'cesium.com/platform/cesium-ion', href: 'https://cesium.com/platform/cesium-ion/' }],
+  },
+  {
+    id: 'S-13', job: 'Photoreal 3D base', icon: 'layers', vendor: 'Google Photorealistic 3D Tiles',
+    what: 'Optional photoreal mesh when a Map Tiles API key is present. Billing required, attribution shown, licensing for operational use to confirm.',
+    status: 'demo', refs: [{ label: 'developers.google.com/maps/documentation/tile', href: 'https://developers.google.com/maps/documentation/tile/3d-tiles' }],
   },
 ];
 
@@ -93,7 +115,7 @@ const QUESTIONS: { id: string; icon: IconName; title: string; body: string }[] =
 ];
 
 export default function Stack() {
-  const counts = ROWS.reduce<Record<Status, number>>((a, r) => ({ ...a, [r.status]: a[r.status] + 1 }), { verified: 0, confirm: 0, optional: 0 });
+  const counts = ROWS.reduce<Record<Status, number>>((a, r) => ({ ...a, [r.status]: a[r.status] + 1 }), { demo: 0, cached: 0, verified: 0, confirm: 0, optional: 0 });
   return (
     <section id="stack" className="relative scroll-mt-16 border-b border-line">
       <div className="mx-auto max-w-[1440px] px-6 py-24 lg:px-10 lg:py-32">
@@ -108,7 +130,7 @@ export default function Stack() {
             </>
           }
           lede="Every job in the brief mapped to a vendor or open data source, with what we checked and what still needs the client. Unverified pieces have a named fallback so the build does not wait on them."
-          meta={<Serial>FCC-03 / Spec / Rev B</Serial>}
+          meta={<Serial>FCC-03 / Spec / Rev C</Serial>}
         />
 
         <div className="mt-20">
@@ -127,7 +149,7 @@ export default function Stack() {
 
           <div className="relative mt-4 border border-line bg-ink-950">
             <Brackets size={8} />
-            <div className="hidden grid-cols-[64px_220px_200px_1fr_148px] border-b border-line-strong lg:grid">
+            <div className="hidden grid-cols-[72px_220px_200px_1fr_176px] border-b border-line-strong lg:grid">
               {['Ref', 'Job', 'Service', 'What it gives us', 'Status'].map((h) => (
                 <span key={h} className="flex h-10 items-center px-4 font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">
                   {h}
@@ -140,7 +162,7 @@ export default function Stack() {
                   key={r.id}
                   className={cn(
                     'group grid grid-cols-1 gap-3 border-b border-line-faint px-4 py-5 transition-colors duration-quick ease-servo last:border-b-0 hover:bg-ink-900',
-                    'lg:grid-cols-[64px_220px_200px_1fr_148px] lg:gap-0 lg:px-0',
+                    'lg:grid-cols-[72px_220px_200px_1fr_176px] lg:gap-0 lg:px-0',
                   )}
                 >
                   <span className="font-mono text-micro text-signal fcc-num lg:px-4 lg:pt-1">{r.id}</span>
@@ -174,7 +196,7 @@ export default function Stack() {
                     )}
                   </span>
                   <span className="lg:px-4 lg:pt-0.5">
-                    <Badge tone={statusMeta[r.status].tone} variant={r.status === 'verified' ? 'soft' : 'outline'} dot={r.status !== 'optional'}>
+                    <Badge tone={statusMeta[r.status].tone} variant={r.status === 'confirm' || r.status === 'optional' ? 'outline' : 'soft'} dot={r.status !== 'optional'}>
                       {statusMeta[r.status].label}
                     </Badge>
                   </span>

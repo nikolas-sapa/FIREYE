@@ -1,12 +1,12 @@
 import { RegMark, Ruler, Serial } from '@ds';
-import { FccMark, REV_A_HREF } from './Nav';
+import { CONSOLE_HREF, FccMark, REV_A_HREF, REV_B_HREF } from './Nav';
 
 const META: { label: string; rows: [string, string][] }[] = [
   {
     label: 'Document',
     rows: [
       ['ID', 'FCC-PRP-0001'],
-      ['Revision', 'B'],
+      ['Revision', 'C'],
       ['Date', '2026-11-14'],
       ['Sheets', '05'],
     ],
@@ -24,9 +24,9 @@ const META: { label: string; rows: [string, string][] }[] = [
     label: 'System',
     rows: [
       ['Core', 'Orchestrator + agent pools'],
-      ['AO', 'Sierra-7 (synthetic)'],
-      ['Grid', '240 × 150 · 40 M'],
-      ['Data', 'Simulated'],
+      ['Console', 'Caldor 2021 replay'],
+      ['Concept AO', 'Sierra-7 (synthetic)'],
+      ['Data', 'Public · simulated units'],
     ],
   },
   {
@@ -45,7 +45,8 @@ const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '
 
 const REVISIONS: { rev: string; date: string; note: string; href?: string }[] = [
   { rev: 'A', date: '2026-11-14', note: 'Initial proposal: dashboard-first console, ARGUS core', href: REV_A_HREF },
-  { rev: 'B', date: '2026-11-14', note: 'Orchestrator-first: graded alerts, calm default view, agent pools, drone grid' },
+  { rev: 'B', date: '2026-11-14', note: 'Orchestrator-first: graded alerts, calm default view, agent pools, drone grid', href: REV_B_HREF },
+  { rev: 'C', date: '2026-11-14', note: 'Full-screen console, real-fire replay (Caldor 2021), attention manager, agent work ledger' },
 ];
 
 export default function Footer() {
@@ -61,7 +62,7 @@ export default function Footer() {
             <span className="font-mono text-nano uppercase text-bone">Fire Command Center</span>
           </div>
           <div className="flex items-center gap-2">
-            <Serial>FCC-01 / Rev B</Serial>
+            <Serial>FCC-01 / Rev C</Serial>
             <Serial>Sheet 05/05</Serial>
           </div>
         </div>
@@ -109,7 +110,9 @@ export default function Footer() {
                     Open archive ↗
                   </a>
                 ) : (
-                  <span className="font-mono text-micro uppercase text-bone">Current</span>
+                  <a href={CONSOLE_HREF} className="font-mono text-micro uppercase text-bone transition-colors duration-quick ease-servo hover:text-signal">
+                    Current · Console ↗
+                  </a>
                 )}
               </li>
             ))}
@@ -130,7 +133,7 @@ export default function Footer() {
 
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
           <span className="font-mono text-micro uppercase text-bone-mute">
-            © 2026 FCC · All map data, units and incidents on this page are simulated · Not for operational use
+            © 2026 FCC · Console scenario built from public data; units, people and events are simulated · Not for operational use
           </span>
           <span className="font-mono text-micro uppercase text-bone-mute">
             FCC <span className="text-ink-500">//</span> Proposal <span className="text-ink-500">//</span> End of document

@@ -511,7 +511,7 @@ export default function Architecture() {
             </>
           }
           lede="Seven kinds of evidence are read by pools of analysis agents that scale with the load. A projection agent re-draws the fire path as they report. The Orchestrator grades everything, decides where it shows, and relays it to the people who can act on it."
-          meta={<Serial>FCC-02 / Schematic / Rev B</Serial>}
+          meta={<Serial>FCC-02 / Schematic / Rev C</Serial>}
         />
 
         <div className="mt-20">
@@ -538,6 +538,13 @@ export default function Architecture() {
             <span className="flex items-center gap-2 fcc-micro">
               <span className="inline-block w-4 border-t border-dashed border-ink-400" /> Sandbox boundary
             </span>
+            <a
+              href="/console.html"
+              className="ml-auto inline-flex items-center gap-1 font-mono text-micro uppercase text-bone-mute underline decoration-line-strong underline-offset-4 transition-colors duration-quick ease-servo hover:text-bone"
+            >
+              See it run in the console
+              <Icon name="arrow-up-right" size={9} />
+            </a>
           </div>
         </div>
 

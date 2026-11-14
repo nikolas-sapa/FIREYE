@@ -1,8 +1,8 @@
 # FCC Design System
 
-**FCC-DS / REV B · 2026-11-14 · Fire Command Center**
+**FCC-DS / REV C · 2026-11-14 · Fire Command Center**
 
-REV B adds the Orchestrator-first patterns (section 13) and 12 components. REV A is archived at `public/rev-a/` and git tag `rev-a`.
+REV C adds the full-screen console (`/console.html`): console layout and patterns (section 13A) and 10 console components (section 11, "Console components"). REV B added the Orchestrator-first patterns (section 13) and 12 components. REV B is archived at `public/rev-b/` and git tag `rev-b`; REV A at `public/rev-a/` and git tag `rev-a`.
 
 This is the canonical reference for building any FCC surface. Read it before writing UI. If something you need is not here, add it to the system (tokens, primitive or component), then document it here; do not invent one-off styles inside a feature.
 
@@ -25,6 +25,7 @@ Live reference: `src/sections/DesignSystemSection.tsx`, rendered at **http://loc
 11. [Component catalog](#11-component-catalog)
 12. [Domain patterns](#12-domain-patterns)
 13. [Orchestrator patterns (REV B)](#13-orchestrator-patterns-rev-b)
+13A. [Console patterns (REV C)](#13a-console-patterns-rev-c)
 14. [Content and voice](#14-content-and-voice)
 15. [Accessibility](#15-accessibility)
 16. [File map](#16-file-map)
@@ -824,6 +825,59 @@ Absolutely positioned inside a `relative` parent (not a portal), full height, `z
 `{ title; group; windowLabel; trigger; reason?; score; status: 'proposed' | 'approved' | 'rejected' | 'executing' | 'done'; onApprove?; onReject?; onLocate? }`
 
 Movement proposals from the Orchestrator. Signal left rule only while `proposed` (it is the pending decision); otherwise ink-500. Header: `route` icon, status (executing pulses), `ScoreMeter`. Body: title, group in mono, a `WINDOW / TRIGGER / REASON` spec list (trigger in amber). Footer: locate, `Reject` (ghost), `Approve` (primary), shown only while proposed. Rejected cards dim to 60%.
+### Console components (REV C)
+
+All in `src/design-system/components/console.tsx`, exported from `@ds`. Used by the full-screen console (`/console.html`, section 13A). The types are local to the design system (`ConsoleZone`, `ConsoleAudience`, `ConsoleAutonomy`, `ConsoleLens`, `ConsoleActionKind`, `ConsoleActionStatus`, `ConsoleDraftFormat`, `ConsoleDirectiveKind`, `ConsoleScoreFactors`) and are structurally identical to the matching types in `src/console/contracts.ts`, so store values pass straight in. Helpers exported alongside: `zoneMeta` (code, name, tone, where, capacity per zone), `actionKindIcon`, `actionKindLabel`, `consoleAudienceLabel`, `AudienceRow`.
+
+#### ZoneTag
+
+`{ zone: ConsoleZone; showName?: boolean = true }` — `<ZoneTag zone={item.zone} />` renders `Z3 · FOCUS` in the zone tone from `zoneMeta` (Z0 danger, Z1 nominal, Z2 warning, Z3 telemetry, Z4/Z5 neutral).
+
+#### WhyPopover
+
+`{ score; factors: ConsoleScoreFactors; reason: string; zone: ConsoleZone; placement?: ReactNode; title?: ReactNode }`
+
+The "Why am I seeing this?" panel. Shows the reason line, one bar per multiplicative factor (severity, exposure, confidence, freshness, lens), the additive terms as signed points (corroboration, actionability, novelty, minus fatigue), the final score, the `ZoneTag`, and a placement sentence ("Placed in Z3 because …", built from zone and score unless `placement` is given). Open it on hover or click of a focus item. Numbers match `docs/ORCHESTRATOR.md`.
+
+#### AutonomyDial
+
+`{ value: ConsoleAutonomy; onChange(v); compact? }` — Advise / Assist / Act as a segmented hardware dial with a one-line description of what the Orchestrator may do at the selected level. `compact` for the command strip.
+
+#### LensSelect
+
+`{ value: ConsoleLens; onChange(v); showKeys?: boolean = true }` — IC / OPS / AIR / EMS segmented control; `showKeys` prints the `1`–`4` keyboard shortcuts.
+
+#### TimelineScrubber
+
+`{ start; end; t; onSeek?(t); ticks?: { t; label?; major? }[]; series?: { t; v }[]; marks?: { t; kind: 'ghost' | 'beat' | 'event' | 'perimeter'; label? }[]; projectionUntil?; format?(t); compact?; label? = 'Scenario time' }`
+
+Scenario time axis: ticks (local midnights, 6 h steps), fire acres as a stepped area (`series`), real perimeter days and events as marks, projection ghosts, Director beat ticks, and the playhead. `projectionUntil` draws the projection window as an amber hatched range ahead of the playhead. Keyboard seekable when `onSeek` is set. `compact` for the command strip.
+
+#### LedgerCounter
+
+`{ label; value: number; unit?; format?(v); size?: 'sm' | 'md' | 'lg' = 'md'; tone?: Tone = 'neutral'; sub?: ReactNode }` — big tabular mono numeral with a micro label and a delta tick when the value increases. Use for footage reviewed, articles read, drafts written, analyst minutes saved.
+
+#### DraftDocument
+
+`{ format: ConsoleDraftFormat; title; fields: { label; value }[]; body: string; editable?; onChange?(body); serial?; status?; meta? }`
+
+Document-style card for evacuation notices, radio scripts, ICS-209 sitreps, orders and rescue tasks: serial and format strip, fields table, plain-text body (a textarea when `editable`), and a `SIMULATED` watermark. Square, hairline-ruled, bone on ink; no signal color (the approve button that accompanies it carries the signal).
+
+#### DirectiveToast
+
+`{ kind: ConsoleDirectiveKind; title; reason?; time?; suggestion?: boolean; onUndo?; onHold?; onApply?; onDismiss?; ttlMs?: number = 0 }`
+
+"Orchestrator moved camera to HAWK-3 · reason · Undo / Hold". One icon per directive kind (focusStage `locate`, promoteFeed `camera`, restoreStage `map`, openPanel `expand`, highlight `target`, dimOthers `eye`, requestDecision `check`, notify `send`). With `suggestion` (hold layout on) it reads as a suggestion with `Apply`. `ttlMs` draws the auto-fade countdown as a hairline; 0 disables it. Stack top-left over the stage.
+
+#### CaptionBar
+
+`{ beat; total; title; caption; progress?: number /* 0..1 */; beatMarks?: number[] /* 0..1 */; onPrev?; onNext?; onClose? }` — Demo Director caption at the bottom of the stage: beat `n/total`, title, one-sentence caption, progress rule with beat ticks, prev / next / close.
+
+#### DecisionCard
+
+`{ kind: ConsoleActionKind; title; summary?; risk: 'low' | 'high'; status: ConsoleActionStatus; audiences?; windowLabel?; trigger?; units?: string[]; drafted?: string; score?; compact?; primary?; onApprove?; onEdit?; onReject?; onUndo?; onLocate?; onExpand? }`
+
+An action that needs a decision (Z2). Kind icon and label (`actionKindIcon`, `actionKindLabel`), title, summary, risk badge, status (tone: proposed warning, approved/done nominal, executing telemetry, rejected/undone neutral), relay row (`AudienceRow`), units, window and trigger (trigger in amber), "Orchestrator drafted · 12 s ago" (`drafted`), optional `ScoreMeter`. Footer: Approve / Edit / Reject while proposed, Undo after execution. `primary` makes Approve the one signal button on screen; set it on the top card only.
 ---
 
 ## 12. Domain patterns
@@ -976,6 +1030,52 @@ Never draw a non-live finding as a solid point; the ring is the honesty.
 A proposal names who moves (`group`), where (`to`, safety zone), by which route, the time window (`windowMin`), the trigger, and the reason. Show it as a `MovementCard`; on the map draw the route as a dashed signal line to a crosshair and the safety zone as a hollow phosphor circle. Approve dispatches; reject logs the reason.
 
 ---
+
+## 13A. Console patterns (REV C)
+
+REV C adds a full-screen console at `/console.html`, separate from the proposal page, designed for 1920 × 1080 and up (responsive down to 1440 × 900, no page scroll). Full-bleed dark ops: the 3D stage dominates and the Orchestrator decides what earns screen space. The attention model (score, zones, directives, autonomy) is specified in `docs/ORCHESTRATOR.md`; this section is the visual side.
+
+### 13A.1 Layout anatomy
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│ COMMAND STRIP 48px  FCC mark · CALDOR FIRE · REPLAY · clock (local + Z) · Timeline    │
+│ (compact) · play/speed · LensSelect · AutonomyDial · Hold · status · Director · DISCL.│
+├────┬─────────────────────────────────────────────────────────────┬───────────────────┤
+│RAIL│ STAGE (Z1)                                                   │ ORCHESTRATOR 400px│
+│52px│  Z0 InterruptBanner (top-center)                             │  Now: brief       │
+│    │  DirectiveToast stack (top-left)                             │  Decisions (Z2×3) │
+│pool│                                                              │  Focus (Z3×3)     │
+│bars│        3D globe · fire · bands · units · routes             │  Ambient count    │
+│    │                                                              │  Conversation     │
+│Agts│  metric strip (bottom-left)          CaptionBar (bottom)     │  Ledger counters  │
+│Drft├─────────────────────────────────────────────────────────────┴───────────────────┤
+│Ldgr│ FEED STRIP ~180px  FeedSurface thumbs by relevance, top feed 2× · fire timeline   │
+│Log │                                                                                  │
+└────┴──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Region | Zone | Contents |
+|---|---|---|
+| Command strip | — | Incident identity, scenario clock (local and Zulu), compact `TimelineScrubber`, play / pause / speed, `LensSelect`, compact `AutonomyDial`, hold-layout `Toggle`, Orchestrator `StatusPill`, Director controls, disclaimer chip. |
+| Stage | Z1 (Z0 overlay) | `<Stage>` from `src/console/stage3d`. Overlays only: `InterruptBanner` (Z0), `DirectiveToast` stack, compact metric strip (acres, containment (simulated), ROS, lives at risk, structures threatened), legend on demand, `CaptionBar`. In feed mode the promoted feed fills the stage with a "Back to globe" control. |
+| Orchestrator column | Z2, Z3, Z4 count | Brief (headline, bullets, "changed since last brief"), Decisions needed (`DecisionCard` ×3), Focus (`AlertCard` + `WhyPopover`, ×3, bundles show member count), ambient count line, conversation (`OrchBubble`, `PromptChip`, input), compact `LedgerCounter`s. |
+| Left rail | — | Agent swarm as tiny live pool bars; opens drawers: Agent Ops (pipeline, `PoolBar`s, job stream with provider and model), Drafts (`DraftDocument`s), Ledger (full Agent Work Ledger), Log (Z5 and all items, filter by zone and class), Layers. |
+| Feed strip | — | `FeedSurface variant="thumb"` inside `FeedTile`s ordered by `feed.relevance`, top feed enlarged 2×; click promotes the feed to the stage. |
+
+### 13A.2 Rules
+
+- **Calm by default.** On a quiet screen: stage, brief, ledger counters, feed strip. Nothing else asks for attention.
+- **One signal element per view.** Usually the top `DecisionCard`'s Approve, or Acknowledge on a Z0 interrupt (which then takes it). Projection bands are amber; life is violet on the stage and ember in the interrupt.
+- **Zones are budgets.** Never render more than `ZONE_CAPACITY` items in a zone; show overflow as a count.
+- **Every placement is explainable.** Each focus item and decision has a reason line and a `WhyPopover`.
+- **Directives are visible.** Every automatic camera move, feed promotion or panel opening raises a `DirectiveToast` with the reason and Undo / Hold. With hold layout on, directives arrive as suggestions with Apply.
+- **Disclaimer always visible:** "Scenario built from public data; units, people and events are simulated." `DraftDocument` carries a `SIMULATED` watermark.
+- **Respectful content.** No gore, no real casualty claims; people in danger are fictional and get rescued.
+- **Motion.** Camera flights `ease-settle`, toasts and cards `ease-servo` at `duration-base`; no bounce; with `prefers-reduced-motion` camera moves cut instead of fly and toasts do not slide.
+- **Keyboard.** `Space` play / pause, `D` start demo, `←` / `→` beats, `1`–`4` lens, `Esc` closes drawers and popovers.
+---
+
 ## 14. Content and voice
 
 - **Terse and operational.** Write like a dispatcher, not a marketer. "Head tracking NE at 22 m/min." not "The fire is moving quickly!"
@@ -1023,12 +1123,17 @@ src/design-system/
                                   Modal, Table, Sparkline, Metric, Gauge, Confidence, UnitChip, Legend, Compass
   components/orchestrator.tsx     REV B: ScoreMeter, TierBadge, AlertCard, InterruptBanner, Freshness, OrchBubble,
                                   PromptChip, Drawer, IconRail, FeedTile, PoolBar, MovementCard + tier helpers
+  components/console.tsx          REV C: ZoneTag, WhyPopover, AutonomyDial, LensSelect, TimelineScrubber, LedgerCounter,
+                                  DraftDocument, DirectiveToast, CaptionBar, DecisionCard, AudienceRow + zoneMeta helpers
   icons/index.tsx                 Icon, iconNames, IconName
 src/sim/                          simulation engine; types.ts is the contract
 src/dashboard/                    live ops console; map/ holds TacticalMap
 src/sections/                     page sections: Nav, Hero, Architecture, Stack, DashboardSection, DesignSystemSection, Footer
 src/sections/ds/                  showcase chapters (Orchestrator.tsx = 05.8 Orchestrator patterns)
+console.html, src/console/        REV C full-screen console (contracts.ts, store, stage3d, ui, orchestrator, ...)
+docs/                             BACKEND_CONTRACT, ORCHESTRATOR, DATA_SOURCES, SETUP
 public/rev-a/                     frozen REV A build (never edit)
+public/rev-b/                     frozen REV B build (never edit)
 src/App.tsx                       page composition
 ```
 

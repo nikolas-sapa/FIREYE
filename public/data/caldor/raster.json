@@ -1,0 +1,22 @@
+{
+ "w": 1000,
+ "h": 833,
+ "bbox": [
+  -120.7,
+  38.52,
+  -120.24,
+  38.82
+ ],
+ "cellM": 40,
+ "dxM": 40.01,
+ "dyM": 39.98,
+ "cellAcres": 0.3953,
+ "rowOrder": "north-to-south",
+ "endianness": "little",
+ "files": {
+  "elevation": "elevation.bin (Int16 m)",
+  "fuel": "fuel.bin (Uint8 FuelClass)",
+  "fbfm40": "fbfm40.bin (Uint8 raw LANDFIRE FBFM40 code)",
+  "arrival": "arrival.bin (Float32 ms since manifest.start, NaN = never)"
+ }
+}

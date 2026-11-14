@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Button, Dot, Icon, Serial, cn, zulu } from '@ds';
 
 export const REV_A_HREF = '/rev-a/index.html';
+export const REV_B_HREF = '/rev-b/index.html';
+export const CONSOLE_HREF = '/console.html';
 
 const LINKS = [
   { id: 'top', index: '01', label: 'Overview' },
@@ -59,11 +61,7 @@ export default function Nav() {
   const clock = useZulu();
   const active = useActiveSection();
 
-  const goConsole = () => {
-    const el = document.getElementById('dashboard');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    else window.location.hash = '#dashboard';
-  };
+  const goConsole = () => window.location.assign(CONSOLE_HREF);
 
   return (
     <header className="sticky top-0 z-hud border-b border-line bg-ink-950/80 backdrop-blur-md">
@@ -107,17 +105,23 @@ export default function Nav() {
             <Dot className="bg-phosphor" live size={5} />
             <span className="font-mono text-tiny text-bone fcc-num" aria-label="Zulu time">{clock}</span>
           </div>
-          <Serial className="hidden md:inline-flex">Proposal · Rev B</Serial>
-          <a
-            href={REV_A_HREF}
-            className="hidden items-center gap-1 font-mono text-micro uppercase text-bone-mute transition-colors duration-quick ease-servo hover:text-bone md:inline-flex"
-            title="Open the archived REV A build"
-          >
-            Rev A
-            <Icon name="arrow-up-right" size={10} />
-          </a>
-          <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole}>
-            View Console
+          <Serial className="hidden md:inline-flex">Proposal · Rev C</Serial>
+          {[
+            { href: REV_A_HREF, label: 'Rev A' },
+            { href: REV_B_HREF, label: 'Rev B' },
+          ].map((r) => (
+            <a
+              key={r.href}
+              href={r.href}
+              className="hidden items-center gap-1 font-mono text-micro uppercase text-bone-mute transition-colors duration-quick ease-servo hover:text-bone md:inline-flex"
+              title={`Open the archived ${r.label.toUpperCase()} build`}
+            >
+              {r.label}
+              <Icon name="arrow-up-right" size={10} />
+            </a>
+          ))}
+          <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole} title="Open the full-screen console">
+            Console
           </Button>
         </div>
       </div>

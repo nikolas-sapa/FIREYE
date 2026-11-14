@@ -19,7 +19,7 @@ export function DoDontSpec() {
   return (
     <SubSection
       id="system-dodont"
-      index="05.10"
+      index="05.11"
       kicker="Do / Don't"
       title="Four common failures, and the fix."
       lede="When in doubt, remove. A command interface earns trust by being quiet when nothing is wrong."

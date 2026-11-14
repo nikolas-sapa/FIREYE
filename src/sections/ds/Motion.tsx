@@ -42,7 +42,7 @@ export function MotionSpec() {
   return (
     <SubSection
       id="system-motion"
-      index="05.9"
+      index="05.10"
       kicker="Motion"
       title="Mechanical, precise, never decorative."
       lede="Motion behaves like a servo: it moves only when state changes, travels the shortest path, and stops without bounce. Reduced-motion users get instant state."

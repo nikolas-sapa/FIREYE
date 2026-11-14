@@ -18,3 +18,12 @@ export type {
   OrchTier, OrchAlertClass, OrchAudience, MovementStatus, ScoreMeterProps, AlertCardProps, InterruptBannerProps, FreshnessProps,
   OrchBubbleProps, DrawerProps, IconRailItem, IconRailProps, FeedTileProps, PoolBarProps, MovementCardProps,
 } from './orchestrator';
+export {
+  ZoneTag, WhyPopover, AutonomyDial, LensSelect, TimelineScrubber, LedgerCounter, DraftDocument, DirectiveToast, CaptionBar, DecisionCard,
+  AudienceRow, zoneMeta, actionKindIcon, actionKindLabel, consoleAudienceLabel,
+} from './console';
+export type {
+  ConsoleZone, ConsoleAudience, ConsoleAutonomy, ConsoleLens, ConsoleActionKind, ConsoleActionStatus, ConsoleDraftFormat, ConsoleDirectiveKind,
+  ConsoleScoreFactors, WhyPopoverProps, AutonomyDialProps, LensSelectProps, TimelineMark, TimelineScrubberProps, LedgerCounterProps,
+  DraftDocumentProps, DirectiveToastProps, CaptionBarProps, DecisionCardProps,
+} from './console';

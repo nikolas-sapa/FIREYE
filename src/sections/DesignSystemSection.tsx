@@ -3,6 +3,7 @@ import { ColorSpec, Principles, SpaceSpec, TypeSpec } from './ds/Foundations';
 import { IconSpec, MicrographicsSpec } from './ds/Micrographics';
 import { ComponentsSpec } from './ds/Components';
 import { OrchestratorSpec } from './ds/Orchestrator';
+import { ConsoleSpec } from './ds/Console';
 import { MotionSpec } from './ds/Motion';
 import { DoDontSpec } from './ds/DoDont';
 
@@ -15,8 +16,9 @@ const toc = [
   { id: 'system-icons', n: '05.6', label: 'Iconography' },
   { id: 'system-components', n: '05.7', label: 'Components' },
   { id: 'system-orchestrator', n: '05.8', label: 'Orchestrator' },
-  { id: 'system-motion', n: '05.9', label: 'Motion' },
-  { id: 'system-dodont', n: '05.10', label: "Do / Don't" },
+  { id: 'system-console', n: '05.9', label: 'Console' },
+  { id: 'system-motion', n: '05.10', label: 'Motion' },
+  { id: 'system-dodont', n: '05.11', label: "Do / Don't" },
 ];
 
 export default function DesignSystemSection() {
@@ -43,7 +45,7 @@ export default function DesignSystemSection() {
           <div className="col-span-12 lg:col-span-3">
             <span className="fcc-micro">Contents</span>
             <div className="mt-3 flex flex-col gap-1 font-mono text-micro uppercase text-bone-mute">
-              <span>10 chapters / 40 components</span>
+              <span>11 chapters / 50 components</span>
               <span>{iconNames.length} icons / 3 easings</span>
             </div>
           </div>
@@ -78,6 +80,7 @@ export default function DesignSystemSection() {
           <IconSpec />
           <ComponentsSpec />
           <OrchestratorSpec />
+          <ConsoleSpec />
           <MotionSpec />
           <DoDontSpec />
         </div>

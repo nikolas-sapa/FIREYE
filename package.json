@@ -12,8 +12,10 @@
   "dependencies": {
     "@fontsource-variable/inter-tight": "^5.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
+    "cesium": "^1.146.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vite-plugin-cesium": "^1.2.23"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

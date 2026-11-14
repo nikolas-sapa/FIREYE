@@ -1,18 +1,21 @@
 # AGENTS.md — operating rules for AI agents
 
-FCC (Fire Command Center) is a single-page proposal and live prototype: an Orchestrator-first command console for fire departments and first responders, running on a simulated incident. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
+FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orchestrator-first command center for fire departments and first responders. The proposal site runs on a simulated incident; the REV C console replays the 2021 Caldor Fire from public data. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
 
 ## Revisions
 
-- **REV B (current)** — Orchestrator-first. A calm default console (map, command bar, Orchestrator dock) with progressive disclosure through an icon rail and drawers. Every finding is graded 0–100 and placed by tier (`DESIGN_SYSTEM.md` section 13).
+- **REV C (current)** — full-screen console at `/console.html` (entry `console.html` → `src/console/main.tsx` → `src/console/ConsoleApp.tsx`), designed for 1920 × 1080 and up. A 3D CesiumJS stage replays the Caldor Fire (El Dorado County, CA, Aug 2021) from a cached public-data pack in `public/data/caldor/`. Simulated agent pools publish typed bus events; the Orchestrator grades, places and drafts work; an Agent Work Ledger counts analyst minutes saved. The proposal site keeps the REV B embedded dashboard as the "concept preview" in `#dashboard` and links to the console. See "REV C console contract" below and `docs/`.
+- **REV B (frozen)** — Orchestrator-first. A calm default console (map, command bar, Orchestrator dock) with progressive disclosure through an icon rail and drawers. Every finding is graded 0–100 and placed by tier (`DESIGN_SYSTEM.md` section 13).
+  A built copy lives in `public/rev-b/` (served at `/rev-b/index.html`) and the source is git tag `rev-b`. Never edit `public/rev-b/`.
 - **REV A (frozen)** — the original dashboard-first proposal. A built copy lives in `public/rev-a/` (served at `/rev-a/index.html`) and the source is git tag `rev-a`. Never edit `public/rev-a/`; to inspect REV A source use `git show rev-a:<path>` or `git worktree add /tmp/fcc-rev-a rev-a`.
-- A new revision gets: a git tag for the previous one, a frozen build under `public/rev-<x>/`, bumped serials (Hero strip, Nav, Footer revision history, `FCC-DS / REV X`), and a note here.
+- A new revision gets: a git tag for the previous one, a frozen build under `public/rev-<x>/`, bumped serials (Hero strip, Nav, Footer revision history, `FCC-DS / REV X`), and a note here. Frozen builds (`public/rev-a/`, `public/rev-b/`) are never edited or rebuilt; only the integrator commits and tags.
 
 ## Stack
 
 - Vite 5, React 18, TypeScript (strict, `noUnusedLocals`, `noUnusedParameters`), Tailwind CSS 3.4.
 - Fonts: Inter Tight Variable and JetBrains Mono Variable, self-hosted via `@fontsource-variable/*`.
-- No other runtime dependencies. All map, terrain, imagery and data are generated procedurally in the browser. No external APIs, tiles or CDNs.
+- REV C adds `cesium` and `vite-plugin-cesium` (wired in `vite.config.ts`) for the console stage. No other runtime dependencies.
+- The proposal site generates its map, terrain and data procedurally in the browser and makes no external requests. The console loads the cached pack from `/data/caldor/`; it streams Cesium ion and Google Photorealistic 3D Tiles only when the optional tokens `VITE_CESIUM_ION_TOKEN` / `VITE_GOOGLE_MAPS_KEY` are set in `.env.local` (see `docs/SETUP.md`). Every path must work without tokens.
 
 ## Commands
 
@@ -24,7 +27,9 @@ npm run typecheck    # tsc --noEmit only
 npm run preview      # serve the production build
 ```
 
-Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and open questions), `#dashboard` (04 live ops console), `#system` (05 design system showcase). REV A archive: `/rev-a/index.html`.
+Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and open questions), `#dashboard` (04 live ops, REV B concept preview + link to the console), `#system` (05 design system showcase). Console: `/console.html`. Archives: `/rev-b/index.html`, `/rev-a/index.html`.
+
+Scenario data: `node scripts/fetch-data.mjs` (optional `FIRMS_MAP_KEY`) rebuilds `public/data/caldor/`.
 
 ## Directory map
 
@@ -32,6 +37,11 @@ Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and o
 DESIGN_SYSTEM.md            canonical design reference (tokens, components, patterns, recipes)
 AGENTS.md                   this file
 README.md                   project intro
+docs/                       BACKEND_CONTRACT.md, ORCHESTRATOR.md, DATA_SOURCES.md, SETUP.md
+console.html                REV C console entry
+src/console/                REV C console (see ownership map below)
+scripts/fetch-data.mjs      builds the Caldor scenario pack
+public/data/caldor/         cached scenario pack (README.md lists sources)
 tailwind.config.ts          tokens wired into Tailwind utilities
 src/main.tsx                React entry
 src/App.tsx                 page composition (Nav, Hero, Architecture, Stack, DashboardSection, DesignSystemSection, Footer)
@@ -49,6 +59,7 @@ src/dashboard/              live ops console panels
 src/dashboard/map/          TacticalMap renderer (canvas)
 src/sections/               page sections (ds/ = showcase chapters)
 public/rev-a/               frozen REV A build — never edit
+public/rev-b/               frozen REV B build — never edit
 ```
 
 Path aliases: `@ds` → `src/design-system/index.ts`, `@ds/*` → `src/design-system/*`, `@/*` → `src/*`.
@@ -91,6 +102,38 @@ React usage:
 - `CameraView` from `@/dashboard/map`: `{ feedId, variant?: 'thumb' | 'full', className? }` renders a simulated live camera for a `CameraFeed` and fills its parent. Put it inside a `FeedTile`.
 - The grid is mutated in place for performance. Consumers must treat the snapshot as read-only and key caches off `grid.version` and `forecastRev`.
 
+## REV C console contract
+
+`src/console/contracts.ts` is the single source of truth for the console and the future backend (`docs/BACKEND_CONTRACT.md` mirrors it). Additive changes only: add optional fields or new union members; never rename or remove. Consumers ignore unknown fields and event types.
+
+- **Scenario pack** — `ScenarioPack`: `manifest` (bbox, center, start/end, tz, places, sources, disclaimer), `raster` (`RasterMeta`, row 0 = north), `elevation`, `fuel` (`FuelClass`), `arrival` (fire time of arrival, ms since start), `perimeters`, `hotspots`, `weather`, `roads`, `buildings`, `water`, `imagery?`.
+- **World** — `Unit`, `Finding` (freshness `0.5 ^ (age / halfLifeS)`, 1 while `live`), `Projection` (bands at 60/180/360 min, `etaToPlaces`), `Feed`.
+- **Attention** — `ScoreFactors`, `Zone` + `ZONE_CAPACITY` (Z0 1, Z1 1, Z2 3, Z3 3, Z4 40, Z5 ∞), `GradedItem`, `Directive`. Score and placement rules: `docs/ORCHESTRATOR.md`.
+- **Work** — `Action` (+ `Draft`), `AgentPool`, `AgentJob`, `Ledger`, `Message`, `Brief`.
+- **Bus** — `BusEvent`: `source.ingested`, `analysis.job`, `analysis.finding`, `projection.updated`, `orchestrator.graded`, `ui.directive`, `action.proposed`, `action.decided`, `brief.updated`, `message`, `ledger.entry`. A real backend publishes the same events over WebSocket (`src/console/bus/adapters.ts`).
+- **State** — `ConsoleState` and `ConsoleApi` (store hook).
+
+Module APIs:
+
+- `src/console/scenario/load.ts` → `loadScenario(): Promise<ScenarioPack>`. `src/console/scenario/geo.ts` → `geoToCell`, `cellToGeo`, `elevationAt`, `isBurnedAt`, `fireFieldAt` (0 unburned, 1 active edge, 2 burned), `distanceM`, `bearingDeg`, `destination`, `nearestRoadPath`.
+- `src/console/store.tsx` → `ConsoleProvider`, `useConsole()`, `useConsoleSelector(sel)`, `useConsoleApi()`, `bus` (`subscribe`, `publish`, `history`).
+- `src/console/stage3d/index.ts` → `<Stage />`, `<FeedSurface feedId variant="thumb" | "full" />`, `getStageCapabilities()`.
+- `src/design-system/components/console.tsx` → console components exported from `@ds` (catalog in `DESIGN_SYSTEM.md` §11, console section).
+
+Ownership map (one owner per path; change another owner's files only through the integrator):
+
+| Path | Owner |
+|---|---|
+| `src/console/contracts.ts` | Integrator (additive changes on request) |
+| `src/console/scenario/**`, `scripts/**`, `public/data/**` | DATA |
+| `src/console/store.tsx`, `src/console/bus/**`, `src/console/world/**`, `src/console/agents/**`, `src/console/orchestrator/**`, `src/console/director/**` | BRAIN |
+| `src/console/stage3d/**` | STAGE |
+| `src/console/ConsoleApp.tsx`, `src/console/main.tsx`, `src/console/ui/**`, `src/design-system/components/console.tsx` | UI |
+| `docs/**`, `README.md`, `AGENTS.md`, `DESIGN_SYSTEM.md` (console sections), proposal sections `Nav`, `Hero`, `Footer`, `Stack`, `Architecture`, `DashboardSection` | DOCS |
+| `public/rev-a/**`, `public/rev-b/**` | Frozen, nobody |
+
+Console rules on top of the hard rules: the 3D stage dominates; at most one Z0 interrupt; one signal-orange focal element per view; the disclaimer "Scenario built from public data; units, people and events are simulated." is always visible; no gore and no real casualty claims; people in danger are fictional and get rescued; high-risk actions never execute without user approval.
+
 ## PR checklist
 
 - [ ] `npm run build` passes with zero TypeScript errors.
@@ -103,5 +146,6 @@ React usage:
 - [ ] New components are exported from `@ds`, shown in the `#system` showcase, and documented in `DESIGN_SYSTEM.md`.
 - [ ] `src/sim/types.ts` changes are additive only.
 - [ ] Alerts are placed by tier (`tierOf`), at most one interrupt is visible, and non-live findings fade by freshness.
-- [ ] `public/rev-a/` is untouched.
-- [ ] No new dependencies, no external network requests.
+- [ ] `public/rev-a/` and `public/rev-b/` are untouched.
+- [ ] No new dependencies. The proposal site makes no external network requests; the console works with no tokens and no network beyond `/data/caldor/`.
+- [ ] `src/console/contracts.ts` changes are additive only and mirrored in `docs/BACKEND_CONTRACT.md`.
