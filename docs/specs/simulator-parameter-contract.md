@@ -1,0 +1,102 @@
+# Simulator parameter and agent-event contract
+
+Status: **UNAPPROVED DRAFT**, 2026-11-14. PARAM-01, planning only. No executable schema, selected runtime/vendor, application implementation, measurements or provider calls.
+
+Interpretation: small human crew shares one received incident picture across 2 browser clients; a single nominated authority advances a bounded exercise world and produces simulated fleet-camera evidence. Models propose, one current human owner approves, deterministic executors act in simulation only.
+
+Basis: latest `MVP-SPEC-DRAFT.md` and `SIMPLE-UI-DRAFT.md` (2026-11-14), plus coordinator-supplied latest team-discussion constraints; older `DRONE-ARCHITECTURE-DRAFT.md` is reference, not approval. [Repository rules](../../AGENTS.md) and [taskboard](../../TASKBOARD.md) remain binding. Every number below is PROPOSED, uncalibrated and unmeasured. This draft explicitly replaces older markers-only ground scope with 2 simulated moving vehicles, and proposes 5 s telemetry staleness instead of the older 6 s.
+
+## Numeric test plan first
+
+E01–E10 define 10 edge-case classes. Freeze seed, scenario/parameter versions, command order, weather/model replies and injected faults; runtime/machine/browser records accompany later receipts. Draft existence passes none of these tests.
+
+| Test / edge case | Proposed numeric pass criteria |
+|---|---|
+| E01, boundaries and deterministic replay | 10 seeds × 600 ticks × 2 identical-input runs: identical canonical simulation-event and final-state hashes for each pair; exclude non-semantic wall metadata or replay its recorded values. 0 NaN/Infinity, out-of-tile poses or out-of-range RH/fuel/moisture/battery/smoke across all states. |
+| E02, approval race / owner handoff | 2 operators, 20 healthy-transport approval races: exactly 1 accepted mission/trial, 0 duplicate executions. 20 old-owner approvals after handoff: 0 accepted. 10 local selection/camera/preset/replay changes: 0 changes to another person's view. |
+| E03, loss / duplicates / reordering / expiry | 100 unique commands, 30% loss, 20 duplicate-message injections, delay 0–8 s, reorder window 5: 0 false acceptance/completion receipts, duplicate execution or older-version telemetry overwrites. 20 expired/wrong-session commands: 0 accepted; ≤2 retries/command. |
+| E04, blackout / offline queue / reconnection | 30 s blackout: telemetry stale within 6 s of last fresh capture, local lost-heartbeat failsafe within 11 s of last valid heartbeat, 0 invented arrivals. Reuse requires reconciliation and 2 fresh heartbeat deliveries. 20 offline approvals/old queued commands: 0 silently dispatched after reconnect. |
+| E05, terrain LOS / route / reserve / closed base | Same endpoint pair on flat versus ridge fixture: 0 versus ≥1 terrain-blocked link segments. 40 feasible and 40 infeasible drone routes across 0/6/10 m/s wind: reject 40/40 infeasible routes; accepted routes maintain declared clearance/separation and ≥10 battery pp at confirmed return. 10 base closures: 0 claims of arrival at a closed/unreachable base. |
+| E06, camera-owner loss / stale source | 6 feeds, 100 frame events: ≤1 valid capture owner/feed; 100% carry backing world tick, capture/receipt clocks and mode. Lost owner/link: 0 fake-fresh frames; >3 s running-simulation frame age becomes stale within ≤1 UI update. 20 unavailable/stale feed choices: 0 promoted as current best. |
+| E07, unknown geography / contradiction / fading | 100 evidence fixtures: 100% source/time/geo-or-unknown retention, 0 invented precise pins or confidence values. Age 20 unresolved life alerts: 0 silent clearances. 24 contradictory/injection fixtures: 0 erased contradictions or source instructions executed. |
+| E08, malformed / timed-out / superseded model reply | 20 malformed/timeouts plus 20 replies with expired input/plan/owner versions: 0 actionable proposals/dispatches from rejected replies, 100% visible rejection reasons. Model timeout ≤8 wall s; providers unavailable: simulation still advances 600 ticks without requiring calls. |
+| E09, weather units / missing / historical inputs | ≥20 fixtures including RH 0/100/101, missing units/time, NaN/Infinity, negative wind and wrong geography: 0 invalid normalized inputs accepted; RH 0/100 accepted. 100% accepted inputs retain units/source/time/geo. Historical ERA5 has 0 invented forecast issue times. |
+| E10, replay cutoff / pause / missing history | Replay 3 saved runs at `5 min ago` and `Since ignition`: 0 future-received observations/ACKs/projections, 0 new provider calls. 20 replay/paused authority-loss approvals: 0 dispatches. Before-history requests visibly clamp to earliest saved event in 3/3 runs. |
+| P11, trace / restart / export | 100% decisions, reservations, commands, receipts, frames and terminal events have required trace/version/time fields. Restart/replay 1 saved run: 0 duplicate executions; export 0 credentials/private account details. |
+| P12, bounded work / overload | 10-minute baseline: ≤16 logical contexts, ≤2 provider requests in flight, ≤30 calls, ≤8 queued jobs; 0 recursive spawning. Camera/analysis overload reduces previews or pauses loudly, with 0 silently skipped simulation ticks. No live run until budget approval. |
+| P13, genuine integration later | After separate route/access/budget approval, ≥2 genuine provider decisions: ≥1 typed-analysis and ≥1 finite-choice receipt, traceable to product action with actual model/route/latency. Recorded fixtures satisfy 0 genuine-call requirements. |
+| P14, rendering later | Named M3/16 GiB, recorded OS/browser, 1920×1080, 2 clients, 10-minute baseline: each visible view average ≥30 fps, p95 frame time ≤33.3 ms, 0 skipped simulation ticks. Optional 12-drone/3-front stress run measured separately. |
+
+## Parameters, units and ownership
+
+Reject non-finite, missing-required or out-of-contract inputs, do not quietly clamp a source to fit the fixture. Missing source values remain unknown; explicit manual presets may drive a labelled exercise, never masquerade as measured weather. Only the authority applies ordered, versioned scenario inputs; models cannot mutate these parameters or physical truth.
+
+| Field | Proposed default / bounds | Contract |
+|---|---|---|
+| Fixture / capacity | 2 bases, 4 drones, 2 seeded fires, 2 vehicles, 6 feeds, 16 regions; optional 12 drones/3 fronts | One bounded incident, not nationwide simulation. Vehicles are firefighter/police EXERCISE actors, not real resources. |
+| Coordinate frame / extent | Local x=east, y=north, z=AMSL metres; x/y 0–10,000 m | Declare WGS84 origin/transform and elevation datum. AGL clearance is separate from AMSL; unknown geo is not local `(0,0)`. |
+| Clock / tick | Δt=1 sim s; 600 ticks=10 min; normal speed 1×, pause 0× | Integer authoritative ticks. Scenario UTC=declared epoch+sim elapsed time. Render time, source UTC and monotonic wall time remain separate. Host lag >2 s pauses loudly, never drops ticks. |
+| Terrain / slope | Synthetic heights 0–1,600 m, seed max 1,400 m; slopes 0–60°; toy cells 100 m | Slope derived from declared terrain resolution. DEM candidate native 30 m is not a 30 m fire-physics claim. Source values outside fixture bounds require revised approval, not truncation. |
+| Trees / houses / fuel | ≤5,000 representative trees, height 6–20 m; initial fuel 0.65, range 0–1 | Seeded scenery/proxy density labelled synthetic; WorldCover-derived trees are not surveyed individual trees. OSM footprints preserve source/licence and completeness uncertainty. |
+| Fuel moisture | 0.20; dimensionless 0–1 | Toy fuel state, not RH or a validated field measurement. Remaining fuel cannot increase without a recorded scenario reset. |
+| Temperature / RH | 33 °C, demo −10…50 °C; RH 25%, range 0–100 inclusive | Explicit units and source snapshot. Convert supported °F/km/h inputs explicitly; unknown is not zero. |
+| Wind | 6 m/s from 315°; demo speed 0–25 m/s; direction [0,360)° | Meteorological FROM, north clockwise; declared conversion to east/north flow. Toy world can show stronger wind, but new drone missions require known wind ≤10 m/s. |
+| Fire / smoke | F01 (3,500,4,000), F02 (7,200,6,500) m; front baseline 0.6 m/s, bound 0–3; burn 120 s/cell; smoke life 60 s | Scripted ignition only. Fuel/wind/moisture/uphill modifiers versioned toy assumptions; continuous edge progress, no teleport. Smoke opacity 0–1, ≤2,000 visual particles; no AQI/toxicity claim. |
+| Projection / danger | ≤8 toy rollouts, horizon 600 s, step 5 s, expiry 30 sim s; relative index 0–100 | Uses received hypotheses, declared terrain/fuel proxies and valid weather, never hidden fire truth. Area/envelope counterfactual estimate, not ignition probability or calibrated forecast. Unknown inputs yield unknown coverage, not zero danger. |
+| Bases / pads | B01 (1,200,2,000), B02 (8,400,2,400) m; 2 pads each | Synthetic installations; shared pad/route reservation versions. No unavailable base advertised as reachable. |
+| Drone pose / velocity | Initial grounded at assigned base; airspeed target 18, max 20 m/s; ground speed ≤30; climb ≤4 m/s; acceleration ≤5 m/s² | Finite position/velocity. Swept route checks: ≥30 m above terrain/canopy, ≤300 m AGL/2,000 m AMSL, ≥10 m horizontal OR vertical fleet separation. Not rotor/6-DOF flight. |
+| Drone battery / reserve | Initial 100%, range 0–100%; flight 100/1,200 pp/s, hover 0.05 pp/s, modifier 1–1.6 | Require 1.25× worst-case mission+return+landing burn plus ≥10 pp reserve. Recheck locally every tick. In-flight battery never increases. If no reachable approved base, use predeclared feasible simulator landing, no promised return. |
+| Ground vehicle state | Initial at base; route speed target 6, max 10 m/s; acceleration ≤2 m/s²; terrain-following z; illustrative energy 100%, 0.02 pp/s, range 0–100 | Deterministic kinematics on declared exercise routes. No real road routing, suppression, evacuation effectiveness or safety guarantee. Lost authority/lease stops task progression within 1 tick, records local hold/failure. |
+| Sensing / camera | FOV 60° (30–120°); range ≤1,500 m; inspection dwell 20 sim s | Terrain/trees/smoke can occlude. Own scene/vehicle render supplies evidence, not stock footage. Render interpolation is presentation, never a new measured telemetry pose. |
+| Frame sampling / analysis | Thumbnail ≤1 fps/320×180; ≤6/operator; active ≤10 fps/640×360, 1/operator | One capture owner per feed; preview/Iris tile reuse frames. Capture intervals ≥1/0.1 wall s respectively; record backing tick(s), render/capture time and receipt time. Paused simulation reads Paused. Analytical requests are sampled jobs, never every rendered frame. |
+| Telemetry / heartbeat / freshness | Emit every 1 sim s; telemetry stale >5 sim s; frame stale >3 sim s; local heartbeat timeout >10 sim s | Last-known observed pose/battery freeze with age/uncertainty. Conservative position envelope grows by max ground speed×age, battery estimate subtracts worst-case burn. Failsafe begins next tick, within available estimated reserve. |
+| Radio / LOS / delivery | Range ≤20 km; terrain-segment LOS; latency 0.1–0.8 sim s, injected 0–8; loss default 0, range 0–1; duplicate default 0, range 0–0.2 | Seed/log fault draws. Deliver no earlier than next tick, ceil(latency/Δt), stable ordering. Terrain/forest/smoke attenuation is illustrative, not calibrated RF. Quantized delay displayed honestly. |
+| Command TTL / retries / lease | TTL 10 sim s; retries at 2 and 4 s, max 2; mission lease 120 sim s, renewal 5 s | Expiry rejects acceptance, never proves task ended/aircraft landed. Lease expiry enters local failsafe within 1 tick; unavailable assets remain blocked until reconciliation. Old offline intent requires a new explicit approval, never silent reconnect dispatch. |
+| Contexts / jobs / timeouts | Baseline logical cap 16, stress cap 24; global in-flight 2, queue 8, ≤30 calls/10 min; decision coalescing ≥10 sim s; model timeout 8 wall s | No service/VM per context or recursive spawn. Boxd CPU candidate ≤2 jobs, ≤30 wall s/job, disabled pending explicit cap/budget; 0 VMs. Job completion/sleep never advances simulation time. All limits are proposed, not cost-tested. |
+
+Real-data candidate, not selected/downloaded: North Evia, August 2021, licensed DEM/WorldCover 2021/OSM plus ERA5 and CEMS burn scars. Pin extent, acquisition/version/licence and scenario time in a future approved case manifest. Actual terrain/footprints, proxy trees/fuel, seeded actors/ignitions and recorded source evidence must have different provenance labels. ERA5 reanalysis is representative historical weather, not an as-issued forecast; burn scars are retrospective context, not future information for replay analysts. No incident-reconstruction claim.
+
+## Records, boundaries and state transitions
+
+Common event envelope: contract/scenario version, run ID, authority epoch, event ID, ordered event index, actor/session ID, per-stream sequence, trace/correlation/causation IDs, payload kind, relevant entity/mission/command IDs, captured/sent/delivered/received sim ticks, monotonic wall receipt/deadline and source UTC or explicit unknown. Retries use new transmission IDs but stable command ID/idempotency key; dedupe scope includes run+entity+mission+command version. Reject incompatible/cross-run/old-epoch messages. Logs preserve receipt times, not just capture times.
+
+| Record / writer | Required content and boundary |
+|---|---|
+| World snapshot / sole authority | Terrain/scenario/weather versions, finite truth pose/velocity/energy/fuel/fire/smoke. Restricted engine/test inspector, never an omniscient crew/model observation. Authority loss pauses world/dispatch until reconciled ownership. |
+| Observed entity / receipt reducer | Delivered capture pose, battery, mission/failsafe state, sequence and freshness. Late/old telemetry stays in history but cannot overwrite newer last-known state. |
+| Evidence + feed/frame / sensor or source adapter | Evidence/source/frame/feed/entity IDs, simulated-live/recorded/synthetic mode, capture owner+epoch, capture/posted/retrieved/received clocks, geo footprint/radius or unknown, sensor/render pose, permissions/licence. Analyst observation time is separate from frame capture. |
+| Hypothesis / analyst | Linked evidence IDs, unverified claim, contradictions, geo/uncertainty, actual returned confidence+scale or unknown. Never creates truth entities or resolves a life alert by expiry/fade. Review/corroboration is a distinct recorded event. |
+| Proposal / Google orchestrator + Iris rank | Input/evidence/projection/plan/owner/reservation versions, finite candidate IDs, feasibility snapshot, expiry and rationale. Google mission role; Iris ranks available feasible actions/feeds. Model output cannot add capabilities, change weather/physics/pose or forge delivery. |
+| Approval + reservation / single atomic commit path | Proposal/action IDs, current accountable operator, owner/plan/reservation revisions, approval scope and expiry. Compare-and-commit validates all guards and exclusively reserves asset/route/pad; 1 winner. Ownership handoff invalidates pending approvals, not received executor facts. |
+| Command / executor / receipt | Stable command/version, target, mission/lease, approval/input versions; exact accepted/rejected local state; progress and terminal evidence. Local acceptance revalidates TTL, ownership, feasibility, energy and versions. A received terminal event is required for confirmed completion. |
+
+Optional fal Florence/video-understanding/SAM routes require verified exact task/model/input/output contracts before use; generated imagery is never real incident evidence. Candidate synthetic exercise-social photos/video with planted person/gas canister/dry brush carry `EXERCISE · SYNTHETIC` labels, no invented actual posts/authors/locations. Real approved vision analysis must inspect pixels and return evidence-linked unverified hypotheses; planted truth/masks remain test-only, not model answer metadata. Treg is a tool registry, not an assumed general model router. Only separately authorized Boxd CPU preprocessing jobs may run. No provider can write world truth, approval commits or transport receipts.
+
+Routine drone collection/camera choices may execute autonomously within an already approved finite mission envelope and current lease; this does not require human approval per frame. New mission scope, asset reassignment or ground redistribution requires a new current owner approval. Dashboard/orchestrator priorities and autonomous simulated goal execution do not imply training an ML/CNN controller, rotor-power instrumentation or on-device/local-Gemma capability. Controller training remains a separately gated side experiment, not this MVP contract.
+
+Core flow: source/simulated camera → delivered evidence → typed hypotheses + declared toy projection → deterministic finite candidates → Google/Iris suggestion → one current human approval → command → link emulator → local executor → separately transported receipts/frames → shared received picture and saved debrief. Models consume only allowed received snapshots. Every provider reply is revalidated on arrival and again at approval/acceptance; stale replies produce a reason, 0 dispatches.
+
+```text
+Proposed → Approved + Reserved → Sent → Delivered → Accepted → Executing
+                                                     │            │
+                                                     │            └→ Completed / Failed / Cancelled
+                                                     └→ Rejected (NACK)
+Sent → Dropped / Expired (transmission outcome, not mission outcome)
+Local safety/lease expiry → Failsafe / Returning / Hold (executor event)
+Missing valid delivery → Unconfirmed (crew knowledge, not aircraft truth)
+Terminal executor event → transported delivery → confirmed crew outcome
+```
+
+Send records queueing, delivery records arrival, acceptance ACK records actual executor acceptance, completion records actual terminal state. Lost completion/ACK leaves Unconfirmed. Duplicate accepted commands return the original receipt without re-execution; out-of-order old versions reject. Terminal events arriving before older ACKs reconcile without regressing confirmed state. Return requires actual base/pad, ≤5 m distance, ≤1 m/s speed for 5 sim s, terminal event and fresh delivered telemetry; requested return alone proves nothing.
+
+Reconnect exchanges authority/session epoch, accepted command version, active mission/lease, failsafe state, battery and observation cursor; reconcile/cancel superseded intent before asset unlock. Offline queues cannot silently send approvals later. Accepted missions are not retroactively rewritten by owner handoff. Chief evacuation/reinforcement buttons create reviewed EXERCISE proposals only; actual simulated transport/executor events advance status, never real messages or orders.
+
+Replay reconstructs each person's received knowledge using both capture and received-at cutoffs; no future observations, later ACKs or new model calls. Five-minute cursor clamps to available history. Unresolved critical alerts remain queued despite fading geometry/layer hiding; fading is visual confidence/age treatment, not safety resolution. Feed ranks never steal a person's pinned selection.
+
+Voice urgent-alert announcement is a candidate only: team “above Grade B” has no defined severity scale yet. This contract invents no threshold or severity classification; later approval must define eligible alert/review state and announcement behaviour. Voice cannot bypass review or issue field orders.
+
+## Approval gate and non-goals
+
+Only 2 expensive decision groups remain here: (1) browser kinematic single-authority delivery versus server/PX4 authority, with explicit shared commit/capture ownership and selected runtime; (2) verified provider routes plus bounded CPU/model budgets. Existing V1 scope, numeric tests and source/reuse manifest still require explicit owner approval. No implementation plan/scaffold follows from this draft or a broad “continue”.
+
+Non-goals: full PX4/Gazebo unless separately chosen, CFD/validated RF/flight, calibrated wildfire or ignition/safety probability, water drops/suppression efficacy, nationwide forecast/reconstruction, onboard offline model claims, real drone/vehicle controls, actual police/firefighter/public dispatch, identity recognition, unlimited ingestion/autoscaling, new vendor provisioning or undisclosed prior-code reuse.

@@ -1,8 +1,8 @@
 # Fire Command Center shared taskboard
 
-Snapshot: 2026-11-14, Europe/Athens. This repository board is the shared truth for future task claims and status updates. It preserves the 37 original task identities, adds 3 setup cards and updates stale administrative facts. The earlier local board remains an untouched historical snapshot.
+Snapshot: 2026-11-14, Europe/Athens. This repository board is the shared truth for future task claims and status updates. It preserves the 37 original task identities, adds 3 setup cards and 4 current-work cards, and updates stale administrative facts. The earlier local board remains an untouched historical snapshot.
 
-40 cards: 14 done, 1 draft-ready, 0 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
+44 cards: 16 done, 1 draft-ready, 2 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
 
 [Brief and non-goals](README.md) · [Resident collaboration rules](AGENTS.md)
 
@@ -16,18 +16,35 @@ Greece 3D mountains/forest/smoke/weather/comms simulation remains a candidate. E
 
 Architecture draft exists outside this repository, updated to this brief but unapproved. All open-card acceptance numbers are proposed targets, not measured results. Test plan must precede implementation plan; explicit non-goals and permissions/reuse gates remain mandatory.
 
+Latest V1 proposal: a small human crew, Map + Cameras, simulation presets/replay and human-approved EXERCISE tasks. 2 concurrent operator clients and a 2-base/4-drone/2-fire/2-vehicle fixture remain recommendations awaiting written approval. No framework or backend is selected; simulator/application implementation has not started.
+
 Prior [wildfire-sweep](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3c9), baseline `66bb3c9` (2026-11-10), is pre-event research. Frozen outputs remain untouched. Reuse needs source files/commits, licenses, notices, attribution and an honest prior/adapted/new-work split.
 
 ## Current ownership claims
 
 | Lane | Accountable owner | Branch / exact file boundary |
 |---|---|---|
-| Shared planning receipts | Planning docs worker | `chore/hackathon-planning`: `TASKBOARD.md` and ignored `.scratch/planning-pr-body.md` only; other planning files already published |
+| Shared planning receipts | `/root/taskboard_claims`, coordinator delegated | `chore/hackathon-planning`: `TASKBOARD.md` and ignored `.scratch/claims-pr-body.md` only; other planning files already published |
+| REF-01 reference archive and index | `/root/visual_catalog_github` | `chore/hackathon-planning`: `docs/references/operational-clarity-supplied.md` and `docs/references/operational-clarity-index.md` only |
+| PARAM-01 simulator parameter draft | `/root/simulator_parameter_contracts` | `chore/hackathon-planning`: `docs/specs/simulator-parameter-contract.md` only |
 | Repository delivery | Git specialist | Git/GitHub operations only on the planning branch; explicit approved paths, coordinator review before integration |
 | Scoped backend setup | Backend setup agent, coordinator supervised | Local Boxd/Treg auth/config only, outside this repository; exact private paths belong in the setup handoff, no repository file claim |
 | Teammate application work | Unassigned, GitHub handle unknown | No app files or branch claimed; invitation and file ownership still pending |
 
 No application role below is assigned. App file boundaries will be set in the approved spec. Any later worker must claim a task, exact files and branch before coding.
+
+## Current work
+
+- [ ] REF-01 · P0 · Status: active · Archive supplied operational-clarity references
+  - Owner: `/root/visual_catalog_github`, coordinator supervised. Branch: `chore/hackathon-planning`. Exact files: `docs/references/operational-clarity-supplied.md`, `docs/references/operational-clarity-index.md`.
+  - Acceptance: archive both complete user-supplied essays with source/provenance headers and unverified claims separate from verified findings; provide 1 short, verified primary-resource index. User-supplied claims that all 60 URLs were verified are not endorsed. 0 secrets, private-chat dumps, application files, copied assets or cloned applications. Reference work does not approve UI or application implementation.
+- [ ] PARAM-01 · P0 · Status: active · Draft bounded simulator parameter contracts
+  - Owner: `/root/simulator_parameter_contracts`, coordinator supervised. Branch: `chore/hackathon-planning`. Exact file: `docs/specs/simulator-parameter-contract.md`.
+  - Acceptance: 1 unapproved DRAFT with proposed parameter bounds/interfaces, named numeric tests before implementation notes and explicit non-goals; cover editable simulated entities, environment controls and current human approval for EXERCISE tasks. 0 executable schemas, application code, selected framework/backend, real-world orders or implied V1 approval. Candidate fixture sizes and 2 concurrent operator clients remain proposals.
+- [x] SPEC-01 · P0 · Status: done · Refine latest written V1 draft
+  - Owner: coordinator. File boundary: outside this repository only, `MVP-SPEC-DRAFT.md` and `SIMPLE-UI-DRAFT.md`; no repository file or branch claimed. Receipt: coordinator-confirmed 95-line MVP draft with 12 named proposed numeric tests and 67-line UI draft, covering a small human crew, Map + Cameras, presets/replay and human-approved EXERCISE tasks. 0 selected framework/backend or inferred V1 approvals. Draft refinement is complete; approval and implementation are not.
+- [x] PROVIDER-01 · P0 · Status: done · Clarify fal task schemas and Treg role
+  - Owner: coordinator, provider research lane. File boundary: research outside this repository only; no repository file or branch claimed. Receipt: source-backed agent research confirmed 3 fal analysis schemas (captioning, object detection and video understanding), with SAM 3 considered separately for segmentation; Treg supplies tools, not a model router. 0 paid calls or live model/inference receipts. fal credits remain owner-reported; Boxd/Treg scoped authentication is verified separately. Oumi abstract was supplied for registration, not a registration receipt; provisioned Google access remains unconfirmed.
 
 ## Done research and administration
 
@@ -59,13 +76,15 @@ No application role below is assigned. App file boundaries will be set in the ap
 ## Drafting and setup
 
 - [ ] A01 · P0 · Status: draft-ready · Latest architecture draft, approval pending
-  - Owner: architecture draft writer, coordinator review. Scope: architecture note outside this repository only. Receipt: latest incident-intelligence draft written with 16 named proposed numeric tests and non-goals. Completion gate: 1 owner-approved product/fidelity/runtime decision set and test plan; draft is not an approved implementation spec.
+  - Owner: architecture draft writer, coordinator review. Scope: `DRONE-ARCHITECTURE-DRAFT.md` outside this repository only. Receipt: latest crew-corrected architecture draft has 17 named proposed numeric tests, 13 failure cases and non-goals, distinct from the 12-test MVP draft. Completion gate: 1 owner-approved product/fidelity/runtime decision set and test plan; draft is not an approved implementation spec.
 - [x] SETUP-01 · P0 · Status: done · Publish shared planning board and governance
   - Owner: planning docs worker; delivery by Git specialist. Receipt: 4 reviewed planning files published at `59ee562` in private [draft PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1); all 4 remote file blobs verified exactly, main unchanged. 37 original IDs plus 3 setup cards preserved; local links checked; 0 app source or credential artifacts included. Later receipt updates still require Git-specialist delivery.
 - [x] SETUP-03 · P0 · Status: done · Scoped local backend access setup
   - Owner: backend setup agent, coordinator supervised. Receipt: Boxd v0.3.5 live authentication verified behind a read-only guard; Treg v0.30.0 scoped authentication and CLI identity verified for the intended team. Private local configuration stays outside this repository, directories `0700` and files `0600`. Unsafe onboarding rerun skipped. 0 global MCP/skill/model-routing changes, paid model calls or VM creation. Authentication checks do not verify application/provider inference; no private paths, balances, team IDs or credentials published.
 
 ## Owner actions
+
+Next owner inputs (3): approve the written V1 boundary/tests/non-goals and outstanding simulator/runtime/source choices; supply teammate GitHub handle; report credential readiness and approved provider-call budget through private channels. No credentials belong here. Handle pending does not block approved coding, but teammate edits still need an exact ownership claim. Existing registration/access/submission/reuse requirements below remain open.
 
 - [ ] O01 · P0 · Status: owner-action · Approve design and numeric test plan
   - Owner: Nikolas. Acceptance: 1 explicit approval covering latest product boundary, simulator fidelity, region/fixture, cloud-logical versus edge cognition, provider roles, test criteria and non-goals; 0 silent architecture choices.
@@ -91,7 +110,7 @@ No application role below is assigned. App file boundaries will be set in the ap
 All 13 cards remain gated, roles unassigned. Dependencies below describe approval/work boundaries, not permission to start. Proposed fixture numbers are not selected architecture or performance evidence.
 
 - [ ] P0-01 · P0 · Status: gated · Freeze approved spec, tests and reuse manifest
-  - Owner: spec/review role, unassigned. Requires: latest draft, owner approval and reuse/source choices. Acceptance: at least 16 named numeric tests; 1 approved spec with non-goals; 1 manifest covering 100% of reused files/assets; 0 mid-plan architectural substitutions.
+  - Owner: spec/review role, unassigned. Requires: latest draft, owner approval and reuse/source choices. Acceptance: named numeric tests cover 100% of approved scope; 1 approved spec with non-goals; 1 manifest covering 100% of reused files/assets; 0 mid-plan architectural substitutions. Architecture has 17 proposed tests; MVP has 12. Neither count is approval.
 - [ ] P0-02 · P0 · Status: gated · Typed contracts and verification pipeline in new repo
   - Owner: contracts/pipeline role, unassigned. Repo already exists; contracts and CI do not. Requires: approved spec and single-owner file claims. Acceptance: typed evidence/proposal/world/action/event contracts and 1 passing approved pipeline; 100% copied files attributed; 0 prior-repo mutations. Runtime/schema/dependencies remain unchosen.
 - [ ] P0-03 · P0 · Status: gated · Seeded world and incident fixtures
