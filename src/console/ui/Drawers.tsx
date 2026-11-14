@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Button, DraftDocument, Drawer, Icon, LedgerCounter, Legend, LogLine, PoolBar, Segmented, Tabs, ZoneTag, actionKindIcon, alertClassIcon,
+  Button, DraftDocument, Drawer, Icon, LedgerCounter, Legend, LogLine, PoolBar, ProvenanceTag, Segmented, Tabs, ZoneTag, actionKindIcon, alertClassIcon,
   alertTone, cn, toneClass, zoneMeta, type Tone,
 } from '@ds';
 import type { Action, AgentPool, BusEvent, GradedItem, Zone } from '../contracts';
 import { bus, useConsoleApi, useConsoleSelector } from '../store';
 import { poolIcon } from './LeftRail';
 import { stageLegend } from './StageArea';
-import { ago, fmtDuration, fmtInt, tierOfZone, zuluTime } from './format';
+import { ago, fmtDuration, fmtInt, localDay, localTime, packTz, tierOfZone, zuluTime } from './format';
+import { PredictionPanel, usePredictions } from './Prediction';
 import { useUi } from './UiContext';
 
 /* -------------------------------- Agent Ops -------------------------------- */
@@ -311,6 +312,7 @@ const zoneOpts = [{ value: 'all', label: 'All' }, ...(['Z0_INTERRUPT', 'Z2_DECIS
 const clsOpts = [{ value: 'all', label: 'All' }, ...(['life', 'hazard', 'fuel', 'movement', 'projection', 'status'] as const).map((c) => ({ value: c, label: c.slice(0, 4) }))];
 
 const busTone: Record<BusEvent['type'], Tone> = {
+  'prediction.scored': 'telemetry',
   'source.ingested': 'neutral', 'analysis.job': 'telemetry', 'analysis.finding': 'detection', 'projection.updated': 'warning', 'orchestrator.graded': 'neutral',
   'ui.directive': 'telemetry', 'action.proposed': 'warning', 'action.decided': 'nominal', 'brief.updated': 'neutral', message: 'telemetry', 'ledger.entry': 'nominal',
 };
@@ -339,6 +341,8 @@ function busText(e: BusEvent): string {
       return `${e.message.role}: ${e.message.text}`;
     case 'ledger.entry':
       return `${e.entry.agent} · ${e.entry.text}`;
+    case 'prediction.scored':
+      return `${e.check.horizonMin} min projection · IoU ${e.check.iou == null ? 'unavailable' : `${Math.round(e.check.iou * 100)}%`}`;
   }
 }
 
@@ -366,8 +370,59 @@ function LogItemRow({ it }: { it: GradedItem }) {
   );
 }
 
+const reportKind: Record<string, string> = { news: 'News', official: 'Official alert', agency: 'Agency', social: 'Social post' };
+
+function RealReports() {
+  const pack = useConsoleSelector((s) => s.pack);
+  const now = useConsoleSelector((s) => Math.floor(s.clock.t / 30000) * 30000);
+  const tz = packTz(pack);
+  const all = pack?.reports ?? [];
+  const shown = useMemo(() => all.filter((r) => r.t <= now).sort((a, b) => b.t - a.t), [all, now]);
+  const later = all.length - shown.length;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-2 border border-line bg-ink-950 p-2">
+        <ProvenanceTag kind="real" />
+        <span className="font-mono text-micro uppercase leading-4 text-bone-mute">
+          Published reports about the real fire, paraphrased with attribution, shown at their publication time. Everything else in the console is
+          simulated.
+        </span>
+      </div>
+      {all.length === 0 && <span className="py-3 font-mono text-micro uppercase text-bone-mute">This scenario pack has no real reports</span>}
+      {all.length > 0 && shown.length === 0 && <span className="py-3 font-mono text-micro uppercase text-bone-mute">No reports published yet at this replay time</span>}
+      <div className="flex flex-col border-t border-line">
+        {shown.map((r) => (
+          <article key={r.id} className="flex flex-col gap-1 border-b border-line-faint py-2">
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-micro uppercase text-bone fcc-num">
+                {localDay(r.t, tz)} {localTime(r.t, tz)} {tz}
+              </span>
+              <span className="font-mono text-micro uppercase text-bone-mute">{reportKind[r.kind] ?? r.kind}</span>
+              <span className="min-w-0 flex-1 truncate text-right font-mono text-micro uppercase text-bone-dim">{r.publisher}</span>
+            </span>
+            <p className="text-xs leading-5 text-bone" lang={r.lang}>
+              {r.summary}
+            </p>
+            <a
+              href={r.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex w-fit items-center gap-1 font-mono text-micro uppercase text-bone-mute transition-colors duration-quick ease-servo hover:text-bone focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-signal"
+            >
+              Source
+              <Icon name="arrow-up-right" size={10} />
+            </a>
+          </article>
+        ))}
+      </div>
+      {later > 0 && <span className="font-mono text-micro uppercase text-bone-mute">{later} more later in the replay</span>}
+    </div>
+  );
+}
+
 function LogPanel() {
   const items = useConsoleSelector((s) => s.items);
+  const reports = useConsoleSelector((s) => s.pack?.reports?.length ?? 0);
   useConsoleSelector((s) => Math.floor(s.clock.t / 20000));
   const [tab, setTab] = useState('items');
   const [zone, setZone] = useState('all');
@@ -385,10 +440,13 @@ function LogPanel() {
         onChange={setTab}
         items={[
           { id: 'items', label: 'Graded items', count: items.length },
+          { id: 'reports', label: 'Real reports', count: reports },
           { id: 'bus', label: 'Bus events' },
         ]}
       />
-      {tab === 'items' ? (
+      {tab === 'reports' ? (
+        <RealReports />
+      ) : tab === 'items' ? (
         <>
           <div className="flex flex-col gap-1.5">
             <Segmented size="sm" aria-label="Filter by zone" options={zoneOpts} value={zone} onChange={setZone} />
@@ -448,7 +506,10 @@ function Layers() {
         ))}
       </div>
       <div className="flex flex-col">
-        <span className="fcc-micro mb-2">Public data sources</span>
+        <span className="mb-2 flex items-center gap-2">
+          <span className="fcc-micro">Public data sources</span>
+          <ProvenanceTag kind="real" label="Real" />
+        </span>
         {(manifest?.sources ?? []).map((s) => (
           <a
             key={s.id}
@@ -484,6 +545,9 @@ export function Drawers() {
   const pending = useConsoleSelector((s) => s.actions.filter((a) => a.draft && a.status === 'proposed').length);
   const minutes = useConsoleSelector((s) => Math.round(s.ledger.analystMinutesSaved));
   const log = useConsoleSelector((s) => s.items.length);
+  const checks = usePredictions();
+  const checkTitle =
+    checks.latest?.iou != null ? `Prediction vs replay · ${Math.round(checks.latest.iou * 100)} % IoU` : `Prediction vs replay · ${checks.pending.length} pending`;
   return (
     <>
       <Drawer open={ui.panel === 'agents'} onClose={close} title={`Agent Ops · ${workers} working`} index="A1" width={600}>
@@ -509,7 +573,10 @@ export function Drawers() {
       <Drawer open={ui.panel === 'log'} onClose={close} title={`Log · ${log} graded`} index="A4" width={500}>
         {ui.panel === 'log' && <LogPanel />}
       </Drawer>
-      <Drawer open={ui.panel === 'layers'} onClose={close} title="Layers & sources" index="A5" width={380}>
+      <Drawer open={ui.panel === 'checks'} onClose={close} title={checkTitle} index="A5" width={480}>
+        {ui.panel === 'checks' && <PredictionPanel />}
+      </Drawer>
+      <Drawer open={ui.panel === 'layers'} onClose={close} title="Layers & sources" index="A6" width={380}>
         {ui.panel === 'layers' && <Layers />}
       </Drawer>
     </>

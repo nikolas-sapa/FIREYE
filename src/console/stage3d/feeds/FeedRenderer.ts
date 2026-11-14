@@ -1,21 +1,27 @@
 import * as Cesium from 'cesium';
 import { color as ds } from '@ds';
-import type { Feed, FeedFx, Finding, FindingKind, ScenarioPack, Unit } from '../../contracts';
-import { getSampler } from '../StageEngine';
+import type { Feed, Finding, FindingKind, ScenarioPack, Unit } from '../../contracts';
+import { AtmospherePass } from '../atmosphere';
+import { prefersReducedMotion } from '../easing';
 import { FireOverlay, getFireField, type FireField } from '../fire';
-import { createFeedFxStages } from '../fx';
+import { createCameraStages, isThermal, modelFor, type CameraModel, type CameraUniforms } from '../fx';
 import { findingColor } from '../layers';
+import { rgba } from '../palette';
 import { FireParticles } from '../particles';
+import { getProfile, type StageProfile } from '../profile';
 import { RasterSampler, weatherAt, DEG2RAD } from '../raster';
-import { createDarkViewer, setupBasemap } from '../viewer';
+import { getSampler } from '../sampler';
+import { getSmokeField, type SmokeField } from '../smoke';
+import { applySunLight, createDarkViewer, setupBasemap } from '../viewer';
 import { stageWorld, unitPos } from '../world';
 import { feedPose, type FeedPose } from './poses';
+import { drawSatScene, pickSatScene, satProject, type SatScene } from './satellite';
 
 export const FULL_W = 960;
 export const FULL_H = 540;
 export const THUMB_W = 384;
 export const THUMB_H = 216;
-const FULL_INTERVAL_MS = 1000 / 18;
+const FULL_INTERVAL_MS = 1000 / 24;
 const THUMB_PERIOD_MS = 2000;
 
 export interface Detection {
@@ -37,7 +43,18 @@ export interface FeedFrame {
   detections: Detection[];
   frame: number;
   renderedAt: number;
+  model: CameraModel;
+  /** Thermal core is running a non-uniformity correction (image briefly freezes flat). */
+  nuc?: boolean;
+  /** Phone footage: the frame is a 9:16 portrait crop centred in the landscape surface. */
+  portrait?: boolean;
+  /** Satellite feeds: what the pixels are (real archived imagery vs synthetic render). */
+  sat?: SatScene | { real: false };
+  /** Ground speed of the carrying unit (m/s), for telemetry / burn-in. */
+  speedMps?: number;
 }
+
+interface CamState { exp: number; vel: number; lastS: number; nucUntil: number; nextNuc: number }
 
 export interface SurfaceHandle {
   feedId: string;
@@ -90,7 +107,19 @@ export class FeedRenderer {
 
   private host: HTMLDivElement;
   private viewer: Cesium.Viewer;
-  private fx: Record<FeedFx, Cesium.PostProcessStage>;
+  private cams: Record<CameraModel, Cesium.PostProcessStage> | null = null;
+  private camU: CameraUniforms = { time: 0, exposure: 1, motion: 1, nuc: 0, shake: 0 };
+  private camState = new Map<string, CamState>();
+  private atmos: AtmospherePass | null = null;
+  private smoke: SmokeField | null = null;
+  private profile: StageProfile | null = null;
+  private reduced = prefersReducedMotion();
+  private sunKey = NaN;
+  private satCanvas = document.createElement('canvas');
+  private satKey = '';
+  private satReady = false;
+  private src: CanvasImageSource | null = null;
+  private portraitTmp = document.createElement('canvas');
   private surfaces = new Map<number, Surface>();
   private nextKey = 1;
   private raf = 0;
@@ -114,7 +143,7 @@ export class FeedRenderer {
   private weatherT = NaN;
   private unsub: () => void;
   private idleTimer = 0;
-  private activeFx: FeedFx | null = null;
+  private activeModel: CameraModel | null = null;
   private sizeMode: 'full' | 'thumb' = 'thumb';
 
   private constructor() {
@@ -127,11 +156,11 @@ export class FeedRenderer {
     const credit = document.createElement('div');
     this.viewer = createDarkViewer(host, { msaa: 1, preserveDrawingBuffer: true, useDefaultRenderLoop: false, creditContainer: credit });
     const scene = this.viewer.scene;
-    scene.fog.density = 2.4e-4;
+    scene.fog.density = 1.2e-4;
     scene.globe.maximumScreenSpaceError = 2.5;
     scene.globe.tileCacheSize = 900;
     this.viewer.dataSources.add(this.proxies);
-    this.fx = createFeedFxStages(scene, () => (performance.now() - this.t0) / 1000);
+    if (import.meta.env.DEV) (window as unknown as { __fccFeeds?: FeedRenderer }).__fccFeeds = this;
     this.unsub = stageWorld.subscribe((changed) => {
       if (changed.has('pack')) void this.initPack();
       if (!this.ready) return;
@@ -152,9 +181,15 @@ export class FeedRenderer {
       const bm = await setupBasemap(this.viewer, pack, s);
       this.exaggeration = bm.exaggeration;
       const scene = this.viewer.scene;
+      this.profile = getProfile(pack);
       this.field = getFireField(pack, s);
-      this.fire = new FireOverlay(scene, this.field, { flicker: true, strength: 1.0 });
-      this.particles = new FireParticles(scene, s, { maxFlames: 12, maxSmoke: 5, exaggeration: this.exaggeration, smokeScale: 0.8 });
+      this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced, strength: 1.0 });
+      this.particles = new FireParticles(scene, s, { maxFlames: 12, maxSmoke: 5, maxEmbers: 8, exaggeration: this.exaggeration, smokeScale: 0.8, profile: this.profile });
+      this.particles.show = !this.reduced;
+      this.smoke = getSmokeField(pack, s);
+      // Atmosphere first (scene-referred light, smoke, sky), then the sensor model.
+      this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'camera', quality: 1.4, shimmer: !this.reduced });
+      this.cams = createCameraStages(scene, this.camU);
       this.addBuildings(pack, s);
       this.ready = true;
       this.syncFire();
@@ -173,7 +208,14 @@ export class FeedRenderer {
     const wx = weatherAt(this.pack, w.t);
     if (updated || wx.t !== this.weatherT || this.field.rev === 1) {
       this.weatherT = wx.t;
-      this.particles?.setHotspots(this.field.hotspots, { dirDeg: wx.windDirDeg, kph: wx.windKph });
+      const wind = { dirDeg: wx.windDirDeg, kph: wx.windKph };
+      this.particles?.setHotspots(this.field.hotspots, wind);
+      this.smoke?.update(this.field.sources, wind, this.exaggeration);
+    }
+    const sk = Math.round(w.t / 120000);
+    if (sk !== this.sunKey && this.viewer.scene.globe.enableLighting) {
+      this.sunKey = sk;
+      applySunLight(this.viewer.scene, this.pack, w.t);
     }
   }
 
@@ -357,35 +399,184 @@ export class FeedRenderer {
     this.viewer.resize();
   }
 
+  private camStateOf(id: string): CamState {
+    let c = this.camState.get(id);
+    if (!c) {
+      // Stagger NUC events per camera so several IR feeds never flatten together.
+      let h = 0;
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+      c = { exp: 1, vel: 0, lastS: 0, nucUntil: 0, nextNuc: 8 + (h % 23) };
+      this.camState.set(id, c);
+    }
+    return c;
+  }
+
+  /** Fraction of the frame lit by fire (0..1), from active clusters projected through the current camera. */
+  private fireInView(): number {
+    const f = this.field;
+    if (!f || !f.hotspots.length) return 0;
+    const scene = this.viewer.scene;
+    const cam = scene.camera;
+    const W = scene.canvas.clientWidth || 1, H = scene.canvas.clientHeight || 1;
+    const s = this.sampler!;
+    const tanF = Math.tan(((cam.frustum as Cesium.PerspectiveFrustum).fovy ?? 0.7) / 2);
+    const r = this.profile?.flameRadiusM ?? 100;
+    let acc = 0;
+    for (const h of f.hotspots.slice(0, 12)) {
+      const p = Cesium.Cartesian3.fromDegrees(h.lon, h.lat, s.elevation(h.lon, h.lat) * this.exaggeration + 10, undefined, this.scratchP);
+      const toP = Cesium.Cartesian3.subtract(p, cam.positionWC, this.scratchD);
+      if (Cesium.Cartesian3.dot(toP, cam.directionWC) <= 0) continue;
+      const win = Cesium.SceneTransforms.worldToWindowCoordinates(scene, p, this.scratchW);
+      if (!win || win.x < -W * 0.1 || win.x > W * 1.1 || win.y < -H * 0.1 || win.y > H * 1.1) continue;
+      const dist = Cesium.Cartesian3.magnitude(toP);
+      const px = (r / (dist * tanF)) * (H / 2);
+      acc += h.heat * Math.min(1, (px * px * 3) / (W * H));
+    }
+    return Math.min(1, acc);
+  }
+  private scratchP = new Cesium.Cartesian3();
+  private scratchD = new Cesium.Cartesian3();
+  private scratchW = new Cesium.Cartesian2();
+
+  /** Sensor dynamics: auto exposure / AGC with model-specific lag (phones pump), NUC on thermal cores. */
+  private sensor(feed: Feed, model: CameraModel, nowS: number): { nuc: boolean } {
+    const c = this.camStateOf(feed.id);
+    const dt = Math.min(0.5, Math.max(0.001, nowS - (c.lastS || nowS - 0.05)));
+    c.lastS = nowS;
+    const fire = this.fireInView();
+    const sun = this.atmos?.sunElevDeg ?? 30;
+    const dusk = sun < 6 ? 1 + (6 - Math.max(-6, sun)) * 0.06 : 1;
+    let target = 1, k = 6, damp = 5;
+    switch (model) {
+      case 'phone': target = (1.08 / (1 + 2.2 * fire)) * dusk; k = 9; damp = 2.2; break; // under-damped: visible pumping
+      case 'dash': case 'helmet': target = (1.0 / (1 + 1.4 * fire)) * dusk; k = 7; damp = 4; break;
+      case 'uav-eo': case 'ridge': target = (1.0 / (1 + 0.6 * fire)) * dusk; k = 4; damp = 4.5; break;
+      case 'ir-white': case 'ir-iron': target = 1 / (1 + 0.5 * fire); k = 5; damp = 5; break;
+      default: target = 1;
+    }
+    if (this.reduced) {
+      c.exp = target;
+      c.vel = 0;
+    } else {
+      c.vel += ((target - c.exp) * k - c.vel * damp) * dt;
+      c.exp += c.vel * dt;
+    }
+    let nuc = false;
+    if (isThermal(model) && !this.reduced) {
+      if (nowS >= c.nextNuc) {
+        c.nucUntil = nowS + 0.35;
+        c.nextNuc = nowS + 28 + ((c.nextNuc * 7.3) % 17);
+      }
+      nuc = nowS < c.nucUntil;
+    }
+    this.camU.exposure = Math.max(0.35, Math.min(1.8, c.exp));
+    this.camU.nuc = nuc ? 1 : 0;
+    this.camU.motion = this.reduced ? 0 : 1;
+    this.camU.time = this.reduced ? 0 : nowS;
+    const u = feed.unitId ? stageWorld.get().units.find((x) => x.id === feed.unitId) : undefined;
+    const speed = u?.speedMps ?? 0;
+    this.camU.shake = this.reduced ? 0 : model === 'phone' ? 1 : model === 'dash' ? 0.35 + Math.min(1, speed / 15) * 0.65 : model === 'helmet' ? 0.8 : 0;
+    return { nuc };
+  }
+
   private render(feed: Feed): FeedFrame {
     const t0 = performance.now();
     const w = stageWorld.get();
-    const nowS = (t0 - this.t0) / 1000;
+    const nowS = this.reduced ? 0 : (t0 - this.t0) / 1000;
     const scene = this.viewer.scene;
+    const model = modelFor(feed);
     const pose = feedPose(feed, w, this.sampler!, this.exaggeration, nowS, (g) => scene.globe.getHeight(Cesium.Cartographic.fromDegrees(g.lon, g.lat)));
+    const unit = feed.unitId ? w.units.find((u) => u.id === feed.unitId) : undefined;
+    const base = { feedId: feed.id, pose, frame: ++this.frameNo, model, speedMps: unit?.speedMps };
+
+    if (model === 'sat' && this.pack) {
+      const pick = pickSatScene(this.pack, w.t);
+      if (pick) {
+        const fp = feed.pose?.rangeM ?? 36000;
+        const key = `${pick.trueImg.url}|${pick.thermal?.url ?? ''}|${pose.geo.lon.toFixed(4)}|${pose.geo.lat.toFixed(4)}|${fp}|${this.sizeMode}`;
+        const size = this.sizeMode === 'full' ? [FULL_W, FULL_H] : [THUMB_W, THUMB_H];
+        if (key !== this.satKey) {
+          this.satKey = key;
+          this.satReady = false;
+          this.satCanvas.width = size[0];
+          this.satCanvas.height = size[1];
+          void drawSatScene(this.satCanvas, pick, pose.geo, fp).then((ok) => {
+            if (this.satKey === key) this.satReady = ok;
+          });
+        }
+        this.src = this.satReady ? this.satCanvas : null;
+        const dets: Detection[] = [];
+        for (const id of feed.findingIds) {
+          const f = w.findings.find((x) => x.id === id);
+          if (!f) continue;
+          const q = satProject(f.pos, pose.geo, fp, pick, size[0] / size[1]);
+          const bw = Math.max(0.025, (Math.max(60, f.uncertaintyM * 2)) / q.mPerUnit);
+          if (q.x < 0 || q.x > 1 || q.y < 0 || q.y > 1) continue;
+          dets.push({ id: f.id, kind: f.kind, label: f.label, confidence: f.confidence, color: findingColor(f, 'Z3_FOCUS'), x: q.x - bw / 2, y: q.y - bw * 0.8, w: bw, h: bw * 1.6 });
+        }
+        return { ...base, detections: dets, renderedAt: performance.now(), sat: pick.scene };
+      }
+    }
+
     const cam = scene.camera;
     const fr = cam.frustum as Cesium.PerspectiveFrustum;
-    fr.fov = pose.fovDeg * DEG2RAD;
+    const portrait = model === 'phone';
+    const aspect = (scene.canvas.clientWidth || 16) / (scene.canvas.clientHeight || 9);
+    // Phones shoot portrait: pose fov is the portrait frame's vertical FOV; we crop 9:16 from a landscape render.
+    fr.fov = portrait ? 2 * Math.atan(Math.tan((pose.fovDeg * DEG2RAD) / 2) * aspect) : pose.fovDeg * DEG2RAD;
     fr.near = feed.kind === 'satellite' ? 100 : 0.5;
     cam.setView({ destination: pose.position, orientation: { heading: pose.heading, pitch: pose.pitch, roll: pose.roll } });
-    if (this.activeFx !== feed.fx) {
-      for (const k of Object.keys(this.fx) as FeedFx[]) this.fx[k].enabled = k === feed.fx;
-      this.activeFx = feed.fx;
+    if (this.cams && this.activeModel !== model) {
+      for (const k of Object.keys(this.cams) as CameraModel[]) this.cams[k].enabled = k === model;
+      this.activeModel = model;
+      this.atmos?.setLook(isThermal(model) ? 'thermal' : 'camera');
     }
-    scene.fog.density = feed.kind === 'satellite' ? 0 : feed.kind === 'dash-cam' || feed.kind === 'helmet-cam' || feed.kind === 'social' ? 3.2e-4 : 2.2e-4;
+    const sn = this.sensor(feed, model, nowS);
+    if (this.atmos && this.profile) {
+      const d = this.sampler!.datumOffset;
+      this.atmos.update(w.t, nowS, this.exaggeration, (this.profile.minElev + d) * this.exaggeration, d * this.exaggeration);
+    }
+    scene.fog.density = feed.kind === 'satellite' ? 0 : 1.0e-4;
     const own = feed.unitId ? this.proxies.entities.getById(`pu:${feed.unitId}`) : undefined;
     if (own) own.show = false;
     this.viewer.render();
     if (own) own.show = true;
+    this.src = scene.canvas;
     const dets = this.detect(feed, w.findings);
     this.renderCost = this.renderCost * 0.8 + (performance.now() - t0) * 0.2;
-    this.frameNo++;
-    return { feedId: feed.id, pose, detections: dets, frame: this.frameNo, renderedAt: performance.now() };
+    return {
+      ...base,
+      detections: portrait ? dets.map((d) => toPortrait(d)).filter((d): d is Detection => !!d) : dets,
+      renderedAt: performance.now(),
+      nuc: sn.nuc,
+      portrait,
+      sat: model === 'sat' ? { real: false } : undefined,
+    };
   }
 
   private copy(s: Surface, frame: FeedFrame) {
-    const src = this.viewer.scene.canvas;
-    s.ctx.drawImage(src, 0, 0, src.width, src.height, 0, 0, s.canvas.width, s.canvas.height);
+    const src = this.src;
+    if (!src) return;
+    const g = s.ctx;
+    const W = s.canvas.width, H = s.canvas.height;
+    const sw = (src as HTMLCanvasElement).width, sh = (src as HTMLCanvasElement).height;
+    if (frame.portrait) {
+      // Social video posted portrait: crop the centre 9:16 and fill the sides with a dim, blurred copy.
+      const cw = sh * (9 / 16);
+      const tmp = this.portraitTmp;
+      if (tmp.width !== 48) { tmp.width = 48; tmp.height = 27; }
+      const tg = tmp.getContext('2d')!;
+      tg.drawImage(src, 0, 0, sw, sh, 0, 0, 48, 27);
+      g.imageSmoothingEnabled = true;
+      g.globalAlpha = 1;
+      g.drawImage(tmp, 0, 0, 48, 27, 0, 0, W, H);
+      g.fillStyle = PORTRAIT_DIM;
+      g.fillRect(0, 0, W, H);
+      const dw = H * (9 / 16);
+      g.drawImage(src, (sw - cw) / 2, 0, cw, sh, (W - dw) / 2, 0, dw, H);
+    } else {
+      g.drawImage(src, 0, 0, sw, sh, 0, 0, W, H);
+    }
     s.lastFrameAt = performance.now();
     s.onFrame?.(frame);
   }
@@ -436,10 +627,23 @@ export class FeedRenderer {
   destroy() {
     cancelAnimationFrame(this.raf);
     this.unsub();
+    this.atmos?.destroy();
     this.fire?.destroy();
     this.particles?.destroy();
     if (!this.viewer.isDestroyed()) this.viewer.destroy();
     this.host.remove();
     if (FeedRenderer.inst === this) FeedRenderer.inst = null;
   }
+}
+
+const PORTRAIT_DIM = rgba(ds.void, 0.55);
+
+/**
+ * The 9:16 crop is drawn at its source size in the centre of the surface, so normalised coordinates are
+ * unchanged; detections outside the strip are dropped.
+ */
+function toPortrait(d: Detection): Detection | null {
+  const strip = (9 / 16) * (9 / 16);
+  const x0 = (1 - strip) / 2;
+  return d.x > x0 + strip || d.x + d.w < x0 ? null : d;
 }

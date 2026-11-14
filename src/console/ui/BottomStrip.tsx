@@ -5,7 +5,7 @@ import { useConsoleApi, useConsoleSelector } from '../store';
 import { FeedSurface } from '../stage3d';
 import { useTimelineTicks } from './CommandStrip';
 import { acresAt, acresSeries } from './derived';
-import { fmtInt, localDay, localTime } from './format';
+import { areaUnit, fmtInt, localDay, localTime, packTz } from './format';
 import { SurfaceBoundary } from './SurfaceBoundary';
 
 const kindLabel: Record<Feed['kind'], string> = {
@@ -131,17 +131,21 @@ function Progression() {
   const t = useConsoleSelector((s) => Math.floor(s.clock.t / 60000) * 60000);
   const projection = useConsoleSelector((s) => s.projection);
   const hist = useProjectionHistory(projection);
-  const tz = pack?.manifest.tz ?? 'PDT';
+  const tz = packTz(pack);
+  const area = areaUnit(pack);
   const start = pack?.manifest.start ?? 0;
   const end = pack?.manifest.end ?? 1;
   const ticks = useTimelineTicks(start, end, tz);
   const series = useMemo(() => acresSeries(pack), [pack]);
   const marks = useMemo<TimelineMark[]>(
     () => [
-      ...(pack?.perimeters ?? []).filter((p) => p.t >= start && p.t <= end).map((p) => ({ t: p.t, kind: 'perimeter' as const, label: `Perimeter ${fmtInt(p.acres)} AC` })),
+      ...(pack?.perimeters ?? []).filter((p) => p.t >= start && p.t <= end).map((p) => ({ t: p.t, kind: 'perimeter' as const, label: `Perimeter ${fmtInt(area.from(p.acres))} ${area.unit}` })),
       ...hist.map((h) => ({ t: h.at, kind: 'ghost' as const, label: `Projection rev ${h.rev}` })),
+      ...(pack?.checkpoints ?? [])
+        .filter((c) => c.t >= start && c.t <= end)
+        .map((c) => ({ t: c.t, kind: 'checkpoint' as const, label: `Documented ${localTime(c.t, tz)} ${tz} · ${c.label}` })),
     ],
-    [pack, start, end, hist],
+    [pack, start, end, hist, tz, area],
   );
   const horizon = projection ? Math.max(0, ...projection.bands.map((b) => b.horizonMin)) : 0;
   const next = pack?.perimeters.find((p) => p.t > t);
@@ -152,7 +156,9 @@ function Progression() {
       <div className="flex h-6 shrink-0 items-center gap-2">
         <Icon name="flame" size={11} className="text-ember" />
         <span className="font-mono text-micro uppercase tracking-[0.14em] text-bone">Fire progression</span>
-        <span className="ml-auto font-mono text-micro uppercase text-bone-mute">NIFC perimeters · drag to seek</span>
+        <span className="ml-auto font-mono text-micro uppercase text-bone-mute">
+          {pack?.checkpoints?.length ? 'Bars = documented moments · ' : ''}drag to seek
+        </span>
       </div>
       <TimelineScrubber
         start={start}
@@ -168,7 +174,7 @@ function Progression() {
         className="mt-3"
       />
       <div className="mt-auto flex items-end gap-5 pb-2">
-        <Datum label="Burned now" value={fmtInt(acres)} unit="AC" tone="text-ember" />
+        <Datum label="Burned now" value={fmtInt(area.from(acres))} unit={area.unit} tone="text-ember" />
         <Datum label="Projection" value={projection ? `REV ${projection.rev}` : '—'} tone="text-amber" />
         <Datum label="Next perimeter" value={next ? `${localDay(next.t, tz)} ${localTime(next.t, tz)}` : '—'} />
       </div>

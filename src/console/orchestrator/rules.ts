@@ -4,7 +4,7 @@ import { MIN, distanceM } from '../world/geo';
 import { roadRoute, unitById } from '../world/units';
 import { propose } from './actions';
 import { emitDirective } from './directives';
-import { evacDraft, moveDraft, radioDraft, rescueDraft, resourceDraft, sitrepDraft } from './drafts';
+import { sitrepDraft } from './drafts';
 import { etaMin } from './score';
 
 function has(sim: Sim, kind: string, itemId?: string): boolean {
@@ -36,31 +36,40 @@ function proposeRetask(sim: Sim, f: Finding, preferId?: string): void {
 }
 
 function proposeRescue(sim: Sim, f: Finding): void {
-  const ems = unitById(sim, 'm-12') && !unitById(sim, 'm-12')?.taskId ? unitById(sim, 'm-12')! : sim.units.filter((u) => u.kind === 'ems' && !u.taskId).sort((a, b) => distanceM(a.pos, f.pos) - distanceM(b.pos, f.pos))[0];
-  if (!ems) return;
+  const plan = sim.ctx.script.plans.rescue;
+  const approach = plan.approach?.(sim, f) ?? f.pos;
+  const byDist = (a: Unit, b: Unit) => distanceM(a.pos, approach) - distanceM(b.pos, approach);
+  let rescuers = plan.unitIds.map((id) => unitById(sim, id)).filter((u): u is Unit => !!u && !u.taskId);
+  if (!rescuers.length) rescuers = sim.units.filter((u) => plan.kinds.includes(u.kind) && !u.taskId && !!sim.umeta.get(u.id)?.marine === !!plan.marine).sort(byDist).slice(0, 1);
+  const lead = rescuers[0];
+  if (!lead) return;
   const overwatch = sim.actions.find((a) => a.kind === 'retask-drone' && a.itemId === f.id);
   const drone = overwatch ? unitById(sim, overwatch.unitIds[0]) : undefined;
-  const path = roadRoute(sim.ctx, ems.pos, f.pos);
+  const path = plan.marine ? [{ lon: lead.pos.lon, lat: lead.pos.lat }, approach] : roadRoute(sim.ctx, lead.pos, approach);
   const eta = etaMin(sim, f.pos, f.uncertaintyM);
   const place = sim.ctx.nearestPlace(f.pos).name;
+  const ids = rescuers.map((u) => u.id);
+  if (drone) ids.push(drone.id);
   propose(sim, {
     kind: 'rescue',
-    title: `Rescue · ${f.count ?? 2} hikers near ${place}`,
-    summary: `${ems.callsign} to the trailhead with ${drone?.callsign ?? 'drone'} overwatch. Fire ETA about ${Math.round(eta)} min at their position.`,
+    title: plan.title(f, place),
+    summary: plan.summary(lead, drone, eta),
     risk: 'high',
     audiences: ['ems', 'ops', 'ic'],
-    unitIds: drone ? [ems.id, drone.id] : [ems.id],
-    target: { lon: f.pos.lon, lat: f.pos.lat },
+    unitIds: ids,
+    target: { lon: approach.lon, lat: approach.lat },
     route: path,
     window: { startMin: 0, endMin: Math.max(10, Math.round(eta - 25)) },
     trigger: 'Turn around if fire is within 800 m or ETA under 25 min',
-    safetyZone: { center: sim.ctx.sites.staging, radiusM: 150, label: `${sim.ctx.gfName} staging` },
-    draft: rescueDraft(sim, f, ems, drone, path, eta),
+    safetyZone: plan.safety(sim.ctx),
+    draft: plan.draft(sim, f, lead, drone, path, eta),
     itemId: f.id,
   });
 }
 
-function proposeRadio(sim: Sim, f: Finding): void {
+function proposeHazard(sim: Sim, f: Finding): void {
+  const plan = sim.ctx.script.plans.hazard;
+  if (!plan) return;
   const near = sim.units.filter((u) => !['drone', 'helo', 'tanker'].includes(u.kind) && distanceM(u.pos, f.pos) <= 1500);
   const eta = etaMin(sim, f.pos, f.uncertaintyM);
   const list = near.map((u) => u.callsign).join(', ') || 'no units';
@@ -73,25 +82,106 @@ function proposeRadio(sim: Sim, f: Finding): void {
   });
   propose(sim, {
     kind: 'radio-script',
-    title: 'Radio script · Div A propane hazard',
+    title: plan.title,
     summary: `Hazard advisory for the ${near.length} units within 1.5 km (${list}). Fire ETA about ${Math.round(eta)} min.`,
     risk: 'low',
     audiences: ['ops'],
     unitIds: near.map((u) => u.id),
     target: { lon: f.pos.lon, lat: f.pos.lat },
-    draft: radioDraft(sim, f, near, eta),
+    draft: plan.draft(sim, f, near, eta),
     itemId: f.id,
   });
+}
+
+function proposeHeadWork(sim: Sim): void {
+  const p = sim.projection;
+  const plans = sim.ctx.script.plans;
+  const evac = plans.evac;
+  if (!p || !evac) return;
+  let eta: number | undefined;
+  for (const id of [sim.ctx.primaryId, ...(evac.zonePlaceIds ?? [])]) {
+    const e = p.etaToPlaces[id];
+    if (e !== undefined && (eta === undefined || e < eta)) eta = e;
+  }
+  if (eta === undefined || eta <= sim.t) return;
+  const m = (eta - sim.t) / MIN;
+  const hasType = (type: string) => sim.actions.some((a) => a.kind === 'evac-notice' && a.itemId === 'proj-head' && a.title.includes(type) && a.status !== 'undone' && a.status !== 'rejected');
+  const ctx = sim.ctx;
+  if (m <= evac.orderMin && !hasType('ORDER')) {
+    propose(sim, {
+      kind: 'evac-notice',
+      title: evac.title('ORDER', ctx),
+      summary: evac.summary('ORDER', m, p.rev, ctx),
+      risk: 'high',
+      audiences: ['public', 'law', 'ic'],
+      unitIds: evac.unitIds,
+      target: ctx.sites.primary,
+      window: { startMin: 0, endMin: Math.round(m) },
+      trigger: `Modelled head ETA under ${evac.orderMin} min`,
+      draft: evac.draft(sim, 'ORDER', m),
+      itemId: 'proj-head',
+    });
+    const mg = plans.moveGroup;
+    if (mg && !has(sim, 'move-group')) {
+      const units = mg.unitIds.map((id) => unitById(sim, id)).filter((u): u is Unit => !!u);
+      const lead = units[0];
+      const target = mg.target(ctx);
+      const path = lead ? roadRoute(ctx, lead.pos, target) : [];
+      propose(sim, {
+        kind: 'move-group',
+        title: mg.title(ctx),
+        summary: `${units.map((u) => u.callsign).join(', ')} to structure defense before the head arrives in ${Math.round(m)} min. Safety zone ${mg.safetyLabel}.`,
+        risk: 'high',
+        audiences: ['ops'],
+        unitIds: units.map((u) => u.id),
+        route: path,
+        target,
+        window: { startMin: 0, endMin: 45 },
+        safetyZone: { center: target, radiusM: 150, label: mg.safetyLabel },
+        trigger: 'Disengage if fire is within 800 m of the safety zone or ETA under 20 min',
+        draft: mg.draft(sim, units, path),
+        itemId: 'proj-head',
+      });
+    }
+    const rs = plans.resource;
+    if (rs && !has(sim, 'resource-order')) {
+      propose(sim, {
+        kind: 'resource-order',
+        title: rs.title,
+        summary: rs.summary(sim),
+        risk: 'high',
+        audiences: ['ic', 'ops', 'air'],
+        unitIds: [],
+        target: ctx.sites.primary,
+        draft: rs.draft(sim, m),
+        itemId: 'proj-head',
+      });
+    }
+  } else if (evac.warningMin > evac.orderMin && m <= evac.warningMin && !hasType('ORDER') && !hasType('WARNING')) {
+    propose(sim, {
+      kind: 'evac-notice',
+      title: evac.title('WARNING', ctx),
+      summary: evac.summary('WARNING', m, p.rev, ctx),
+      risk: 'high',
+      audiences: ['public', 'law', 'ic'],
+      unitIds: evac.unitIds,
+      target: ctx.sites.primary,
+      trigger: `Modelled head ETA under ${evac.warningMin} min`,
+      draft: evac.draft(sim, 'WARNING', m),
+      itemId: 'proj-head',
+    });
+  }
 }
 
 /** Turns graded intel into proposed work (drafts, tasks). Runs after each grading pass. */
 export function runRules(sim: Sim): void {
   const score = new Map(sim.items.map((i) => [i.refId, i.score]));
+  const plans = sim.ctx.script.plans;
   for (const f of sim.findings) {
     const fm = sim.fmeta.get(f.id);
     if (!fm || fm.resolved) continue;
     if (f.kind === 'human') {
-      if (!fm.confirmed && !has(sim, 'retask-drone', f.id) && (score.get(f.id) ?? 0) >= 25) proposeRetask(sim, f, 'hawk-3');
+      if (!fm.confirmed && !has(sim, 'retask-drone', f.id) && (score.get(f.id) ?? 0) >= 25) proposeRetask(sim, f, plans.preferDroneId);
       if (fm.confirmed && !has(sim, 'rescue', f.id)) {
         proposeRescue(sim, f);
         emitDirective(sim, { kind: 'notify', audiences: ['ems', 'ops'], message: `Life safety: ${f.label} confirmed live; rescue tasking drafted`, reason: 'Confirmed people in the projected fire path', itemId: f.id });
@@ -110,86 +200,19 @@ export function runRules(sim: Sim): void {
           itemId: f.id,
         });
       }
-    } else if (f.kind === 'combustible' && !has(sim, 'radio-script', f.id)) proposeRadio(sim, f);
+    } else if (f.kind === 'combustible' && !has(sim, 'radio-script', f.id)) proposeHazard(sim, f);
+    else if (f.kind === 'road-block' && plans.roadBlock) plans.roadBlock(sim, f);
   }
 
-  const p = sim.projection;
-  const gf = sim.ctx.gfId;
-  const eta = p?.etaToPlaces[gf];
-  if (p && eta !== undefined && eta > sim.t) {
-    const m = (eta - sim.t) / MIN;
-    const hasType = (type: string) => sim.actions.some((a) => a.kind === 'evac-notice' && a.title.includes(type) && a.status !== 'undone' && a.status !== 'rejected');
-    if (m <= 120 && !hasType('ORDER')) {
-      propose(sim, {
-        kind: 'evac-notice',
-        title: `Evacuation ORDER · Zone EDC-GF-1 (${sim.ctx.gfName})`,
-        summary: `Head projected to reach ${sim.ctx.gfName} in ${Math.round(m)} min (rev ${p.rev}). ${sim.ctx.structuresGF} structures; one road out.`,
-        risk: 'high',
-        audiences: ['public', 'law', 'ic'],
-        unitIds: ['so-5'],
-        target: sim.ctx.sites.gf,
-        window: { startMin: 0, endMin: Math.round(m) },
-        trigger: 'Projected head ETA under 120 min',
-        draft: evacDraft(sim, 'ORDER', m),
-        itemId: 'proj-head',
-      });
-      if (!has(sim, 'move-group')) {
-        const ids = ['e-42', 'crew-7', 'dz-2'];
-        const units = ids.map((id) => unitById(sim, id)).filter((u): u is Unit => !!u);
-        const lead = units[0];
-        const path = lead ? roadRoute(sim.ctx, lead.pos, sim.ctx.sites.school) : [];
-        propose(sim, {
-          kind: 'move-group',
-          title: `Move structure group → ${sim.ctx.gfName}`,
-          summary: `${units.map((u) => u.callsign).join(', ')} to structure defense before the head arrives in ${Math.round(m)} min. Safety zone SZ-1.`,
-          risk: 'high',
-          audiences: ['ops'],
-          unitIds: units.map((u) => u.id),
-          route: path,
-          target: sim.ctx.sites.school,
-          window: { startMin: 0, endMin: 45 },
-          safetyZone: { center: sim.ctx.sites.school, radiusM: 150, label: 'SZ-1 · school ball field' },
-          trigger: 'Disengage if fire is within 800 m of SZ-1 or ETA under 20 min',
-          draft: moveDraft(sim, units, path),
-          itemId: 'proj-head',
-        });
-      }
-      if (!has(sim, 'resource-order')) {
-        propose(sim, {
-          kind: 'resource-order',
-          title: 'Resource order · 2 Type 1 engines + 1 VLAT',
-          summary: `Structure group alone cannot cover ${sim.ctx.structuresGF} structures; a VLAT line ahead of the head buys time.`,
-          risk: 'high',
-          audiences: ['ic', 'ops', 'air'],
-          unitIds: [],
-          target: sim.ctx.sites.gf,
-          draft: resourceDraft(sim, m),
-          itemId: 'proj-head',
-        });
-      }
-    } else if (m <= 150 && !hasType('ORDER') && !hasType('WARNING')) {
-      propose(sim, {
-        kind: 'evac-notice',
-        title: `Evacuation WARNING · Zone EDC-GF-1 (${sim.ctx.gfName})`,
-        summary: `Head projected to reach ${sim.ctx.gfName} in ${Math.round(m)} min (rev ${p.rev}).`,
-        risk: 'high',
-        audiences: ['public', 'law', 'ic'],
-        unitIds: ['so-5'],
-        target: sim.ctx.sites.gf,
-        trigger: 'Projected head ETA under 150 min',
-        draft: evacDraft(sim, 'WARNING', m),
-        itemId: 'proj-head',
-      });
-    }
-  }
+  proposeHeadWork(sim);
 
   if (sim.t >= sim.timers.sitrep) {
     const n = sim.actions.filter((a) => a.kind === 'sitrep').length + 1;
     sim.timers.sitrep = sim.t + 120 * MIN;
     propose(sim, {
       kind: 'sitrep',
-      title: `ICS-209 sitrep · ${sim.ctx.fmtTime(sim.t)}`,
-      summary: 'Scheduled status summary for the IC, built from the live picture.',
+      title: `${sim.ctx.script.sitrep?.title ?? 'Situation report'} · ${sim.ctx.fmtTime(sim.t)}`,
+      summary: 'Scheduled status summary for the incident commander, built from the live picture.',
       risk: 'low',
       audiences: ['ic'],
       unitIds: [],

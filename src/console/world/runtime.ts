@@ -2,7 +2,7 @@ import type { ConsoleState, Ms, ScenarioPack } from '../contracts';
 import type { Bus } from '../bus';
 import type { Sim } from './sim';
 import { MIN, clamp } from './geo';
-import { DEFAULT_SEED, contextFor, createSim, fastForward, stepSim } from './engine';
+import { contextFor, createSim, fastForward, stepSim } from './engine';
 import { Director, type DirectorRuntime } from '../director';
 
 const MAX_FF_MS = 6 * 60 * MIN;
@@ -19,7 +19,7 @@ export class Runtime implements DirectorRuntime {
     opts: { seed?: number; tokens?: ConsoleState['settings']['tokens']; t?: Ms } = {},
   ) {
     const ctx = contextFor(pack);
-    this.seed = opts.seed ?? DEFAULT_SEED;
+    this.seed = opts.seed ?? ctx.script.seed;
     this.sim = createSim(pack, bus, {
       seed: this.seed,
       t: opts.t ?? ctx.T0,

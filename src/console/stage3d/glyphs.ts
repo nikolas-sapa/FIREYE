@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Icon, color as ds, type IconName } from '@ds';
+import { Icon, color as ds, getAccent, type IconName } from '@ds';
 import type { FindingKind, UnitKind } from '../contracts';
 
 const DPR = 2;
@@ -83,7 +83,8 @@ function brackets(g: CanvasRenderingContext2D, x: number, y: number, s: number, 
 /** Billboard image (2x canvas; use billboard scale 0.5). Cached per spec. */
 export function glyph(spec: GlyphSpec): HTMLCanvasElement {
   const size = spec.size ?? (spec.style === 'bare' ? 22 : 28);
-  const key = `${spec.icon}|${spec.color}|${spec.style}|${spec.selected ? 1 : 0}|${size}`;
+  const accent = getAccent().DEFAULT;
+  const key = `${spec.icon}|${spec.color}|${spec.style}|${spec.selected ? accent : 0}|${size}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const pad = spec.selected ? 8 : 2;
@@ -119,7 +120,7 @@ export function glyph(spec: GlyphSpec): HTMLCanvasElement {
   const ip = Math.round(s * (spec.style === 'bare' ? 0.72 : 0.64));
   g.drawImage(tinted(spec.icon, ip, spec.color), o + (s - ip) / 2, o + (s - ip) / 2);
   if (spec.selected) {
-    g.strokeStyle = ds.signal.DEFAULT;
+    g.strokeStyle = accent;
     g.lineWidth = DPR * 1.5;
     brackets(g, DPR, DPR, S - 2 * DPR, S * 0.22);
   }

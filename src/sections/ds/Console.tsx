@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  AutonomyDial, Brackets, CaptionBar, DecisionCard, DirectiveToast, DraftDocument, GridBg, LedgerCounter, LensSelect, TimelineScrubber, WhyPopover, ZoneTag,
+  AutonomyDial, Brackets, CaptionBar, DecisionCard, DirectiveToast, DraftDocument, GridBg, LedgerCounter, LensSelect, PredictionCheckCard, ProvenanceTag,
+  THEMES, ThemeToggle, TimelineScrubber, WhyPopover, ZoneTag, useTheme,
   zoneMeta, type ConsoleActionStatus, type ConsoleAutonomy, type ConsoleLens, type ConsoleZone,
 } from '@ds';
 import { GroupTitle, Spec, SubSection } from './Spec';
@@ -307,7 +308,69 @@ export function ConsoleSpec() {
           </div>
           <code className="mt-2 block font-mono text-micro text-bone-dim">{'<CaptionBar beat total title caption progress beatMarks onPrev onNext onClose />'}</code>
         </div>
+
+        <div>
+          <GroupTitle code="C.10">ThemeToggle / FCC and Team themes</GroupTitle>
+          <ThemeDemo />
+          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<ThemeToggle compact hint onChange />  ·  getTheme() setTheme(id) getAccent() onThemeChange(fn) useTheme()'}</code>
+        </div>
+
+        <div>
+          <GroupTitle code="C.11">PredictionCheckCard + ProvenanceTag / honest scoring</GroupTitle>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <PredictionCheckCard
+              status="scored"
+              horizonMin={60}
+              issued="17:30 EEST"
+              target="18:30 EEST"
+              iou={0.64}
+              areaPred={1180}
+              areaActual={1265}
+              checkpoints={[
+                { id: 'coast', label: 'Coast reached', predicted: '18:24', documented: '18:30', uncertaintyMin: 10, errorMin: -6 },
+                { id: 'road', label: 'Main road crossed', predicted: '17:58', documented: '17:40', uncertaintyMin: 10, errorMin: 18 },
+              ]}
+              method="Wavelet spread on DEM + fuel + hourly wind; no tuning to this fire"
+            />
+            <div className="flex flex-col gap-3">
+              <PredictionCheckCard compact status="pending" horizonMin={180} issued="18:00 EEST" target="21:00 EEST" countdown="42 min" areaPred={2410} />
+              <div className="flex flex-wrap items-center gap-2 border border-line bg-ink-900 p-3">
+                <ProvenanceTag kind="real" />
+                <ProvenanceTag kind="simulated" />
+                <ProvenanceTag kind="model" />
+                <span className="font-mono text-micro uppercase text-bone-mute">Specimen values, not from a scenario pack</span>
+              </div>
+            </div>
+          </div>
+          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<PredictionCheckCard status horizonMin issued target countdown iou areaPred areaActual areaUnit checkpoints method compact />  ·  <ProvenanceTag kind="real|simulated|model" />'}</code>
+        </div>
       </div>
     </SubSection>
+  );
+}
+
+function ThemeDemo() {
+  const theme = useTheme();
+  return (
+    <div className="grid grid-cols-1 gap-px border border-line bg-line md:grid-cols-[auto_1fr_1fr]">
+      <div className="flex items-center bg-ink-900 p-5">
+        <ThemeToggle />
+      </div>
+      {(['fcc', 'team'] as const).map((id) => {
+        const t = THEMES[id];
+        return (
+          <div key={id} className="flex flex-col gap-2 bg-ink-900 p-5">
+            <span className="flex items-center gap-2 font-mono text-micro uppercase text-bone-mute">
+              <span aria-hidden className={theme === id ? 'h-2 w-2 bg-signal' : 'h-2 w-2 border border-ink-400'} />
+              {t.label} {theme === id && <span className="text-bone">· active</span>}
+            </span>
+            <span className="text-sm text-bone">{t.description}</span>
+            <span className="font-mono text-micro uppercase text-bone-mute fcc-num">
+              Signal {t.accent.DEFAULT} · warning {t.amber}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }

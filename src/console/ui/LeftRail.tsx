@@ -35,7 +35,8 @@ const items: { id: PanelId; icon: IconName; label: string }[] = [
   { id: 'agents', icon: 'agents', label: 'Agent Ops' },
   { id: 'drafts', icon: 'news', label: 'Drafts' },
   { id: 'ledger', icon: 'zap', label: 'Work Ledger' },
-  { id: 'log', icon: 'log', label: 'Log' },
+  { id: 'log', icon: 'log', label: 'Log & real reports' },
+  { id: 'checks', icon: 'target', label: 'Prediction vs replay' },
   { id: 'layers', icon: 'layers', label: 'Layers & sources' },
 ];
 

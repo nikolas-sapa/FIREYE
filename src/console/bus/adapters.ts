@@ -11,14 +11,16 @@ import { bus, type Bus } from './index';
  *   { "type": "analysis.finding", "at": 1629158400000, "finding": { ...Finding } }
  *   { "type": "ui.directive", "at": 1629158400000, "directive": { "id": "dir-12", "kind": "promoteFeed", ... } }
  *
- * The browser only validates and republishes them on the local bus, so every panel keeps working.
- * When a backend is attached the in-browser simulation should be paused so the two sources do not mix.
+ * This unwired seam only checks the event envelope and republishes it.
+ * It does not update ConsoleState, validate payloads, authenticate users or send commands.
+ * Production integration needs a validated received-event reducer and command/authority boundary.
  */
 const TYPES = new Set<BusEvent['type']>([
   'source.ingested',
   'analysis.job',
   'analysis.finding',
   'projection.updated',
+  'prediction.scored',
   'orchestrator.graded',
   'ui.directive',
   'action.proposed',
@@ -31,7 +33,7 @@ const TYPES = new Set<BusEvent['type']>([
 export function isBusEvent(x: unknown): x is BusEvent {
   if (!x || typeof x !== 'object') return false;
   const o = x as { type?: unknown; at?: unknown };
-  return typeof o.type === 'string' && TYPES.has(o.type as BusEvent['type']) && typeof o.at === 'number';
+  return typeof o.type === 'string' && TYPES.has(o.type as BusEvent['type']) && typeof o.at === 'number' && Number.isFinite(o.at);
 }
 
 export interface WebSocketAdapterOptions {

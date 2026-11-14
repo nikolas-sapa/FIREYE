@@ -127,13 +127,15 @@ function findingCands(sim: Sim): Map<string, Cand> {
       fresh: f.freshness,
       corr: Math.min(10, (kinds.size - 1) * 5),
       act: fm.resolved ? 0 : ACTIONABILITY[f.kind],
+      // Scenario-flagged interrupts (e.g. a new ignition) hold interrupt-level score for their first 15 min.
+      minScore: fm.interrupt && !fm.resolved && sim.t - f.observedAt < 15 * MIN ? 90 : undefined,
       lens: lensFor(sim.settings.lens, cls, f.kind, fm.sourceKinds),
       audiences: AUD[f.kind],
       eta,
       nSources: kinds.size,
       live: f.live,
       // A spot fire the main front has already reached is no longer an imminent, separate hazard.
-      z0: !fm.resolved && (f.kind === 'human' || (cls === 'hazard' && exp >= 0.85 && (f.kind === 'combustible' || (f.kind === 'spot' && eta > 0)))),
+      z0: !fm.resolved && ((!!fm.interrupt && eta >= 0) || f.kind === 'human' || (cls === 'hazard' && exp >= 0.85 && (f.kind === 'combustible' || (f.kind === 'spot' && eta > 0)))),
       isAction: false,
       fkind: f.kind,
       ref: { conf: f.confidence, unc: f.uncertaintyM, eta },
@@ -222,7 +224,7 @@ function projectionCand(sim: Sim): Cand | null {
   if (!p) return null;
   const t = sim.t;
   const c = sim.ctx;
-  let placeId = c.gfId;
+  let placeId = c.primaryId;
   let eta = p.etaToPlaces[placeId];
   if (eta === undefined || eta <= t) {
     let best: string | null = null;
@@ -270,12 +272,12 @@ function statusCands(sim: Sim): Cand[] {
   const w = sim.ctx.weatherAt(sim.t);
   const base = { kind: 'status' as const, cls: 'status' as const, corr: 0, act: 0, lens: lensFor(sim.settings.lens, 'status'), audiences: ['ic', 'air'] as Audience[], nSources: 1, live: false, z0: false, isAction: false, fresh: 1 };
   if (w.gustKph >= 30 && w.rh <= 25) {
-    out.push({ ...base, id: 'st-redflag', refId: 'st-redflag', title: `RED FLAG CONDITIONS · GUSTS ${Math.round(w.gustKph)} KPH · RH ${Math.round(w.rh)}%`, body: 'NWS Sacramento red flag criteria met (Open-Meteo archive + NWS alerts).', sev: 0.4, exp: 1, conf: 1, eta: Infinity });
+    out.push({ ...base, id: 'st-redflag', refId: 'st-redflag', title: `RED FLAG CONDITIONS · GUSTS ${Math.round(w.gustKph)} KPH · RH ${Math.round(w.rh)}%`, body: sim.ctx.script.redFlag, sev: 0.4, exp: 1, conf: 1, eta: Infinity });
   }
-  if (sim.shiftApplied) {
+  if (sim.shiftApplied && sim.ctx.tShift !== null) {
     const a = sim.ctx.shiftFrom;
     const b = sim.ctx.shiftTo;
-    out.push({ ...base, id: 'st-windshift', refId: 'st-windshift', title: `WIND SHIFT · ${Math.round(a.windDirDeg)}° → ${Math.round(b.windDirDeg)}° BY ${sim.ctx.fmtTime(b.t)}`, body: 'Evening wind shift from the Open-Meteo archive, ingested by the weather agent.', sev: 0.5, exp: 0.9, conf: 1, eta: Infinity, act: 4 });
+    out.push({ ...base, id: 'st-windshift', refId: 'st-windshift', title: `WIND SHIFT · ${Math.round(a.windDirDeg)}° → ${Math.round(b.windDirDeg)}° BY ${sim.ctx.fmtTime(b.t)}`, body: `Forecast wind shift (${sim.ctx.script.weatherSource}), ingested by the weather agent.`, sev: 0.5, exp: 0.9, conf: 1, eta: Infinity, act: 4 });
   }
   return out;
 }
@@ -380,7 +382,7 @@ function onEnter(sim: Sim, it: GradedItem, old: Zone | undefined): void {
     }
     emitDirective(sim, { kind: 'highlight', itemId: it.id, ids: [it.refId], reason });
     emitDirective(sim, { kind: 'dimOthers', itemId: it.id, on: true, reason: 'Interrupt: everything else is dimmed until acknowledged' });
-    emitDirective(sim, { kind: 'notify', audiences: it.audiences, message: `${it.title} · ${etaText(etaMin(sim, it.pos ?? sim.ctx.sites.gf, 0))}`, reason: it.reason, itemId: it.id });
+    emitDirective(sim, { kind: 'notify', audiences: it.audiences, message: `${it.title} · ${etaText(etaMin(sim, it.pos ?? sim.ctx.sites.primary, 0))}`, reason: it.reason, itemId: it.id });
   } else if (old === 'Z0_INTERRUPT') {
     emitDirective(sim, { kind: 'dimOthers', itemId: it.id, on: false, reason: 'Interrupt cleared' });
     emitDirective(sim, { kind: 'restoreStage', reason: 'Interrupt cleared; back to the overview' });
@@ -514,7 +516,7 @@ export function grade(sim: Sim): void {
   const pi = items.find((i) => i.id === 'proj-head');
   if (p && pi && pi.factors.novelty >= 7 && p.rev > 1 && !sim.cues.has(`projfocus-${p.rev}`)) {
     sim.cues.add(`projfocus-${p.rev}`);
-    const head = sim.projHead ?? sim.ctx.sites.gf;
+    const head = sim.projHead ?? sim.ctx.sites.primary;
     const target = pi.pos ? { lon: (head.lon + pi.pos.lon) / 2, lat: (head.lat + pi.pos.lat) / 2 } : head;
     emitDirective(sim, { kind: 'focusStage', itemId: pi.id, target, rangeM: 9000, pitchDeg: -50, reason: `Projection rev ${p.rev}: ${pi.title}` });
   }

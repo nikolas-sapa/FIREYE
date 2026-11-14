@@ -329,7 +329,8 @@ export function LensSelect({ value, onChange, showKeys = true, className }: Lens
 
 export interface TimelineMark {
   t: number;
-  kind: 'ghost' | 'beat' | 'event' | 'perimeter';
+  /** `checkpoint` marks a documented real-world moment (e.g. a sourced arrival time). */
+  kind: 'ghost' | 'beat' | 'event' | 'perimeter' | 'checkpoint';
   label?: string;
 }
 
@@ -457,6 +458,7 @@ export function TimelineScrubber({ start, end, t, onSeek, ticks = [], series = [
               m.kind === 'beat' && 'top-0 h-1.5 w-1.5 -translate-x-1/2 rotate-45 border border-bone-dim bg-ink-950',
               m.kind === 'event' && 'top-0 h-full w-px bg-violet/60',
               m.kind === 'perimeter' && 'bottom-0 h-1 w-1 -translate-x-1/2 bg-ember',
+              m.kind === 'checkpoint' && 'inset-y-0 w-[5px] -translate-x-1/2 border-x-2 border-transparent bg-bone-dim bg-clip-content',
             )}
             style={{ left: `${x(m.t) * 100}%` }}
           />
@@ -541,10 +543,10 @@ export function LedgerCounter({ label, value, unit, format, size = 'md', tone = 
         <span className={cn('min-w-0 truncate font-mono uppercase text-bone-mute', size === 'lg' ? 'text-nano' : 'text-micro')}>{label}</span>
         {size !== 'sm' && deltaEl}
       </span>
-      <span className="flex min-w-0 items-baseline gap-1.5">
+      <span className="flex min-w-0 items-baseline gap-1.5 overflow-hidden">
         <span className={cn('whitespace-nowrap font-mono leading-none fcc-num', num, tone === 'neutral' ? 'text-bone' : toneText[tone])}>{f(value)}</span>
         {unit && <span className="font-mono text-micro uppercase text-bone-mute">{unit}</span>}
-        {size === 'sm' && deltaEl}
+        {size === 'sm' && deltaEl && <span className="ml-auto min-w-0 truncate">{deltaEl}</span>}
       </span>
       {sub != null && <span className="font-mono text-micro uppercase text-bone-mute">{sub}</span>}
     </div>
@@ -969,6 +971,159 @@ export function DecisionCard({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------ ProvenanceTag ----------------------------- */
+
+export type Provenance = 'real' | 'simulated' | 'model';
+
+const provenanceMeta: Record<Provenance, { label: string; cls: string }> = {
+  real: { label: 'Real · public report', cls: 'border-bone/40 text-bone' },
+  simulated: { label: 'Simulated', cls: 'border-amber/40 text-amber' },
+  model: { label: 'Model output', cls: 'border-ice/40 text-ice' },
+};
+
+/** Says where a line of content comes from: a real public source, the simulation, or a model. */
+export function ProvenanceTag({ kind, label, className }: { kind: Provenance; label?: string; className?: string }) {
+  const m = provenanceMeta[kind];
+  return (
+    <span className={cn('inline-flex h-4 shrink-0 items-center gap-1 border px-1 font-mono text-micro uppercase leading-none', m.cls, className)}>
+      <span aria-hidden className={cn('h-1 w-1', kind === 'real' ? 'bg-bone' : kind === 'simulated' ? 'bg-amber' : 'bg-ice')} />
+      {label ?? m.label}
+    </span>
+  );
+}
+
+/* --------------------------- PredictionCheckCard -------------------------- */
+
+export interface PredictionCheckpointRow {
+  id: string;
+  label: string;
+  /** Formatted documented time, e.g. "18:30". */
+  documented: string;
+  /** Formatted predicted time; omitted when the projection never reached the checkpoint. */
+  predicted?: string;
+  /** Documentation uncertainty in minutes (shown as ±). */
+  uncertaintyMin?: number;
+  /** Predicted minus documented, minutes. Negative = predicted early. */
+  errorMin?: number;
+}
+
+export interface PredictionCheckCardProps {
+  status: 'pending' | 'scored';
+  horizonMin: number;
+  /** Formatted issue time of the projection. */
+  issued: string;
+  /** Formatted scoring time (issued + horizon). */
+  target: string;
+  /** Pending only: e.g. "42 min". */
+  countdown?: string;
+  /** 0..1 */
+  iou?: number;
+  areaPred: number;
+  areaActual?: number;
+  areaUnit?: string;
+  checkpoints?: PredictionCheckpointRow[];
+  method?: string;
+  compact?: boolean;
+  className?: string;
+}
+
+const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(Math.round(n))}`;
+
+function iouTone(iou: number): Tone {
+  if (iou >= 0.6) return 'nominal';
+  if (iou >= 0.35) return 'warning';
+  return 'danger';
+}
+
+/**
+ * Projection overlap against the replay reconstruction, with separate timing errors against sourced checkpoints.
+ */
+export function PredictionCheckCard({
+  status, horizonMin, issued, target, countdown, iou, areaPred, areaActual, areaUnit = 'HA', checkpoints = [], method, compact = false, className,
+}: PredictionCheckCardProps) {
+  const scored = status === 'scored' && iou != null;
+  const pct = scored ? Math.round(iou! * 100) : null;
+  const tone = scored ? iouTone(iou!) : 'telemetry';
+  const fmtA = (v: number) => Math.round(v).toLocaleString('en-US');
+  const diff = scored && areaActual ? ((areaPred - areaActual) / Math.max(1, areaActual)) * 100 : null;
+  return (
+    <div className={cn('flex flex-col border border-line bg-ink-900', className)}>
+      <div className="flex h-8 items-center gap-2 border-b border-line px-3">
+        <Icon name="target" size={12} className={toneText[tone]} />
+        <span className="font-mono text-micro uppercase tracking-[0.14em] text-bone">Prediction vs replay</span>
+        <span className="font-mono text-micro uppercase text-bone-mute fcc-num">+{horizonMin >= 60 ? `${Math.round(horizonMin / 60)}H` : `${horizonMin}M`} run</span>
+        <span
+          className={cn(
+            'ml-auto inline-flex h-4 items-center border px-1 font-mono text-micro uppercase leading-none',
+            scored ? 'border-phosphor/40 text-phosphor' : 'border-ice/40 text-ice',
+          )}
+        >
+          {scored ? 'Scored' : 'Pending'}
+        </span>
+      </div>
+      <div className={cn('grid gap-px bg-line', compact ? 'grid-cols-3' : 'grid-cols-[1.1fr_1fr_1fr]')}>
+        <div className="flex flex-col gap-1 bg-ink-900 px-3 py-2">
+          <span className="font-mono text-micro uppercase text-bone-mute">{scored ? 'Overlap · IoU' : 'Scores in'}</span>
+          <span className="flex items-baseline gap-1">
+            <span className={cn('font-mono leading-none fcc-num', compact ? 'text-xl' : 'text-2xl font-light', toneText[tone])}>{scored ? pct : countdown ?? '—'}</span>
+            {scored && <span className="font-mono text-micro text-bone-mute">%</span>}
+          </span>
+          {scored && (
+            <span aria-hidden className="relative mt-0.5 h-1 w-full bg-ink-700">
+              <span className={cn('absolute inset-y-0 left-0', toneSolid[tone])} style={{ width: `${pct}%` }} />
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1 bg-ink-900 px-3 py-2">
+          <span className="font-mono text-micro uppercase text-bone-mute">Projected</span>
+          <span className="flex items-baseline gap-1">
+            <span className="font-mono text-base leading-none text-bone fcc-num">{fmtA(areaPred)}</span>
+            <span className="font-mono text-micro uppercase text-bone-mute">{areaUnit}</span>
+          </span>
+          <span className="font-mono text-micro uppercase text-bone-mute fcc-num">Issued {issued}</span>
+        </div>
+        <div className="flex flex-col gap-1 bg-ink-900 px-3 py-2">
+          <span className="font-mono text-micro uppercase text-bone-mute">Replay</span>
+          <span className="flex items-baseline gap-1">
+            <span className="font-mono text-base leading-none text-bone fcc-num">{areaActual != null ? fmtA(areaActual) : '—'}</span>
+            <span className="font-mono text-micro uppercase text-bone-mute">{areaUnit}</span>
+          </span>
+          <span className="font-mono text-micro uppercase text-bone-mute fcc-num">
+            {diff != null ? `${signed(diff)} % vs replay` : `At ${target}`}
+          </span>
+        </div>
+      </div>
+      {checkpoints.length > 0 && (
+        <ul className="flex flex-col border-t border-line">
+          {checkpoints.map((c) => {
+            const within = c.errorMin != null && Math.abs(c.errorMin) <= (c.uncertaintyMin ?? 0);
+            return (
+              <li key={c.id} className="flex flex-col gap-0.5 border-b border-line-faint px-3 py-1.5 last:border-b-0">
+                <span className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate text-xs text-bone">{c.label}</span>
+                  <span
+                    className={cn(
+                      'shrink-0 font-mono text-micro uppercase fcc-num',
+                      c.errorMin == null ? 'text-bone-mute' : within ? 'text-phosphor' : 'text-amber',
+                    )}
+                  >
+                    {c.errorMin != null ? `Error ${signed(c.errorMin)} min` : c.predicted ? 'Not yet' : 'Not reached'}
+                  </span>
+                </span>
+                <span className="font-mono text-micro uppercase text-bone-mute fcc-num">
+                  Predicted {c.predicted ?? '—'} · documented {c.documented}
+                  {c.uncertaintyMin ? ` ±${c.uncertaintyMin}` : ''}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {method && !compact && <p className="border-t border-line px-3 py-2 font-mono text-micro uppercase leading-4 text-bone-mute">{method}</p>}
     </div>
   );
 }

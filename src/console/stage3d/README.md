@@ -23,7 +23,7 @@ Owner: STAGE worker. Public API (`src/console/stage3d/index.ts`):
 
 | State | Stage reaction |
 | --- | --- |
-| `fireRev` / `clock.t` | Fire field recomputed from `pack.arrival` (also when the clock drifts 5 min or jumps back). Hotspot clusters drive flame and smoke particles; smoke bends downwind from `weather`. Latest observed perimeter at `t` drawn as a dashed bone line with acres. |
+| `fireRev` / `clock.t` | Fire field recomputed from `pack.arrival` (also when the clock drifts 5 min or jumps back). Hotspot clusters drive flame, smoke and ember particles and the ray-marched smoke plume, which bends downwind from `weather`. Sun position and colour follow the replay time. Latest observed perimeter at `t` drawn as a dashed bone line with acres. |
 | `projection` | +1H/+3H/+6H translucent amber ground polygons, dashed outlines, `+1H · 82%` labels at the leading edge; `previous` bands as faint ghost outlines. Rebuilt on `rev` change. |
 | `findings` + `items` | Glyph per kind, colored by class (life violet, ember when its item is Z0/Z1; combustible/spot ember; fuel/road-block amber; structure bone; water ice). Non-live findings get a dashed uncertainty ring + faint fill; opacity follows `freshness`. Labels only for items in Z0–Z3 or the selection. |
 | `units` | Design-system icons as billboards (chips for ground units, brackets for aircraft), callsign labels, heading chevrons, dashed trails; drones get an altitude stem and sensor-footprint frustum. |
@@ -36,15 +36,32 @@ Owner: STAGE worker. Public API (`src/console/stage3d/index.ts`):
 
 Ids accepted for highlight / dim / selection: finding ids, unit ids, place ids, action ids, and graded-item ids that carry `pos`.
 
+## Scenario profile
+
+The stage holds no scenario constants. `profile.ts` derives a `StageProfile` from the pack (centre, span, relief, min/max elevation, water fraction, coastal flag, hotspot bin size, flame and smoke radii, vertical exaggeration, initial view, zoom limits, fog density, label distances). Every pack (Mati 2018 by default, Caldor 2021 via `?scenario=caldor-2021`) is tuned from that profile. Sea pixels (pack water mask, or streamed surface at sea level near the coast) render as water with sky reflection and sun glint.
+
+## Atmosphere and camera models
+
+All smoke/optics/sensor effects are illustrative shaders, not validated physical camera models.
+IR is non-radiometric synthetic heat intensity, never a measured temperature. Satellite pixels are
+archived real imagery; detections drawn over them are simulated annotations. The console labels these
+distinctions and keeps source/date/nominal-pass details above the metric strip.
+
+- `smoke.ts` — `SmokeField`: a 224² CPU plume footprint (column density, plume base and top, settled haze) built from the active clusters and hourly wind with a bent-over Gaussian plume. Rebuilt when sources or wind change; double-buffered and cross-faded.
+- `atmosphere.ts` — `AtmospherePass`, the first post-process in both viewers. Reconstructs each pixel's position from the log depth buffer and ray-marches the plume with spectral extinction (brown-grey smoke, reddened and dimmed sun under the plume, plume shadow on the ground), fire light at the base of the column, near-ground haze, distance haze, heat shimmer over the front, water reflection and glint. Looks: `stage` (legibility floor after sunset), `camera` (real sky with sun disc and forward scatter, lower path extinction because feed cameras often sit beside the plume) and `thermal` (temperature image; LWIR sees through most smoke). Sun position from `sun.ts` (real solar ephemeris at the replay time).
+- `fx.ts` — camera models after the atmosphere: `uav-eo` (sharpening, chromatic aberration, H.264 blocks, bloom), `ir-white` / `ir-iron` (microbolometer blur, AGC, fixed-pattern noise, NUC shutter freeze), `dash` (barrel distortion, rolling shutter, windshield veil, dashboard edge), `helmet` (wide barrel, sway), `ridge` (PTZ compression), `phone` (AE pumping, JPEG ringing, shake; posted portrait 9:16), `sat`. Exposure / AGC dynamics, NUC timing and shake live in `FeedRenderer.sensor()`.
+- Satellite feeds (`feeds/satellite.ts`) only show real pack imagery: the latest true-colour scene in `manifest.imageryExtra` (or the base mosaic) whose pass is not after the replay time, with the thermal overlay of the same date. The HUD names sensor, date, pass time and source; pass times are nominal (10:30 or 13:30 local solar time) until the pack provides exact overpass timestamps, and are labelled "(NOMINAL)". When no scene exists the frame says "Synthetic render · not imagery".
+- Reduced motion: no shimmer, shake, rolling shutter or particles.
+
 ## Layers and files
 
-- `viewer.ts` — dark Viewer factory (all widgets off, dark sky atmosphere, fog, no sun/moon) and `setupBasemap`.
+- `viewer.ts` — dark Viewer factory (all widgets off, dark sky atmosphere, fog, no sun/moon), `setupBasemap` (datum calibration of the orthometric pack DEM against streamed ellipsoid terrain) and `applySunLight`.
 - `terrain.ts` — `CustomHeightmapTerrainProvider` from `pack.elevation`; the offline relief composite (imagery or fuel colors × baked hillshade × canopy grain + 40 m contours + roads, water, buildings); the close-range procedural detail layer; optional NASA GIBS context.
 - `fire.ts` — `FireField` (R burned, G active heat, B scar age, from `pack.arrival`; hotspot clustering) and `FireOverlay` (GroundPrimitive with a custom GLSL material: domain-warped edges, charcoal scar, ember speckle, flickering front, halo). Classification type `BOTH`, so it drapes over terrain and Google 3D tiles.
 - `particles.ts` — capped flame (16) and smoke (6) particle systems; smoke drifts downwind.
 - `layers.ts` — entity layers listed above. `glyphs.ts` — tinted canvas billboards from the `@ds` icon set.
 - `fx.ts` — stage grade post-process and the feed effects: `eo`, `ir-ironbow`, `ir-whitehot`, `night`, `phone`, `sat` (all colors derive from tokens; ironbow is void → violet → ember → signal → amber → bone).
-- `feeds/FeedRenderer.ts` — one hidden 960×540 / 384×216 Cesium viewer shared by every surface. The active `full` surface renders at ~18 fps; thumbnails refresh round-robin (each roughly every 2 s, two-pass so tiles are resident); thumbnails showing the full feed ride along at ~4 fps. Back-off grows with measured render cost. Adds 3D stand-ins for findings (people, animals, tanks, vehicles, structures), units and OSM buildings so cameras actually see something; detection boxes come from `finding.bbox` (when `bbox.feedId` matches) or the projected finding position.
+- `feeds/FeedRenderer.ts` — one hidden 960×540 / 384×216 Cesium viewer shared by every surface. The active `full` surface renders at ~24 fps; thumbnails refresh round-robin (each roughly every 2 s, two-pass so tiles are resident); thumbnails showing the full feed ride along at ~4 fps. Back-off grows with measured render cost. Adds 3D stand-ins for findings (people, animals, tanks, vehicles, structures), units and OSM buildings so cameras actually see something; detection boxes come from `finding.bbox` (when `bbox.feedId` matches) or the projected finding position.
 - `feeds/poses.ts` — camera poses: uav-nadir (150–400 m, straight down), uav-oblique (orbit the target at the pose pitch), uav-chase, dash-cam (2.2 m, along heading, slight pitch down, vibration), helmet-cam (1.7 m, sway/bob), ridge-cam (fixed mast, 360° pan every 4 min dwelling on the configured heading), satellite (altitude from `rangeM` footprint and `fovDeg`), social (handheld at the pose / finding).
 - `feeds/FeedSurfaceView.tsx` — canvas + HUD. Full: REC/LIVE (or "not live · archived clip"), callsign, label, sensor mode, FOV, kind, lat/lon, altitude AGL, heading, Zulu timecode, frame counter, reticle, labelled detection boxes with confidence. Thumb: detection boxes and a REC dot + mode tag only.
 
@@ -52,8 +69,8 @@ Ids accepted for highlight / dim / selection: finding ids, unit ids, place ids, 
 
 | Configuration | Terrain | Imagery | Notes |
 | --- | --- | --- | --- |
-| none (default) | `CustomHeightmapTerrainProvider` from `pack.elevation`, vertical exaggeration 1.3 | Offline relief composite over the bbox (uses `pack.imagery` when present, else fuel colors), procedural detail below ~4 km tiles | No network requests. Outside the bbox the surface eases to the mean height over a dark ink base, so the scenario reads as a lit terrain model. |
-| `VITE_CESIUM_ION_TOKEN` | Cesium World Terrain (vertex normals, fixed NW key light) | ion Bing aerial, graded dark (brightness 0.78, saturation 0.45) | Overlays clamp to world terrain. |
+| none, or `?tokens=0` | `CustomHeightmapTerrainProvider` from `pack.elevation`, profile vertical exaggeration | Offline relief composite over the bbox (uses `pack.imagery` when present, else fuel colors), procedural detail below ~4 km tiles | No network requests. Outside the bbox the surface eases to the mean height over a dark ink base, so the scenario reads as a lit terrain model. |
+| `VITE_CESIUM_ION_TOKEN` (or `?tokens=ion` to skip Google) | Cesium World Terrain (vertex normals, real sun light, profile exaggeration, no ion water mask) | ion Bing aerial (brightness 0.92, contrast 1.1, saturation 0.72) | Overlays clamp to world terrain; the pack DEM is shifted by the measured geoid offset. |
 | `VITE_GOOGLE_MAPS_KEY` | Google Photorealistic 3D Tiles (globe hidden per Cesium guidance) | Mesh texture, graded by the stage post-process | Fire overlay, bands, rings and routes classify the mesh. Google attribution is shown in the credits container (mandatory). |
 
 Any failure in a token path logs a warning and falls back to offline. The feed renderer uses the same basemap path. If WebGL is unavailable the stage shows a "3D stage unavailable" card; if the feed renderer cannot get a second context, surfaces show a static "No signal" card.
@@ -65,8 +82,9 @@ Optional regional context: `setupBasemap(viewer, pack, sampler, { gibs: true })`
 - Main stage renders continuously (fire flicker, particles) with MSAA 4; render loop pauses while a feed covers it. Feed viewer: MSAA 1, manual render loop, disposed 60 s after the last surface unmounts.
 - Fire field: one pass over the raster per `fireRev` (about 10 ms at 1000 × 833); texture double-buffered so Cesium re-uploads.
 - Particles capped (16 flame + 6 smoke on the stage, 12 + 5 in feeds). Layers diff by signature; freshness alpha is quantized to 1/8 steps to avoid ground-primitive rebuilds.
-- `prefers-reduced-motion`: no particles, frozen fire flicker, instant camera moves, static highlight rings.
+- `prefers-reduced-motion`: no particles, frozen fire flicker, instant camera moves, static highlight rings, no shimmer or camera shake.
+- Measured (Apple M4, 10-core GPU, Chrome/ANGLE Metal, 1920×1080 at DPR 1, Mati, ion): stage with all eight feed thumbnails 41.8 fps average (p50 16.7 ms, p95 33.4 ms); stage alone 37.8 fps; offline with thumbnails 39.7 fps. Feed render cost about 5 ms per frame.
 
 ## Dev harness
 
-`http://localhost:5173/src/console/stage3d/dev/preview.html` renders the stage over the real pack with a mock world (`dev/mock.ts`). Query params: `t=<hours after replay start>`, `speed=<x>`, `feed=<feedId>` (feed mode), `fx=<FeedFx>` (override every feed), `thumbs=1` (thumbnail strip), `dim=1`, `hl=<id,id>`, `focus=<lon,lat,range>`.
+`http://localhost:5173/src/console/stage3d/dev/preview.html` renders the stage over the real pack with a mock world (`dev/mock.ts`). Query params: `t=<hours after replay start>`, `speed=<x>`, `feed=<feedId>` (feed mode), `fx=<FeedFx>` (override every feed), `thumbs=1` (thumbnail strip), `dim=1`, `hl=<id,id>`, `focus=<lon,lat,range>`, `pack=<scenario id>`, `tokens=0` (offline basemap), `tokens=ion`, `atmos=0` (disable the stage atmosphere pass, for debugging). In development builds `window.__fccStage` and `window.__fccFeeds` expose the engine and the feed renderer.

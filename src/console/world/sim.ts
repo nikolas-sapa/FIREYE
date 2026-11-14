@@ -12,6 +12,7 @@ import type {
   Ledger,
   Message,
   Ms,
+  PredictionCheck,
   Projection,
   SourceKind,
   Unit,
@@ -23,6 +24,7 @@ import type { ScenarioContext } from './context';
 import type { FindingSpec } from '../agents/catalog';
 import type { PoolDef } from '../agents/pools';
 import type { BriefFacts } from '../orchestrator/brief';
+import type { SpreadField } from '../agents/spread';
 
 export type Plan =
   | { mode: 'hold' }
@@ -43,6 +45,9 @@ export interface UnitMeta {
   override?: number;
   holdUntil: Ms;
   phase: number;
+  /** Moves in straight lines over water (boats). */
+  marine?: boolean;
+  helmetCam?: boolean;
 }
 
 export interface FindingMeta {
@@ -58,6 +63,8 @@ export interface FindingMeta {
   sourceKinds: SourceKind[];
   random: boolean;
   rescueStart?: Ms;
+  /** Scripted interrupt-worthy finding (e.g. a new ignition in the WUI). */
+  interrupt?: boolean;
 }
 
 export interface ItemMeta {
@@ -126,7 +133,14 @@ export interface Sim {
   fmeta: Map<string, FindingMeta>;
   feeds: Feed[];
   projection: Projection | null;
-  projBias: number;
+  /** Latest modelled arrival field (independent of the replay truth after its issue time). */
+  projField: SpreadField | null;
+  /** Recent projection compute times (ms). */
+  projMs: number[];
+  predictions: PredictionCheck[];
+  predRt: Map<string, { mask: Uint8Array; base: Uint8Array; rev: number }>;
+  /** Real pack reports already ingested. */
+  reportsSeen: Set<string>;
   projWeather: { dir: number; kph: number } | null;
   projHead: Geo | null;
   projCenter: Geo | null;

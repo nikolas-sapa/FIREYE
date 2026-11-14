@@ -1,12 +1,20 @@
 # FCC — Fire Command Center
 
-**FCC-01 / REV C · Proposal + console · 2026-11-14**
+**FCC-01 / REV D · Proposal + console · 2026-11-14**
 
 FCC is an incident watch officer made of AI agents. A swarm of analysis agents reads every feed: news (Firecrawl), social video, satellite passes (NASA FIRMS, GIBS, GOES), drone and dash cams (fal video understanding), weather (Open-Meteo, NWS) and radio (Whisper-style transcription). A projection agent keeps re-forecasting the fire. The **Orchestrator** decides what the human sees, when, and where, and drafts the actual work: drone retasks, crew moves, evacuation notices, ICS-209 sitreps, resource orders and rescue tasks. An Agent Work Ledger shows the useful work done and the analyst minutes saved.
 
 **Open the console: [`/console.html`](http://localhost:5173/console.html)** (run `npm run dev` first).
 
-REV C is a full-screen console (1920 × 1080 and up) that replays the **2021 Caldor Fire** (El Dorado County, California; ignited Aug 14 2021 near Omo Ranch and ran into Grizzly Flats on the night of Aug 16–17) on a 3D CesiumJS globe, using public data cached in `public/data/caldor/`.
+This is a simulated product demonstration, not a live agent service. No LLM/provider inference runs. Video feeds, detections, tasks and time-savings counters are simulated; the local spread solver is prototype code. High-risk drafts require a human approval click, including during the Demo Director tour.
+
+The full-screen console (1920 × 1080 and up) defaults to **Mati, Greece, 23 July 2018**, with public data cached in `public/data/mati/`. Select **Caldor 2021** in the scenario menu or open `/console.html?scenario=caldor-2021` for the earlier replay.
+
+The Mati timeline is a reconstruction fitted to documented checkpoints and the EFFIS final perimeter, not a sequence of observed fire fronts. Matching those anchors tests consistency, not predictive accuracy. The pack's 28 FIRMS detections occurred after the main run. Historical checkpoint errors and comparisons against reconstructed spread must be reported separately.
+
+Switch between FCC (orange, Inter Tight) and Team (blue, Geist) with the theme toggle, `T` in the console, or `?theme=team`.
+
+The model starts from reconstructed issue-time fire and uses archived future weather as a perfect forecast. It substantially underpredicts Mati's speed. IoU is against reconstructed spread; checkpoint timing is against sourced moments. No final-perimeter evaluation is implemented. See [`PROJECTION.md`](src/console/orchestrator/PROJECTION.md) for assumptions and results.
 
 > Scenario built from public data; units, people and events are simulated.
 
@@ -14,7 +22,8 @@ REV C is a full-screen console (1920 × 1080 and up) that replays the **2021 Cal
 
 | Rev | Date | Notes | Where |
 |---|---|---|---|
-| C | 2026-11-14 | Full-screen console, real-fire replay (Caldor 2021), attention manager (zones, directives, drafts), agent work ledger, backend contract | `/console.html`, this source |
+| D | 2026-11-14 | Mati reconstruction, Caldor selection, dual themes, prototype spread model with prediction checks and richer simulated feeds | `/console.html`, this source |
+| C | 2026-11-14 | Full-screen Caldor console, attention manager, drafts, ledger and backend contract | `/rev-c/index.html`, git tag `rev-c` |
 | B | 2026-11-14 | Orchestrator-first: graded alerts, calm default view, agent pools, drone coverage grid, stack and open questions | `/rev-b/index.html` (frozen build in `public/rev-b/`), git tag `rev-b`; also embedded on the proposal page as the concept preview |
 | A | 2026-11-14 | Initial proposal: dashboard-first console with the ARGUS core | `/rev-a/index.html` (frozen build in `public/rev-a/`), git tag `rev-a` |
 
@@ -24,11 +33,12 @@ REV C is a full-screen console (1920 × 1080 and up) that replays the **2021 Cal
 npm install
 npm run dev        # http://localhost:5173  (proposal)  ·  /console.html  (console)
 npm run build      # typecheck + production build
+npm test           # both scenarios: tours, approvals, prediction independence
 ```
 
 Tokens are optional. Copy `.env.example` to `.env.local` and add `VITE_CESIUM_ION_TOKEN` and/or `VITE_GOOGLE_MAPS_KEY` for world terrain and photoreal 3D tiles; without them the console uses the pack's own heightmap and cached imagery. Step by step: [`docs/SETUP.md`](docs/SETUP.md).
 
-Rebuild the scenario pack with `node scripts/fetch-data.mjs` (optional `FIRMS_MAP_KEY`).
+Rebuild Mati with `node scripts/fetch-data.mjs --scenario mati`; rebuild Caldor with `node scripts/fetch-data.mjs`. `FIRMS_MAP_KEY` is optional. Run `node scripts/check-mati.mjs` for reconstruction consistency checks.
 
 ## The console
 
@@ -61,6 +71,7 @@ Rebuild the scenario pack with `node scripts/fetch-data.mjs` (optional `FIRMS_MA
 | [`docs/ORCHESTRATOR.md`](docs/ORCHESTRATOR.md) | The attention model: score formula, factors, lenses, zones, placement rules, directives, autonomy, drafts, worked examples. |
 | [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | Catalog of satellite, weather, 3D, terrain, fire, footage, news, aircraft and population sources with status, keys and licenses. |
 | [`docs/SETUP.md`](docs/SETUP.md) | Tokens (Cesium ion, Google Map Tiles), `.env.local`, running the console, Demo Director keys, rebuilding the pack. |
+| [`docs/VALIDATION.md`](docs/VALIDATION.md) | Reproducible checks, browser receipts, frame-time samples and explicit unverified gates. |
 | [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Tokens, typography, layout, motion, components (including console components), map symbology, Orchestrator patterns, voice and recipes. |
 | [`AGENTS.md`](AGENTS.md) | Rules, contracts, ownership and commands for AI agents working in this repository. |
 | `public/data/caldor/README.md` | What is in the scenario pack and where it came from. |

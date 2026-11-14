@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Brackets, Button, LedgerCounter, RegMark, Serial } from '@ds';
+import { Brackets, Button, Icon, LedgerCounter, ProvenanceTag, RegMark, Serial, cn } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { FccMark } from './CommandStrip';
 import { fmtDuration } from './format';
+import { meanAbsError, usePredictions } from './Prediction';
+import { scenarioName } from './scenarios';
 import { useUi } from './UiContext';
 
 /** Full-screen end card for the Demo Director: the useful work the agents did. */
@@ -14,6 +16,8 @@ export function LedgerSummary() {
   const total = useConsoleSelector((s) => s.director.beats.length);
   const l = useConsoleSelector((s) => s.ledger);
   const actions = useConsoleSelector((s) => s.actions);
+  const pack = useConsoleSelector((s) => s.pack);
+  const { latest } = usePredictions();
   const disclaimer = useConsoleSelector((s) => s.pack?.manifest.disclaimer) ?? 'Scenario built from public data; units, people and events are simulated.';
   const endBeat = enabled && total > 0 && beat === total - 1;
   const [closedAt, setClosedAt] = useState<number | null>(null);
@@ -27,7 +31,8 @@ export function LedgerSummary() {
     if (endBeat) setClosedAt(beat);
   };
   const hours = l.analystMinutesSaved / 60;
-  const approved = actions.filter((a) => a.status === 'approved' || a.status === 'executing' || a.status === 'done').length;
+  const facts = pack?.facts ?? [];
+  const approved = actions.filter((a) => a.requiresApproval && (a.status === 'approved' || a.status === 'executing' || a.status === 'done')).length;
   const cells = [
     { label: 'Footage', value: l.footageReviewedS, format: fmtDuration },
     { label: 'Images analyzed', value: l.imagesAnalyzed },
@@ -63,8 +68,8 @@ export function LedgerSummary() {
         <header className="flex h-12 items-center gap-3 border-b border-line px-5">
           <FccMark size={20} />
           <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">Agent Work Ledger</span>
-          <span className="font-mono text-micro uppercase text-bone-mute">Caldor Fire replay · end of demo</span>
-          <Serial className="ml-auto">FCC-LGR / REV C</Serial>
+          <span className="font-mono text-micro uppercase text-bone-mute">{scenarioName(pack)} replay · end of demo</span>
+          <Serial className="ml-auto">FCC-LGR / REV D</Serial>
           <Button size="sm" variant="ghost" icon="close" onClick={close}>
             Close
           </Button>
@@ -72,16 +77,22 @@ export function LedgerSummary() {
         <div className="grid grid-cols-[1.1fr_1.9fr]">
           <div className="flex flex-col justify-between gap-8 border-r border-line p-8">
             <div className="flex flex-col gap-4">
-              <span className="fcc-label">Analyst time saved</span>
+              <span className="fcc-label">Illustrative analyst-time estimate</span>
               <span className="flex items-baseline gap-3">
                 <span className="font-mono text-6xl font-light leading-none text-bone fcc-num">{hours.toFixed(1)}</span>
                 <span className="font-mono text-nano uppercase text-bone-mute">Hours</span>
               </span>
               <p className="max-w-sm text-lg leading-7 text-bone-dim">
-                A swarm of agents read every feed, kept the projection current, and drafted the work. The commander made {approved} {approved === 1 ? 'decision' : 'decisions'}.
+                Simulated agents reviewed feeds and drafted work. You approved {approved} high-risk {approved === 1 ? 'draft' : 'drafts'}.
               </p>
             </div>
             <div className="flex flex-col gap-2">
+              {latest?.iou != null && (
+                <span className="font-mono text-micro uppercase text-bone-dim fcc-num">
+                  Last check vs replay · {Math.round(latest.iou * 100)} % area overlap
+                  {meanAbsError(latest) != null ? ` · mean timing error ${Math.round(meanAbsError(latest)!)} min` : ''}
+                </span>
+              )}
               <span className="fcc-micro">Estimate: human-equivalent minutes per task minus agent time</span>
               <span className="font-mono text-micro uppercase text-amber">{disclaimer}</span>
             </div>
@@ -92,7 +103,7 @@ export function LedgerSummary() {
                 <LedgerCounter key={c.label} size="md" label={c.label} value={c.value} format={c.format} className="bg-ink-900 p-4" />
               ))}
             </div>
-            <div className="flex max-h-[300px] flex-col overflow-y-auto p-5">
+            <div className={cn('flex flex-col overflow-y-auto p-5', facts.length ? 'max-h-[200px]' : 'max-h-[300px]')}>
               <span className="fcc-micro mb-2">Selected work</span>
               {selected.map((e) => (
                 <div key={e.id} className="grid grid-cols-[96px_1fr_auto_auto] items-baseline gap-3 border-b border-line-faint py-1.5">
@@ -105,6 +116,33 @@ export function LedgerSummary() {
             </div>
           </div>
         </div>
+        {facts.length > 0 && (
+          <section aria-label="The real fire" className="border-t border-line">
+            <div className="flex h-9 items-center gap-3 px-5">
+              <span className="font-mono text-micro uppercase tracking-[0.14em] text-bone">The real fire</span>
+              <ProvenanceTag kind="real" label="Real · sourced" />
+              <span className="font-mono text-micro uppercase text-bone-mute">The people and units in this replay are fictional.</span>
+            </div>
+            <div className={cn('grid gap-px border-t border-line bg-line', facts.length >= 4 ? 'grid-cols-4' : facts.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+              {facts.slice(0, 8).map((fct) => (
+                <a
+                  key={fct.id}
+                  href={fct.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="group flex flex-col gap-1 bg-ink-900 px-5 py-3 transition-colors duration-quick ease-servo hover:bg-ink-850 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-2px] focus-visible:outline-signal"
+                >
+                  <span className="font-mono text-micro uppercase text-bone-mute">{fct.label}</span>
+                  <span className="text-base leading-6 text-bone">{fct.value}</span>
+                  <span className="inline-flex items-center gap-1 font-mono text-micro uppercase text-ink-400 group-hover:text-bone-dim">
+                    {fct.source}
+                    <Icon name="arrow-up-right" size={9} />
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
         <footer className="flex h-11 items-center justify-between border-t border-line px-5">
           <span className="font-mono text-micro uppercase text-bone-mute">FCC // Fire Command Center // incident watch officer made of agents</span>
           <div className="flex items-center gap-2">

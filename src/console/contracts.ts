@@ -45,7 +45,7 @@ export interface ScenarioPack {
   fuel: Uint8Array;
   /**
    * Fire time-of-arrival per cell in ms since manifest.start (Infinity / NaN = never burns in window).
-   * Built from real perimeters + hotspots; the "ground truth" timeline the replay scrubs through.
+   * Reconstructed from source anchors/perimeters; not necessarily observed fire-front truth.
    */
   arrival: Float32Array;
   perimeters: { t: Ms; acres: number; polygon: Geo[][] }[]; // outer rings (multi)
@@ -287,7 +287,8 @@ export type BusEvent =
   | { type: 'action.decided'; at: Ms; actionId: string; status: Action['status']; by: 'user' | 'orchestrator' }
   | { type: 'brief.updated'; at: Ms; brief: Brief }
   | { type: 'message'; at: Ms; message: Message }
-  | { type: 'ledger.entry'; at: Ms; entry: Ledger['entries'][number] };
+  | { type: 'ledger.entry'; at: Ms; entry: Ledger['entries'][number] }
+  | { type: 'prediction.scored'; at: Ms; check: PredictionCheck };
 
 /* ------------------------------------------------------------------ console state (store) */
 
@@ -300,8 +301,8 @@ export interface DirectorState {
 }
 
 /**
- * Honest scoring of a projection against what actually happened. The projection model must not read
- * ScenarioPack.arrival (the truth); this compares its output with it after the fact.
+ * Projection overlap against the replay reconstruction, with separate sourced checkpoint timing.
+ * The model may seed from arrivals at/before issue time, never future fire arrivals.
  */
 export interface PredictionCheck {
   id: string;
@@ -311,10 +312,10 @@ export interface PredictionCheck {
   /** issuedAt + horizon; scored once clock.t >= targetT. */
   targetT: Ms;
   status: 'pending' | 'scored';
-  /** Intersection-over-union of projected vs actual burned area at targetT, 0..1. */
+  /** Intersection-over-union of projected vs replay-reconstructed burned area at targetT, 0..1. */
   iou?: number;
   areaPredHa: number;
-  areaActualHa?: number;
+  areaActualHa?: number; // legacy field name: replay reconstruction area, not independently observed truth
   /** Per documented checkpoint: projected arrival vs documented time. */
   checkpoints: { id: string; label: string; documentedT: Ms; predictedT?: Ms; errorMin?: number }[];
   method: string; // e.g. "Huygens wavelet spread on DEM + fuel + hourly wind; no tuning to this fire"

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Brackets, Dot } from '@ds';
+import { Brackets, Dot, ThemeToggle, toggleTheme } from '@ds';
 import { ConsoleProvider, useConsoleApi, useConsoleSelector } from './store';
 import { BottomStrip } from './ui/BottomStrip';
 import { CommandStrip, FccMark } from './ui/CommandStrip';
@@ -10,6 +10,8 @@ import { OrchestratorColumn } from './ui/OrchestratorColumn';
 import { StageArea } from './ui/StageArea';
 import { UiProvider, useUi } from './ui/UiContext';
 import type { RoleLens } from './contracts';
+import { packZone, registerZone } from './ui/format';
+import { scenarioEntry, scenarioName } from './ui/scenarios';
 
 const LENS_KEYS: Record<string, RoleLens> = { '1': 'ic', '2': 'ops', '3': 'air', '4': 'ems' };
 
@@ -48,6 +50,8 @@ function useKeyboard() {
         else ui.setPanel(null);
       } else if (k === 'l' || k === 'L') {
         ui.setLegend(!ui.legend);
+      } else if (k === 't' || k === 'T') {
+        toggleTheme();
       } else if (LENS_KEYS[k]) {
         api.setLens(LENS_KEYS[k]!);
       }
@@ -77,6 +81,7 @@ function useQueryBeat() {
 }
 
 function Boot() {
+  const name = scenarioEntry()?.name ?? 'scenario';
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-ink-950">
       <div className="fcc-linegrid absolute inset-0 opacity-50" aria-hidden />
@@ -84,11 +89,12 @@ function Boot() {
         <Brackets size={8} tone="bone" />
         <div className="flex items-center gap-3">
           <FccMark size={24} />
-          <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">FCC console · REV C</span>
+          <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">FCC console · REV D</span>
+          <ThemeToggle compact className="ml-auto" />
         </div>
         <div className="flex items-center gap-2">
           <Dot className="bg-ice" live size={6} />
-          <span className="font-mono text-micro uppercase text-ice">Loading Caldor scenario pack</span>
+          <span className="font-mono text-micro uppercase text-ice">Loading {name} scenario pack</span>
         </div>
         <div className="relative h-px overflow-hidden bg-line">
           <span className="absolute inset-y-0 left-0 w-1/3 animate-sweep bg-ice" />
@@ -101,10 +107,23 @@ function Boot() {
   );
 }
 
+/** Clocks read the pack's own zone; the tab title names the active scenario. */
+function useScenarioChrome() {
+  const pack = useConsoleSelector((s) => s.pack);
+  if (pack) {
+    const z = packZone(pack);
+    registerZone(z.label, z.offsetMin);
+  }
+  useEffect(() => {
+    document.title = `FCC Console — ${scenarioName(pack)} replay`;
+  }, [pack]);
+}
+
 function Shell() {
   const ready = useConsoleSelector((s) => s.ready);
   useKeyboard();
   useQueryBeat();
+  useScenarioChrome();
   if (!ready) return <Boot />;
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone">

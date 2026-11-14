@@ -28,8 +28,9 @@ export default {
         violet: v('violet'),
       },
       fontFamily: {
-        sans: ['"Inter Tight Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono Variable"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // Stacks live in tokens.css (--font-sans / --font-mono) so data-theme can swap them.
+        sans: ['var(--font-sans)'],
+        mono: ['var(--font-mono)'],
       },
       fontSize: {
         // micro scale — micrographic labels

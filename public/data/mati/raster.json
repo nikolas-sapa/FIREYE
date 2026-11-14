@@ -1,0 +1,23 @@
+{
+ "w": 790,
+ "h": 666,
+ "bbox": [
+  23.87,
+  37.98,
+  24.05,
+  38.1
+ ],
+ "cellM": 20,
+ "dxM": 19.99,
+ "dyM": 20,
+ "cellHa": 0.03999,
+ "cellAcres": 0.0988,
+ "rowOrder": "north-to-south",
+ "endianness": "little",
+ "files": {
+  "elevation": "elevation.bin (Int16 m)",
+  "fuel": "fuel.bin (Uint8 FuelClass)",
+  "clc2018": "clc2018.bin (Uint16 CORINE 2018 Code_18, 0 = none)",
+  "arrival": "arrival.bin (Float32 ms since manifest.start, NaN = never)"
+ }
+}

@@ -74,13 +74,17 @@ export function feedPose(feed: Feed, w: Readonly<StageSnapshot>, s: RasterSample
   switch (feed.kind) {
     case 'uav-nadir': {
       const alt = Math.min(400, Math.max(150, base.alt ?? 220));
-      return at(base, alt, hdgU, -89.9, 0, fov ?? 42);
+      // Stabilised gimbal: no vibration, only a slow residual drift of a few tenths of a degree.
+      return at(base, alt, hdgU + n1(nowS, 0.05) * 0.8, -89.6 + n1(nowS, 0.07, 1) * 0.3, n1(nowS, 0.06, 2) * 0.2, fov ?? 42);
     }
     case 'uav-oblique': {
       const target = pose.target ?? firstFinding?.pos ?? (unit ? destination(base, hdgU, 450) : base);
       const range = pose.rangeM ?? 650;
       const h = (pose.headingDeg ?? (unit ? bearingDeg(base, target) : 0)) + nowS * 4;
-      return orbit(target, range, h, pose.pitchDeg ?? -38, fov ?? 34);
+      const o = orbit(target, range, h, pose.pitchDeg ?? -38, fov ?? 34);
+      o.heading += n1(nowS, 0.06) * 0.35 * DEG2RAD;
+      o.pitch += n1(nowS, 0.08, 1) * 0.25 * DEG2RAD;
+      return o;
     }
     case 'uav-chase': {
       const back = destination(base, hdgU + 180, 140);
@@ -118,8 +122,10 @@ export function feedPose(feed: Feed, w: Readonly<StageSnapshot>, s: RasterSample
         const hot = w.findings.find((f) => f.kind === 'spot' || f.kind === 'smoke');
         hdg = hot ? bearingDeg(p, hot.pos) : 45;
       }
-      const shake = n1(nowS, 3.7) * 1.4;
-      return at(p, 1.6, hdg + shake, 3 + n1(nowS, 2.9, 1) * 1.2, n1(nowS, 2.1, 2) * 3, fov ?? 64);
+      // Handheld: slow sway from the arms plus faster tremor; portrait phones are held slightly tilted.
+      const shake = n1(nowS, 0.6) * 2.2 + n1(nowS, 7.3, 1) * 0.35;
+      const tilt = n1(nowS, 0.45, 2) * 2.5 + n1(nowS, 6.1, 3) * 0.4;
+      return at(p, 1.6, hdg + shake, 4 + n1(nowS, 0.8, 1) * 1.6 + n1(nowS, 8.7, 4) * 0.3, tilt, fov ?? 64);
     }
   }
 }

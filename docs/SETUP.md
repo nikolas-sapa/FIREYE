@@ -1,6 +1,6 @@
-# FCC Setup (REV C)
+# FCC Setup (REV D)
 
-How to run the proposal site and the full-screen console, add the optional Cesium ion and Google tokens, and rebuild the Caldor scenario pack.
+How to run the proposal site and full-screen console, add optional credentials, and rebuild the Mati or Caldor scenario pack.
 
 Every token is optional. Without tokens the console still runs: the 3D stage uses a heightmap built from the scenario pack (`pack.elevation`) and the offline imagery mosaic or NASA GIBS imagery, which needs no key.
 
@@ -18,8 +18,10 @@ npm run dev          # http://localhost:5173
 
 | URL | What |
 |---|---|
-| `http://localhost:5173/` | The proposal site (REV C). |
-| `http://localhost:5173/console.html` | The full-screen console: Caldor Fire 2021 replay. |
+| `http://localhost:5173/` | The proposal site (REV D). |
+| `http://localhost:5173/console.html` | Full-screen console: Mati 2018 reconstruction. |
+| `http://localhost:5173/console.html?scenario=caldor-2021` | Caldor 2021 replay. |
+| `http://localhost:5173/console.html?theme=team` | Team theme: blue accent and Geist fonts. |
 | `http://localhost:5173/rev-b/index.html` | Frozen REV B build. |
 | `http://localhost:5173/rev-a/index.html` | Frozen REV A build. |
 
@@ -83,22 +85,24 @@ Terms that matter for the demo: Google and data-provider attribution must stay v
 
 ## 6. The console
 
-Open `http://localhost:5173/console.html`. The scenario loads from `/data/caldor/`, then the replay clock starts.
+Open `http://localhost:5173/console.html`. Mati loads from `/data/mati/`; choose Caldor to load `/data/caldor/`. The scenario menu reloads the console and clears the selected demo beat. The theme toggle persists locally; `?theme=team|fcc` overrides it for that page. Press `T` to switch themes.
+
+Rebuild Mati with `node scripts/fetch-data.mjs --scenario mati` and check the reconstruction with `node scripts/check-mati.mjs`. The latter checks fitted historical consistency, not prediction accuracy. See `public/data/mati/README.md` for sources and limitations.
 
 The disclaimer is always on screen: "Scenario built from public data; units, people and events are simulated."
 
 ### Demo Director
 
-The Demo Director plays a scripted three-minute tour for judges, with captions. It controls the replay clock so the story lines up with the real fire timeline (Grizzly Flats threatened on the evening of Aug 16, 2021). Start it with **Start demo** in the command strip or the `D` key.
+The Demo Director plays a scripted three-minute tour for judges, with scenario-specific captions. Start it with **Start demo** or `D`. It advances the replay clock, not real operations. All high-risk drafts wait for your approval click, including during the tour. The Director only reminds you; it never approves on your behalf.
 
 | Time | Beat |
 |---|---|
 | 0:00 | Calm monitoring: brief, agent swarm working, ledger ticking. |
-| 0:20 | A social clip suggests two hikers; the Orchestrator retasks HAWK-3; the drone feed is promoted to the stage and confirms them; life-safety interrupt; EMS and OPS notified; rescue drafted for approval. |
-| 1:00 | Wind shift from the real weather archive; the projection agent re-projects (ghost of the previous bands); head reaches Grizzly Flats in about 90 min; evacuation ORDER and crew move drafted and approved. |
-| 1:40 | E-41's dash cam spots propane tanks; hazard relayed only to nearby units; the lens switches to OPS to show re-ranking. |
-| 2:10 | "What changed in the last 10 minutes?" is asked and answered. |
-| 2:40 | Agent Work Ledger summary: work done and analyst minutes saved. |
+| 0:20 | Mati: ignition at Daou Penteli, simulated camera corroboration and Z0. Caldor: fictional hikers and a drone retask. |
+| 1:00 | Mati: simulated evacuation ORDER, crew move and boats/EKAB resource draft. Caldor: archived wind shift and new model projection. Review and approve the drafts manually. |
+| 1:40 | Mati: Marathonos crossing, simulated dashcam traffic blockage and route-update draft. Caldor: simulated propane hazard and OPS lens. |
+| 2:10 | Mati: fictional people at the shore, drone confirmation and maritime rescue draft. Caldor: change brief. |
+| 2:40 | Simulated work summary, reconstruction overlap and sourced historical facts. Time savings are illustrative estimates, not measurements. |
 
 | Key | Action |
 |---|---|
@@ -106,9 +110,12 @@ The Demo Director plays a scripted three-minute tour for judges, with captions. 
 | `→` / `←` | Next / previous beat |
 | `Space` | Pause or resume the replay clock |
 | `1`–`4` | Role lens: IC, OPS, AIR, EMS |
+| `T` | Toggle FCC / Team theme |
 | `Esc` | Close drawers and popovers |
 
 Captions, speed, autonomy and hold layout are controls in the command strip. Bindings are defined in `src/console/ui/**`; if one does not respond, check there.
+
+For an offline basemap test, use `?tokens=0` (even with local credentials configured). `?tokens=ion` selects ion without Google. Google 3D coverage has not been verified. Prediction assumptions and limitations are in `src/console/orchestrator/PROJECTION.md`: archived future weather, reconstructed initial fire, no spotting, and substantial underprediction of Mati's speed.
 
 ## 7. Rebuilding the scenario pack
 

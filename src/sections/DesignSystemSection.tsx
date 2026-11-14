@@ -38,7 +38,7 @@ export default function DesignSystemSection() {
             </>
           }
           lede="One visual language for drones, crews, commanders and the Orchestrator that works beside them. Built for glanceability under smoke, glare and stress: hairline structure, machine-set data, graded alerts, and a single accent reserved for the next action."
-          meta={<Serial>FCC-DS / REV B / 2026</Serial>}
+          meta={<Serial>FCC-DS / REV D / 2026</Serial>}
         />
 
         <nav aria-label="Design system contents" className="mt-16 grid grid-cols-12 gap-6">

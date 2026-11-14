@@ -18,12 +18,14 @@ export type {
   OrchTier, OrchAlertClass, OrchAudience, MovementStatus, ScoreMeterProps, AlertCardProps, InterruptBannerProps, FreshnessProps,
   OrchBubbleProps, DrawerProps, IconRailItem, IconRailProps, FeedTileProps, PoolBarProps, MovementCardProps,
 } from './orchestrator';
+export { ThemeToggle } from './theme';
+export type { ThemeToggleProps } from './theme';
 export {
   ZoneTag, WhyPopover, AutonomyDial, LensSelect, TimelineScrubber, LedgerCounter, DraftDocument, DirectiveToast, CaptionBar, DecisionCard,
-  AudienceRow, zoneMeta, actionKindIcon, actionKindLabel, consoleAudienceLabel,
+  AudienceRow, ProvenanceTag, PredictionCheckCard, zoneMeta, actionKindIcon, actionKindLabel, consoleAudienceLabel,
 } from './console';
 export type {
   ConsoleZone, ConsoleAudience, ConsoleAutonomy, ConsoleLens, ConsoleActionKind, ConsoleActionStatus, ConsoleDraftFormat, ConsoleDirectiveKind,
   ConsoleScoreFactors, WhyPopoverProps, AutonomyDialProps, LensSelectProps, TimelineMark, TimelineScrubberProps, LedgerCounterProps,
-  DraftDocumentProps, DirectiveToastProps, CaptionBarProps, DecisionCardProps,
+  DraftDocumentProps, DirectiveToastProps, CaptionBarProps, DecisionCardProps, Provenance, PredictionCheckpointRow, PredictionCheckCardProps,
 } from './console';

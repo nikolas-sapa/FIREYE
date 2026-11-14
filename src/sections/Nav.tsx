@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Button, Dot, Icon, Serial, cn, zulu } from '@ds';
+import { Button, Dot, Icon, Serial, ThemeToggle, cn, zulu } from '@ds';
 
 export const REV_A_HREF = '/rev-a/index.html';
 export const REV_B_HREF = '/rev-b/index.html';
+export const REV_C_HREF = '/rev-c/index.html';
 export const CONSOLE_HREF = '/console.html';
 
 const LINKS = [
@@ -105,10 +106,11 @@ export default function Nav() {
             <Dot className="bg-phosphor" live size={5} />
             <span className="font-mono text-tiny text-bone fcc-num" aria-label="Zulu time">{clock}</span>
           </div>
-          <Serial className="hidden md:inline-flex">Proposal · Rev C</Serial>
+          <Serial className="hidden md:inline-flex">Proposal · Rev D</Serial>
           {[
             { href: REV_A_HREF, label: 'Rev A' },
             { href: REV_B_HREF, label: 'Rev B' },
+            { href: REV_C_HREF, label: 'Rev C' },
           ].map((r) => (
             <a
               key={r.href}
@@ -120,6 +122,7 @@ export default function Nav() {
               <Icon name="arrow-up-right" size={10} />
             </a>
           ))}
+          <ThemeToggle compact className="hidden sm:inline-flex" />
           <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole} title="Open the full-screen console">
             Console
           </Button>

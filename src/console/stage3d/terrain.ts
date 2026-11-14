@@ -1,6 +1,8 @@
 import * as Cesium from 'cesium';
 import { color as ds } from '@ds';
 import { FuelClass, type ScenarioPack } from '../contracts';
+import { FIRE } from './palette';
+import { getProfile } from './profile';
 import { RasterSampler } from './raster';
 
 const DEG = Math.PI / 180;
@@ -8,12 +10,10 @@ const TILE = 33;
 
 /**
  * Token-less terrain: a CustomHeightmapTerrainProvider fed from pack.elevation. Outside the scenario
- * bbox the surface eases to the mean elevation so the edge never smears.
+ * bbox the surface settles onto the smoothed edge profile (coasts stay at sea level).
  */
 export function createHeightmapTerrain(s: RasterSampler): Cesium.CustomHeightmapTerrainProvider {
   const ts = new Cesium.GeographicTilingScheme();
-  const [bw, bs, be, bn] = s.bbox;
-  const pad = 0.25;
   return new Cesium.CustomHeightmapTerrainProvider({
     width: TILE,
     height: TILE,
@@ -22,15 +22,11 @@ export function createHeightmapTerrain(s: RasterSampler): Cesium.CustomHeightmap
       const r = ts.tileXYToRectangle(x, y, level);
       const west = r.west / DEG, east = r.east / DEG, south = r.south / DEG, north = r.north / DEG;
       const out = new Float32Array(TILE * TILE);
-      if (east < bw - pad || west > be + pad || north < bs - pad || south > bn + pad) {
-        out.fill(s.mean);
-        return out;
-      }
       for (let j = 0; j < TILE; j++) {
         const lat = north - (j / (TILE - 1)) * (north - south);
         for (let i = 0; i < TILE; i++) {
           const lon = west + (i / (TILE - 1)) * (east - west);
-          out[j * TILE + i] = s.elevation(lon, lat);
+          out[j * TILE + i] = s.demElevation(lon, lat);
         }
       }
       return out;
@@ -50,7 +46,7 @@ const mix = (a: RGB, b: RGB, k: number): RGB => [a[0] + (b[0] - a[0]) * k, a[1] 
 /** Fuel colors are derived from design tokens (ink ramp tinted toward phosphor / amber / ice). */
 function fuelPalette(): RGB[] {
   const ink9 = toRgb(ds.ink[900]), ink8 = toRgb(ds.ink[800]), ink7 = toRgb(ds.ink[700]), ink6 = toRgb(ds.ink[600]), ink5 = toRgb(ds.ink[500]);
-  const ph = toRgb(ds.phosphor), am = toRgb(ds.amber), ic = toRgb(ds.ice), bo = toRgb(ds.bone.DEFAULT);
+  const ph = toRgb(ds.phosphor), am = toRgb(FIRE.amber), ic = toRgb(ds.ice), bo = toRgb(ds.bone.DEFAULT);
   const p: RGB[] = [];
   p[FuelClass.None] = mix(ink7, am, 0.08);
   p[FuelClass.Water] = mix(ink9, ic, 0.22);
@@ -155,11 +151,13 @@ async function buildComposite(pack: ScenarioPack, s: RasterSampler): Promise<Com
     ctx.drawImage(small, 0, 0, W, H);
   }
 
-  // 2. Hillshade at raster resolution (sun NW 315°, 38° altitude, z-factor 1.6).
+  // 2. Hillshade at raster resolution, lit from the mid-replay sun (altitude clamped for legibility).
+  const prof = getProfile(pack);
   const shade = new Float32Array(w * h);
   const cell = pack.raster.cellM || groundW / w;
-  const zen = (90 - 38) * DEG, az = 315 * DEG, zf = 1.6;
-  const E = (x: number, y: number) => s.elevation(...cellLL(s, x, y));
+  const zf = prof.reliefM < 400 ? 2.2 : 1.6;
+  const zen = (90 - prof.reliefSun.elDeg) * DEG, az = prof.reliefSun.azDeg * DEG;
+  const E = (x: number, y: number) => s.demElevation(...cellLL(s, x, y));
   const elevGrid = new Float32Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) elevGrid[y * w + x] = E(x, y);
   for (let y = 0; y < h; y++) {
@@ -181,6 +179,8 @@ async function buildComposite(pack: ScenarioPack, s: RasterSampler): Promise<Com
   const px = img.data;
   const prevBand = new Int16Array(W);
   const bone = toRgb(ds.bone.DEFAULT);
+  const ice = toRgb(ds.ice);
+  const contourM = prof.contourM;
   const edgePx = Math.round(W * 0.012);
   const sx = w / W, sy = h / H;
   for (let py = 0; py < H; py++) {
@@ -196,7 +196,9 @@ async function buildComposite(pack: ScenarioPack, s: RasterSampler): Promise<Com
       const i00 = y0 * w + x0, i10 = y0 * w + x1, i01 = y1 * w + x0, i11 = y1 * w + x1;
       const e = (elevGrid[i00] * (1 - tx) + elevGrid[i10] * tx) * (1 - ty) + (elevGrid[i01] * (1 - tx) + elevGrid[i11] * tx) * ty;
       const sh = (shade[i00] * (1 - tx) + shade[i10] * tx) * (1 - ty) + (shade[i01] * (1 - tx) + shade[i11] * tx) * ty;
-      const fuel = pack.fuel[(ty < 0.5 ? y0 : y1) * w + (tx < 0.5 ? x0 : x1)];
+      const ci = (ty < 0.5 ? y0 : y1) * w + (tx < 0.5 ? x0 : x1);
+      const fuel = pack.fuel[ci];
+      const wet = fuel === FuelClass.Water;
       const n = hash2(pxx, py);
       let grain = 1;
       if (fuel === FuelClass.TimberLitter || fuel === FuelClass.TimberUnderstory) {
@@ -204,20 +206,25 @@ async function buildComposite(pack: ScenarioPack, s: RasterSampler): Promise<Com
         grain = 0.72 + 0.4 * n2 * n2 + 0.08 * n;
       } else if (fuel === FuelClass.Shrub) grain = 0.86 + 0.22 * hash2(pxx >> 1, py >> 1);
       else grain = 0.94 + 0.1 * n;
-      const light = (0.28 + 1.05 * sh) * grain;
+      const light = wet ? 0.82 : (0.28 + 1.05 * sh) * grain;
       const o = (py * W + pxx) * 4;
       let r = px[o] * light, g = px[o + 1] * light, b = px[o + 2] * light;
-      const band = Math.floor(e / 40);
-      if ((leftBand !== -9999 && band !== leftBand) || (py > 0 && band !== prevBand[pxx])) {
+      const band = wet ? -1 : Math.floor(e / contourM);
+      if (!wet && band >= 0 && ((leftBand !== -9999 && leftBand >= 0 && band !== leftBand) || (py > 0 && prevBand[pxx] >= 0 && band !== prevBand[pxx]))) {
         const k = band % 5 === 0 ? 0.26 : 0.1;
         r += (bone[0] - r) * k; g += (bone[1] - g) * k; b += (bone[2] - b) * k;
+      }
+      // Coastline: one-pixel ice hairline where land meets water.
+      if ((leftBand !== -9999 && (leftBand < 0) !== wet) || (py > 0 && (prevBand[pxx] < 0) !== wet)) {
+        const k = 0.45;
+        r += (ice[0] - r) * k; g += (ice[1] - g) * k; b += (ice[2] - b) * k;
       }
       leftBand = band;
       prevBand[pxx] = band;
       const edge = Math.min(edgeY, pxx, W - 1 - pxx);
       if (edge < edgePx) {
         const k = edge / edgePx;
-        const f = 0.15 + 0.85 * k * k;
+        const f = 0.55 + 0.45 * k * k;
         r *= f; g *= f; b *= f;
       }
       px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
@@ -269,14 +276,33 @@ async function buildComposite(pack: ScenarioPack, s: RasterSampler): Promise<Com
     ctx.fillRect(x - 1.2, y - 1.2, 2.4, 2.4);
   }
 
-  // Wrap in a dark margin: edge texels get clamped outward by the globe, so they must match the base color.
-  const mx = Math.round(W * 0.04), my = Math.round(H * 0.04);
+  // Margin: a heavily blurred, darkened continuation of the edge (sea stays sea-coloured), fading to the
+  // globe base so edge texels clamped outward by the globe never streak.
+  const mx = Math.round(W * 0.08), my = Math.round(H * 0.08);
   const out = document.createElement('canvas');
   out.width = W + mx * 2;
   out.height = H + my * 2;
   const octx = out.getContext('2d')!;
   octx.fillStyle = ds.ink[950];
   octx.fillRect(0, 0, out.width, out.height);
+  octx.filter = `blur(${Math.round(mx * 0.35)}px)`;
+  octx.globalAlpha = 0.55;
+  octx.drawImage(cv, 0, 0, out.width, out.height);
+  octx.filter = 'none';
+  octx.globalAlpha = 1;
+  const inkA = (a: number) => { const c = toRgb(ds.ink[950]); return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`; };
+  for (const [x0, y0, x1, y1, rw, rh, rx, ry] of [
+    [0, 0, mx, 0, mx, out.height, 0, 0],
+    [out.width, 0, out.width - mx, 0, mx, out.height, out.width - mx, 0],
+    [0, 0, 0, my, out.width, my, 0, 0],
+    [0, out.height, 0, out.height - my, out.width, my, 0, out.height - my],
+  ] as const) {
+    const gr = octx.createLinearGradient(x0, y0, x1, y1);
+    gr.addColorStop(0, inkA(1));
+    gr.addColorStop(1, inkA(0));
+    octx.fillStyle = gr;
+    octx.fillRect(rx, ry, rw, rh);
+  }
   octx.drawImage(cv, mx, my);
   const dLon = ((bbox[2] - bbox[0]) * mx) / W, dLat = ((bbox[3] - bbox[1]) * my) / H;
   const blob: Blob = await new Promise((res, rej) => out.toBlob((b) => (b ? res(b) : rej(new Error('toBlob failed'))), 'image/jpeg', 0.92));
@@ -403,4 +429,41 @@ export function createDetailLayer(pack: ScenarioPack, s: RasterSampler): Cesium.
     },
   };
   return new Cesium.ImageryLayer(provider as unknown as Cesium.ImageryProvider, { minimumTerrainLevel: 12, rectangle: rect });
+}
+
+/* ------------------------------------------------------------------ imagery colour lookup */
+
+export type ImagerySample = (lon: number, lat: number) => [number, number, number] | null;
+const imgSamplerCache = new WeakMap<ScenarioPack, Promise<ImagerySample | null>>();
+
+/** Colour of the pack's real imagery at a point (roofs, canopy), or null without imagery. */
+export function getImagerySampler(pack: ScenarioPack): Promise<ImagerySample | null> {
+  let p = imgSamplerCache.get(pack);
+  if (!p) {
+    p = (async () => {
+      const im = pack.imagery;
+      if (!im) return null;
+      try {
+        const img = await loadImage(im.url);
+        const W = Math.min(1600, img.naturalWidth), H = Math.round((W * img.naturalHeight) / img.naturalWidth);
+        const c = document.createElement('canvas');
+        c.width = W;
+        c.height = H;
+        const g = c.getContext('2d', { willReadFrequently: true })!;
+        g.drawImage(img, 0, 0, W, H);
+        const d = g.getImageData(0, 0, W, H).data;
+        const b = im.bbox;
+        return (lon: number, lat: number) => {
+          const x = Math.floor(((lon - b[0]) / (b[2] - b[0])) * W), y = Math.floor(((b[3] - lat) / (b[3] - b[1])) * H);
+          if (x < 0 || y < 0 || x >= W || y >= H) return null;
+          const o = (y * W + x) * 4;
+          return [d[o], d[o + 1], d[o + 2]];
+        };
+      } catch {
+        return null;
+      }
+    })();
+    imgSamplerCache.set(pack, p);
+  }
+  return p;
 }

@@ -1,0 +1,108 @@
+{
+ "checkpoints": [
+  {
+   "id": "ignition",
+   "t": 1532353260000,
+   "label": "Fire reported in Daou Penteli (199 call)",
+   "radiusM": 300,
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Kathimerini, prosecutor's report coverage (Oct 2021)",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/",
+   "uncertaintyMin": 6,
+   "pos": {
+    "lon": 23.95191,
+    "lat": 38.03991
+   },
+   "placeId": "ignition"
+  },
+  {
+   "id": "first-house",
+   "t": 1532353560000,
+   "label": "Perimeter about 400 m; first house burning about 150 m from the origin",
+   "radiusM": 300,
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks)",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/",
+   "uncertaintyMin": 5,
+   "perimeterM": 400,
+   "pos": {
+    "lon": 23.95191,
+    "lat": 38.03991
+   },
+   "placeId": "ignition"
+  },
+  {
+   "id": "two-fingers",
+   "t": 1532355660000,
+   "label": "Perimeter over 3,500 m; two fingers heading SE and E",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; thetoc.gr, timeline from the prosecutor's report (17:17-17:30 split into flank fingers)",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/",
+   "uncertaintyMin": 10,
+   "perimeterM": 3500
+  },
+  {
+   "id": "nv-west-edge",
+   "t": 1532356860000,
+   "label": "Perimeter at least 6,000 m; fire at the west edge of Neos Voutzas",
+   "pos": {
+    "lon": 23.975,
+    "lat": 38.042
+   },
+   "radiusM": 400,
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/",
+   "uncertaintyMin": 10,
+   "perimeterM": 6000
+  },
+  {
+   "id": "neos-voutzas",
+   "t": 1532358120000,
+   "label": "Fire burns Neos Voutzas",
+   "radiusM": 400,
+   "source": "thetoc.gr, timeline from the prosecutor's report",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "uncertaintyMin": 10,
+   "pos": {
+    "lon": 23.98115,
+    "lat": 38.04226
+   },
+   "placeId": "neos-voutzas"
+  },
+  {
+   "id": "marathonos",
+   "t": 1532359140000,
+   "label": "Front crosses Marathonos Ave at several points toward Mati and Kokkino Limanaki",
+   "radiusM": 500,
+   "source": "Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks) (~18:18); Kathimerini, prosecutor's report coverage (Oct 2021) (~18:20)",
+   "url": "https://firelinks.eu/wp-content/uploads/2019/11/Xanthopoulos-Mitsopoulos-The-catastrophic-fire-of-July-2018-in-Greece-for-Firelinks-site.pdf",
+   "uncertaintyMin": 10,
+   "pos": {
+    "lon": 23.98518,
+    "lat": 38.03414
+   },
+   "placeId": "marathonos-crossing"
+  },
+  {
+   "id": "analipsi",
+   "t": 1532360640000,
+   "label": "Front past Marathonos reaches the Rafina junction at the Analipsi church (Kokkino Limanaki side)",
+   "radiusM": 500,
+   "source": "thetoc.gr, timeline from the prosecutor's report",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "uncertaintyMin": 10,
+   "placeId": "analipsi-church"
+  },
+  {
+   "id": "coast-mati",
+   "t": 1532360700000,
+   "label": "Fire reaches the coastline in Mati (Poseidonos Ave)",
+   "radiusM": 500,
+   "source": "thetoc.gr, timeline from the prosecutor's report; IAWF: head reached the sea in under 2 h; cretalive: \"around 19:00\"",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/",
+   "uncertaintyMin": 15,
+   "pos": {
+    "lon": 23.99862,
+    "lat": 38.04514
+   },
+   "placeId": "mati-coast"
+  }
+ ]
+}

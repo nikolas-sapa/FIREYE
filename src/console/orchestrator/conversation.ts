@@ -109,12 +109,12 @@ function whoAtRisk(sim: Sim): Reply {
     refs.push(f.id);
   }
   const p = sim.projection;
-  const eta = p?.etaToPlaces[sim.ctx.gfId];
+  const eta = p?.etaToPlaces[sim.ctx.primaryId];
   if (eta !== undefined) {
     const m = Math.round((eta - sim.t) / MIN);
     const evac = sim.actions.find((a) => a.kind === 'evac-notice' && a.status !== 'rejected' && a.status !== 'undone');
     const evacText = evac ? `${evac.title.split('·')[0].trim()} ${evac.status === 'proposed' ? 'drafted, waiting for approval' : 'issued'}` : 'no evacuation notice yet';
-    lines.push(`${sim.ctx.gfName}: ${sim.ctx.structuresGF} structures, ${m > 0 ? `head ETA ${m} min` : 'fire in the community'}; ${evacText}`);
+    lines.push(`${sim.ctx.primaryName}: ${sim.ctx.structuresPrimary} structures, ${m > 0 ? `head ETA ${m} min` : 'fire in the community'}; ${evacText}`);
   }
   if (!lines.length) return { text: 'No people or animals are reported in the projected fire path right now.' };
   return { text: `At risk now:\n${lines.map((l) => `• ${l}`).join('\n')}\nAll people in this scenario are fictional.`, refs };
@@ -127,12 +127,12 @@ function crews(sim: Sim): Reply {
   const prop = sim.findings.find((f) => f.kind === 'combustible');
   if (prop) {
     const near = sim.units.filter((u) => !['drone', 'helo', 'tanker'].includes(u.kind) && distanceM(u.pos, prop.pos) <= 1500).map((u) => u.callsign);
-    lines.push(`Keep ${near.length ? near.join(', ') : 'Div A units'} clear of ${short(prop.label)}; it is ${etaText(etaMin(sim, prop.pos, prop.uncertaintyM))}.`);
+    lines.push(`Keep ${near.length ? near.join(', ') : 'nearby units'} clear of ${short(prop.label)}; it is ${etaText(etaMin(sim, prop.pos, prop.uncertaintyM))}.`);
   }
   const head = sim.projHead;
   if (head) {
     const free = sim.units.filter((u) => (u.kind === 'engine' || u.kind === 'crew' || u.kind === 'dozer') && !u.taskId);
-    if (free.length) lines.push(`${free.map((u) => u.callsign).join(', ')} are uncommitted; best use is holding the ${compass((sim.projection?.headDirDeg ?? 0) + 90)} flank and the route out of ${sim.ctx.gfName}.`);
+    if (free.length) lines.push(`${free.map((u) => u.callsign).join(', ')} are uncommitted; best use is holding the ${compass((sim.projection?.headDirDeg ?? 0) + 90)} flank and the route out of ${sim.ctx.primaryName}.`);
   }
   const rescue = sim.actions.find((a) => a.kind === 'rescue');
   if (rescue) lines.push(`${rescue.title}: ${rescue.status}.`);
@@ -197,9 +197,9 @@ function weather(sim: Sim): Reply {
   const c = sim.ctx;
   const w = c.weatherAt(sim.t);
   const ahead = c.weatherAt(sim.t + 120 * MIN);
-  const shift = !sim.shiftApplied && c.shiftTo.t > sim.t ? ` The archive shows the wind turning to ${Math.round(c.shiftTo.windDirDeg)}° by ${c.fmtTime(c.shiftTo.t)}; the projection will be re-run when that is ingested.` : '';
+  const shift = c.tShift !== null && !sim.shiftApplied && c.shiftTo.t > sim.t ? ` The archive shows the wind turning to ${Math.round(c.shiftTo.windDirDeg)}° by ${c.fmtTime(c.shiftTo.t)}; the projection will be re-run when that is ingested.` : '';
   return {
-    text: `Now: wind ${Math.round(w.windDirDeg)}° ${compass(w.windDirDeg)} ${Math.round(w.windKph)} kph, gusts ${Math.round(w.gustKph)}, RH ${Math.round(w.rh)}%, ${Math.round(w.tempC)}°C. In 2 h: ${Math.round(ahead.windDirDeg)}° ${Math.round(ahead.windKph)} kph, RH ${Math.round(ahead.rh)}%.${shift} Source: Open-Meteo archive + NWS alerts.`,
+    text: `Now: wind ${Math.round(w.windDirDeg)}° ${compass(w.windDirDeg)} ${Math.round(w.windKph)} kph, gusts ${Math.round(w.gustKph)}, RH ${Math.round(w.rh)}%, ${Math.round(w.tempC)}°C. In 2 h: ${Math.round(ahead.windDirDeg)}° ${Math.round(ahead.windKph)} kph, RH ${Math.round(ahead.rh)}%.${shift} Source: ${c.script.weatherSource}.`,
   };
 }
 

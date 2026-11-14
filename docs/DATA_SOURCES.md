@@ -1,4 +1,4 @@
-# FCC Data Sources (REV C)
+# FCC Data Sources (REV D)
 
 A researched catalog of data, services and models for FCC. Checked 2026-11-14. Terms change; re-check licenses before any commercial or operational use.
 
@@ -11,7 +11,19 @@ Status legend
 
 "Key" means an account, API key or token is required. Licenses are summarized; the provider's terms govern.
 
-The Caldor scenario pack, the files in it and exactly which sources produced them are documented in `public/data/caldor/README.md` and listed in `manifest.json` → `sources[]`, which the console shows in its credits.
+The scenario packs and their exact provenance are documented in `public/data/mati/README.md` and `public/data/caldor/README.md`, with source records in each manifest.
+
+## Mati 2018: observed data versus reconstruction
+
+The default pack covers 23 July 2018, 16:20–22:00 EEST, at approximately 20 m resolution (790 × 666 cells). It includes Terrarium elevation, CORINE 2018 land cover, derived fuel classes, current OSM roads/buildings, ERA5 weather, the EFFIS final burned polygon (feature 15060, 1,362 ha), 28 real FIRMS detections, EOX 2018 imagery and dated NASA GIBS images.
+
+The arrival raster and nine intermediate perimeters are **synthesized**, fitted to documented timing anchors and constrained to the final EFFIS polygon. They are not independently observed intermediate fronts. FIRMS passes at 20:40 UTC on 23 July and 00:05/00:53 UTC on 24 July occurred after the principal afternoon run; they cannot validate its minute-by-minute progression.
+
+Checkpoint records retain source links and timing uncertainty. Public reports are short attributed paraphrases. Source-specific fatality totals are preserved rather than silently reconciled; simulated people never represent actual victims. Current OSM and imagery mosaics must not be presented as exact incident-date street or camera footage.
+
+Reconstruction agreement with the fitted area/checkpoints is a consistency test only. A projection comparison against this raster measures agreement with a reconstruction. Checks against documented arrivals or the independently sourced final perimeter must be identified separately, with any shared initialization or calibration disclosed.
+
+EOX imagery is CC BY-NC-SA and needs replacement or suitable permission for commercial use. Consult the pack README for attribution and the terms of every underlying source.
 
 ---
 

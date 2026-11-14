@@ -18,5 +18,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"], "@ds": ["src/design-system/index.ts"], "@ds/*": ["src/design-system/*"] }
   },
-  "include": ["src", "vite.config.ts", "tailwind.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "tailwind.config.ts"]
 }

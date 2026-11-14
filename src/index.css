@@ -1,5 +1,7 @@
 @import '@fontsource-variable/inter-tight';
 @import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 @import './design-system/tokens/tokens.css';
 
 @tailwind base;
@@ -10,7 +12,7 @@
   html { background: rgb(var(--ink-950)); scroll-behavior: smooth; }
   body {
     @apply bg-ink-950 text-bone font-sans antialiased;
-    font-feature-settings: 'ss01', 'cv11', 'tnum' 0;
+    font-feature-settings: var(--font-features);
     text-rendering: optimizeLegibility;
   }
   ::selection { background: rgb(var(--signal) / 0.35); color: rgb(var(--bone)); }

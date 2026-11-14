@@ -15,7 +15,7 @@ export interface BriefFacts {
 }
 
 function gfEta(sim: Sim): number | null {
-  const e = sim.projection?.etaToPlaces[sim.ctx.gfId];
+  const e = sim.projection?.etaToPlaces[sim.ctx.primaryId];
   if (e === undefined) return null;
   return Math.max(0, (e - sim.t) / MIN);
 }
@@ -31,7 +31,7 @@ function collect(sim: Sim): BriefFacts {
   for (const a of sim.actions) actions[a.id] = a.status;
   return {
     at: sim.t,
-    acres: Math.round(sim.ctx.acresAt(sim.t)),
+    acres: Math.round(sim.ctx.areaAt(sim.t)),
     rev: sim.projection?.rev ?? 0,
     gfEtaMin: gfEta(sim),
     windDir: Math.round(sim.ctx.weatherAt(sim.t).windDirDeg),
@@ -58,7 +58,7 @@ function diff(sim: Sim, a: BriefFacts, b: BriefFacts): string[] {
     }
   }
   if (b.rev !== a.rev) {
-    const eta = b.gfEtaMin !== null && b.gfEtaMin > 0 ? `; ${sim.ctx.gfName} ETA ${Math.round(b.gfEtaMin)} min` : '';
+    const eta = b.gfEtaMin !== null && b.gfEtaMin > 0 ? `; ${sim.ctx.primaryName} ETA ${Math.round(b.gfEtaMin)} min` : '';
     const was = a.gfEtaMin !== null && a.gfEtaMin > 0 && b.gfEtaMin !== null && Math.abs(a.gfEtaMin - b.gfEtaMin) >= 10 ? ` (was ${Math.round(a.gfEtaMin)})` : '';
     out.push(`Projection rev ${b.rev}${eta}${was}`);
   }
@@ -75,7 +75,8 @@ function diff(sim: Sim, a: BriefFacts, b: BriefFacts): string[] {
     else if (st === 'undone') out.push(`Undone: ${lc(act.title)}`);
   }
   const grown = b.acres - a.acres;
-  if (grown >= 100) out.push(`Fire grew ${grown.toLocaleString('en-US')} acres`);
+  const unit = sim.ctx.script.areaUnit;
+  if (grown >= (unit === 'ha' ? 40 : 100)) out.push(`Fire grew ${grown.toLocaleString('en-US')} ${unit}`);
   return out.slice(0, 5);
 }
 
@@ -84,14 +85,14 @@ function compose(sim: Sim): { headline: string; bullets: string[] } {
   const t = sim.t;
   const p = sim.projection;
   const w = c.weatherAt(t);
-  const acres = Math.round(c.acresAt(t)).toLocaleString('en-US');
+  const area = c.areaText(t);
   const z0 = sim.items.find((i) => i.zone === 'Z0_INTERRUPT');
   const eta = gfEta(sim);
   let headline: string;
   if (z0) headline = `${z0.title.charAt(0)}${z0.title.slice(1).toLowerCase()} · needs acknowledgement`;
-  else if (eta !== null && eta <= 0) headline = `Fire is in ${c.gfName}; structure defense and evacuation in progress`;
-  else if (eta !== null && eta <= 180) headline = `Head reaches ${c.gfName} in about ${Math.round(eta)} min`;
-  else headline = `Caldor Fire at ${acres} acres, head running ${compass(p?.headDirDeg ?? w.windDirDeg)}`;
+  else if (eta !== null && eta <= 0) headline = `Fire is in ${c.primaryName}; structure defense and evacuation in progress`;
+  else if (eta !== null && eta <= 180) headline = `Head reaches ${c.primaryName} in about ${Math.round(eta)} min`;
+  else headline = `${c.script.incident} at ${area}, head running ${compass(p?.headDirDeg ?? w.windDirDeg)}`;
 
   const people = sim.findings.filter((f) => f.kind === 'human' || f.kind === 'animal');
   const life = people.length
@@ -104,7 +105,7 @@ function compose(sim: Sim): { headline: string; bullets: string[] } {
         .join('; ')
     : 'no people reported in the fire path';
   const lifeB = `Life safety: ${life}.`;
-  const fireB = `Fire: ${acres} acres, head ${compass(p?.headDirDeg ?? 0)} at ${Math.round(p?.rosMpm ?? 0)} m/min; wind ${Math.round(w.windDirDeg)}° ${Math.round(w.windKph)} kph, RH ${Math.round(w.rh)}%${p ? ` (projection rev ${p.rev})` : ''}.`;
+  const fireB = `Fire: ${area}, head ${compass(p?.headDirDeg ?? 0)} at ${Math.round(p?.rosMpm ?? 0)} m/min; wind ${Math.round(w.windDirDeg)}° ${Math.round(w.windKph)} kph, RH ${Math.round(w.rh)}%${p ? ` (projection rev ${p.rev})` : ''}.`;
   const pending = sim.actions.filter((a) => a.status === 'proposed' && a.requiresApproval);
   const running = sim.actions.filter((a) => a.status === 'executing');
   const work = pending.length
@@ -149,7 +150,7 @@ export function updateSuggestions(sim: Sim): void {
   if (sim.findings.some((f) => (f.kind === 'human' || f.kind === 'animal') && !sim.fmeta.get(f.id)?.resolved)) out.push('Who is at risk right now?');
   if (top) out.push(`Why is "${top.title.split('·')[0].trim().toLowerCase()}" on screen?`);
   const eta = gfEta(sim);
-  if (eta !== null && eta > 0) out.push(`When does the head reach ${sim.ctx.gfName}?`);
+  if (eta !== null && eta > 0) out.push(`When does the head reach ${sim.ctx.primaryName}?`);
   const tasked = sim.units.find((u) => u.kind === 'drone' && u.taskId);
   if (tasked) out.push(`Status of ${tasked.callsign}?`);
   if (sim.actions.some((a) => a.kind === 'move-group' || a.kind === 'evac-notice')) out.push('Where should crews go next?');

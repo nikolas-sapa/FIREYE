@@ -1,8 +1,6 @@
 import type { DirectorState } from '../contracts';
 import type { ScenarioContext } from '../world/context';
 import type { Sim } from '../world/sim';
-import { MIN, bearingDeg, distanceM } from '../world/geo';
-import { sendTo, unitById } from '../world/units';
 import { ops } from '../world/engine';
 import { say } from '../orchestrator/messages';
 
@@ -31,121 +29,36 @@ export interface BeatDef {
 export const DEMO_QUESTION = 'What changed in the last 10 minutes?';
 export const DEMO_LENGTH_S = 185;
 
-function ackInterrupts(sim: Sim): void {
+export function ackInterrupts(sim: Sim): void {
   for (const it of sim.items) if (it.zone === 'Z0_INTERRUPT') ops.acknowledge(sim, it.id);
 }
 
-function approveKinds(sim: Sim, kinds: string[], note: string): void {
+export function remindKinds(sim: Sim, kinds: string[]): void {
   for (const a of sim.actions.slice().reverse()) {
     if (a.status === 'proposed' && a.requiresApproval && kinds.includes(a.kind)) {
-      ops.approve(sim, a.id, 'user');
-      say(sim, `${note}: ${a.title}.`, [a.id]);
+      if (sim.cues.has(`approval-reminder-${a.id}`)) continue;
+      sim.cues.add(`approval-reminder-${a.id}`);
+      say(sim, `Demo Director: review and approve this draft in Decisions. It will not execute without your click: ${a.title}.`, [a.id]);
     }
   }
 }
 
+/** Reminds the user after a delay; never impersonates a human approval. */
+export function remindAfter(sim: Sim, s: number, mark: Map<string, number>, pick: (a: Sim['actions'][number]) => number): void {
+  for (const act of sim.actions) {
+    if (act.status !== 'proposed' || !act.requiresApproval) continue;
+    const delay = pick(act);
+    if (delay < 0) continue;
+    if (!mark.has(act.id)) mark.set(act.id, s);
+    if (s - mark.get(act.id)! >= delay) {
+      remindKinds(sim, [act.kind]);
+    }
+  }
+}
+
+/** The active scenario's beats (each scenario module owns its own demo script). */
 export function buildBeats(ctx: ScenarioContext): BeatDef[] {
-  const T0 = ctx.T0;
-  const acres = Math.round(ctx.acresAt(T0)).toLocaleString('en-US');
-  const etaAfterShift = Math.round((ctx.tGF - ctx.tShift) / MIN);
-  const a = Math.round(ctx.shiftFrom.windDirDeg);
-  const b = Math.round(ctx.shiftTo.windDirDeg);
-  const road = ctx.sites.propaneRoadName;
-  return [
-    {
-      id: 'calm',
-      at: 0,
-      title: 'Calm monitoring',
-      caption: `${ctx.fmtTime(T0)}, ${ctx.fmtDate(T0)}. The Caldor Fire is about ${acres} acres. Six drones sweep the front while agent pools read web, social, camera, satellite, weather and radio sources. The ledger counts the analyst time the swarm saves.`,
-      speed: 30,
-      enter: (h) => {
-        ops.setAutonomy(h.sim, 'assist');
-        ops.setLens(h.sim, 'ic');
-        ops.setHoldLayout(h.sim, false);
-      },
-    },
-    {
-      id: 'hikers',
-      at: 20,
-      title: 'Two hikers in the fire path',
-      caption:
-        'A public social clip shows two hikers on a ridge trail. The vision agent flags them with an approximate, fading ring. In Act mode the Orchestrator retasks HAWK-3 (low risk, undoable), promotes its feed, and once the people are confirmed live raises the only Z0 interrupt and drafts a rescue for EMS.',
-      speed: 30,
-      anchor: T0 + 18.5 * MIN,
-      enter: (h) => ops.setAutonomy(h.sim, 'act'),
-    },
-    {
-      id: 'windshift',
-      at: 60,
-      title: 'Wind shift and re-projection',
-      caption: `The real evening wind shift (Open-Meteo archive, ${a}° to ${b}°) reaches the Projection agent. The new run keeps the old bands as a ghost: the head now reaches ${ctx.gfName} in about ${etaAfterShift} min. The Orchestrator drafts an evacuation ORDER and a structure-group move; high-risk actions wait for the IC (auto-approved here after 6 s).`,
-      speed: 10,
-      anchor: T0 + 59 * MIN,
-      enter: (h) => {
-        ackInterrupts(h.sim);
-        approveKinds(h.sim, ['rescue'], 'Approved by the IC');
-      },
-      watch: (h, s, _once, mark) => {
-        const sim = h.sim;
-        for (const act of sim.actions) {
-          if (act.status !== 'proposed') continue;
-          const delay = act.kind === 'evac-notice' && act.title.includes('ORDER') ? 6 : act.kind === 'move-group' ? 8 : -1;
-          if (delay < 0) continue;
-          if (!mark.has(act.id)) mark.set(act.id, s);
-          if (s - mark.get(act.id)! >= delay) {
-            ops.approve(sim, act.id, 'user');
-            say(sim, `Demo Director: no input for ${delay} s, so this was approved on behalf of the IC: ${act.title}.`, [act.id]);
-          }
-        }
-      },
-    },
-    {
-      id: 'propane',
-      at: 100,
-      title: 'Propane tanks, nearby units only',
-      caption: `E-41's dash cam spots two propane tanks next to a house on ${road}. The hazard goes only to the units within 1.5 km instead of interrupting everyone. Switching the role lens to OPS re-ranks hazards and movements.`,
-      speed: 10,
-      anchor: T0 + 97 * MIN,
-      enter: (h) => {
-        const sim = h.sim;
-        ackInterrupts(sim);
-        approveKinds(sim, ['evac-notice', 'move-group', 'rescue'], 'Approved by the IC');
-        const e41 = unitById(sim, 'e-41');
-        if (e41 && !sim.revealed.has('f-propane')) sendTo(sim, 'e-41', sim.ctx.sites.propaneRoad, { road: true, after: 'hold', arriveBy: sim.t + 3 * MIN });
-      },
-      watch: (h, s, once) => {
-        const sim = h.sim;
-        const u = unitById(sim, 'e-41');
-        const m = sim.umeta.get('e-41');
-        if (u && m && m.plan.mode === 'hold' && distanceM(u.pos, sim.ctx.sites.propane) < 400 && once('e41-face')) u.heading = bearingDeg(u.pos, sim.ctx.sites.propane);
-        if (s >= 14 && once('lens-ops')) {
-          ops.setLens(sim, 'ops');
-          say(sim, 'Role lens set to OPS: hazards and movements are weighted ×1.2, so the propane hazard and the structure group move up.');
-        }
-      },
-    },
-    {
-      id: 'question',
-      at: 130,
-      title: 'Ask the Orchestrator',
-      caption: 'The IC asks a plain question. The answer is assembled from the bus events of the last ten scenario minutes, with links to the items it mentions.',
-      speed: 10,
-      enter: (h) => ackInterrupts(h.sim),
-      watch: (h, s, once) => {
-        if (s >= 1.5 && once('ask')) ops.ask(h.sim, DEMO_QUESTION);
-      },
-    },
-    {
-      id: 'summary',
-      at: 160,
-      title: 'Agent work ledger',
-      caption: 'In about three minutes the swarm did hours of analyst work: footage reviewed, posts screened, projections run, drafts written. Scenario built from public data; units, people and events are simulated.',
-      speed: 10,
-      watch: (h, s, once) => {
-        if (s >= DEMO_LENGTH_S - 160 && once('end')) h.sim.paused = true;
-      },
-    },
-  ];
+  return ctx.script.beats(ctx);
 }
 
 export function beatsState(defs: BeatDef[]): DirectorState['beats'] {

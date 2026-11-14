@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
-export type PanelId = 'agents' | 'drafts' | 'ledger' | 'log' | 'layers';
+export type PanelId = 'agents' | 'drafts' | 'ledger' | 'log' | 'checks' | 'layers';
 
 interface UiState {
   panel: PanelId | null;

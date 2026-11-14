@@ -1,12 +1,12 @@
 import { RegMark, Ruler, Serial } from '@ds';
-import { CONSOLE_HREF, FccMark, REV_A_HREF, REV_B_HREF } from './Nav';
+import { CONSOLE_HREF, FccMark, REV_A_HREF, REV_B_HREF, REV_C_HREF } from './Nav';
 
 const META: { label: string; rows: [string, string][] }[] = [
   {
     label: 'Document',
     rows: [
       ['ID', 'FCC-PRP-0001'],
-      ['Revision', 'C'],
+      ['Revision', 'D'],
       ['Date', '2026-11-14'],
       ['Sheets', '05'],
     ],
@@ -24,7 +24,7 @@ const META: { label: string; rows: [string, string][] }[] = [
     label: 'System',
     rows: [
       ['Core', 'Orchestrator + agent pools'],
-      ['Console', 'Caldor 2021 replay'],
+      ['Console', 'Mati 2018 · Caldor 2021'],
       ['Concept AO', 'Sierra-7 (synthetic)'],
       ['Data', 'Public · simulated units'],
     ],
@@ -46,7 +46,8 @@ const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '
 const REVISIONS: { rev: string; date: string; note: string; href?: string }[] = [
   { rev: 'A', date: '2026-11-14', note: 'Initial proposal: dashboard-first console, ARGUS core', href: REV_A_HREF },
   { rev: 'B', date: '2026-11-14', note: 'Orchestrator-first: graded alerts, calm default view, agent pools, drone grid', href: REV_B_HREF },
-  { rev: 'C', date: '2026-11-14', note: 'Full-screen console, real-fire replay (Caldor 2021), attention manager, agent work ledger' },
+  { rev: 'C', date: '2026-11-14', note: 'Full-screen console, real-fire replay (Caldor 2021), attention manager, agent work ledger', href: REV_C_HREF },
+  { rev: 'D', date: '2026-11-14', note: 'Mati reconstruction, dual themes, prototype spread model, prediction checks and richer simulated views' },
 ];
 
 export default function Footer() {
@@ -62,7 +63,7 @@ export default function Footer() {
             <span className="font-mono text-nano uppercase text-bone">Fire Command Center</span>
           </div>
           <div className="flex items-center gap-2">
-            <Serial>FCC-01 / Rev C</Serial>
+            <Serial>FCC-01 / Rev D</Serial>
             <Serial>Sheet 05/05</Serial>
           </div>
         </div>

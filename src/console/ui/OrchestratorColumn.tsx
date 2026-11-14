@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertCard, DecisionCard, Icon, IconButton, LedgerCounter, OrchBubble, PromptChip, WhyPopover, cn, alertClassLabel } from '@ds';
 import type { Action, GradedItem } from '../contracts';
 import { useConsoleApi, useConsoleSelector } from '../store';
-import { ago, fmtDuration, localTime, toOrchAudiences, tierOfZone, zuluTime } from './format';
+import { ago, fmtDuration, localTime, packTz, toOrchAudiences, tierOfZone, zuluTime } from './format';
 import { useUi } from './UiContext';
 
 function SectionHead({ index, title, meta, children }: { index: string; title: string; meta?: string; children?: ReactNode }) {
@@ -43,7 +43,7 @@ function LedgerStrip() {
 
 function Now() {
   const brief = useConsoleSelector((s) => s.brief);
-  const tz = useConsoleSelector((s) => s.pack?.manifest.tz ?? 'PDT');
+  const tz = useConsoleSelector((s) => packTz(s.pack));
   return (
     <section aria-label="Now" className="flex flex-col gap-2">
       <SectionHead index="01" title="Now" meta={brief.at ? `${localTime(brief.at, tz)} ${tz}` : undefined} />
