@@ -42,4 +42,4 @@ Additional checked context: [Anduril C2](https://www.anduril.com/lattice/command
 
 [Repository rules](../../AGENTS.md) and [brief/non-goals](../../README.md) remain authoritative: **Geist Sans**, accent **#006bff**, **no orange**, **no emoji**. The supplied native/Roboto stacks, Blueprint blues and tangerine recommendations are reference content only. No application source, manifests, dependencies, schema or CI added. Blueprint licensing does not grant reuse permission for company screenshots, logos or videos; selected reused code/assets still need source/commit/license/notices/attribution records and approval.
 
-Application implementation remains **not started**; design, scope, simulator/runtime and numeric test-plan approval remain gated. Archiving these reports does not open that gate.
+Historical planning snapshot: application implementation was **not started** when these reports were archived. See [current README](../../README.md) for merged local protocol status; full V1 design/simulator/runtime acceptance remains gated. Archiving these reports does not open that gate.

@@ -1,0 +1,40 @@
+%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":18,"themeVariables":{"background":"#ffffff","primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#8f8f8f","lineColor":"#4d4d4d","secondaryColor":"#ffffff","tertiaryColor":"#fafafa","clusterBkg":"#fafafa","clusterBorder":"#c9c9c9","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":32,"rankSpacing":44,"padding":18}}}%%
+graph TD
+  accTitle: Simulation mission lifecycle, distinct approval and receipt stages
+  accDescr: Received evidence leads to a proposal and a current-Chief approval check, then a locally enqueued command. Built pure functions validate this boundary and reduce receipt stages, but transport and executor runtime integration are not done. The intended runtime distinguishes sent, delivered, accepted, running and completed. Invalid or declined work stops without enqueueing. Delivery may be rejected. Frozen or replay mode does not dispatch; renewed scope requires fresh human approval, not silent retries.
+
+  subgraph LOCAL["BUILT local state"]
+    direction TB
+    EVIDENCE["Received evidence"]
+    PROPOSE["Proposal"]
+    APPROVE["Current-Chief approval<br/>Scope · versions · expiry"]
+    ENQUEUE["enqueued<br/>Reservation + command"]
+    STOP["Stop: no enqueue<br/>Invalid / stale / declined"]
+    EVIDENCE --> PROPOSE --> APPROVE
+    APPROVE -->|eligible + approved| ENQUEUE
+    APPROVE -->|invalid or no approval| STOP
+  end
+
+  subgraph RUNTIME["PLANNED runtime"]
+    direction TB
+    SENT["sent<br/>Intent transmitted"]
+    DELIVERED["delivered<br/>Arrival receipt"]
+    ACCEPTED["accepted<br/>Executor revalidates"]
+    RUNNING["running<br/>Progress received"]
+    COMPLETED["completed<br/>Terminal fact received"]
+    REJECTED["failed / cancelled / rejected<br/>Separate terminal outcomes"]
+    SENT --> DELIVERED --> ACCEPTED --> RUNNING --> COMPLETED
+    DELIVERED -->|executor refuses| REJECTED
+    RUNNING -->|failure or cancellation| REJECTED
+  end
+
+  HOLD["BUILT · frozen / replay guard<br/>No dispatch, no silent resume"]
+  ENQUEUE -. future delivery adapter .-> SENT
+  APPROVE -->|inactive / replay / offline| HOLD
+
+  classDef built fill:#ffffff,stroke:#006bff,stroke-width:2px,color:#171717;
+  classDef planned fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:6 4,color:#171717;
+  class EVIDENCE,PROPOSE,APPROVE,ENQUEUE,STOP,HOLD built;
+  class SENT,DELIVERED,ACCEPTED,RUNNING,COMPLETED,REJECTED planned;
+  style LOCAL fill:#fafafa,stroke:#006bff
+  style RUNTIME fill:#ffffff,stroke:#c9c9c9,stroke-dasharray:6 4
