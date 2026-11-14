@@ -11,7 +11,7 @@ export function MicrographicsSpec() {
   return (
     <SubSection
       id="system-micro"
-      index="04.5"
+      index="05.5"
       kicker="Micrographics"
       title="Small marks that carry meaning."
       lede="The primitive layer. Each mark encodes something true: a boundary, a scale, a datum, a revision. Never use one as pure ornament."
@@ -59,7 +59,7 @@ export function MicrographicsSpec() {
         </Spec>
         <Spec code="<Serial>" tag="Provenance">
           <div className="flex flex-col items-center gap-2">
-            <Serial>FCC-01 / REV A</Serial>
+            <Serial>FCC-01 / REV B</Serial>
             <Serial>UAS-07 / SN 0042-118</Serial>
             <Serial>MODEL SPREAD-v3.2</Serial>
           </div>
@@ -98,7 +98,7 @@ export function IconSpec() {
   return (
     <SubSection
       id="system-icons"
-      index="04.6"
+      index="05.6"
       kicker="Iconography"
       title={`${iconNames.length} glyphs on one 24-unit grid.`}
       lede="Drawn for FCC. 1.25 stroke, square caps, miter joins, 2-unit live margin. Straight segments and 45 degree diagonals; curves only where the object is round."

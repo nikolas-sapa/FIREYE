@@ -1,10 +1,12 @@
 # FCC Design System
 
-**FCC-DS / REV A · 2026-11-14 · Fire Command Center**
+**FCC-DS / REV B · 2026-11-14 · Fire Command Center**
+
+REV B adds the Orchestrator-first patterns (section 13) and 12 components. REV A is archived at `public/rev-a/` and git tag `rev-a`.
 
 This is the canonical reference for building any FCC surface. Read it before writing UI. If something you need is not here, add it to the system (tokens, primitive or component), then document it here; do not invent one-off styles inside a feature.
 
-Live reference: `src/sections/DesignSystemSection.tsx`, rendered at **http://localhost:5173/#system** (`npm run dev`). When this document and the showcase disagree on a visual detail, the code in `src/design-system/` is the source of truth; fix whichever is stale.
+Live reference: `src/sections/DesignSystemSection.tsx`, rendered at **http://localhost:5173/#system** (section 05) (`npm run dev`). When this document and the showcase disagree on a visual detail, the code in `src/design-system/` is the source of truth; fix whichever is stale.
 
 ---
 
@@ -22,10 +24,11 @@ Live reference: `src/sections/DesignSystemSection.tsx`, rendered at **http://loc
 10. [Iconography](#10-iconography)
 11. [Component catalog](#11-component-catalog)
 12. [Domain patterns](#12-domain-patterns)
-13. [Content and voice](#13-content-and-voice)
-14. [Accessibility](#14-accessibility)
-15. [File map](#15-file-map)
-16. [Recipes](#16-recipes)
+13. [Orchestrator patterns (REV B)](#13-orchestrator-patterns-rev-b)
+14. [Content and voice](#14-content-and-voice)
+15. [Accessibility](#15-accessibility)
+16. [File map](#16-file-map)
+17. [Recipes](#17-recipes)
 
 ---
 
@@ -463,7 +466,7 @@ Rules:
 - An icon never stands alone for an action without a label or `IconButton` `label` (tooltip + aria-label).
 - To add an icon: add the name to the `IconName` union and the glyph to `glyphs`, keep the grid rules, then it appears in the showcase automatically via `iconNames`.
 
-Full name list (50):
+Full name list (60):
 
 | Group | Names |
 |---|---|
@@ -474,6 +477,7 @@ Full name list (50):
 | Navigation | `chevron-right` `chevron-down` `chevron-left` `arrow-up-right` `arrow-right` |
 | Instruments | `locate` `compass` `eye` `clock` `signal` `battery` `route` `shield` |
 | Utility | `alert` `search` `settings` `grid` `expand` `filter` `zap` `map` |
+| Orchestrator (REV B) | `orchestrator` `agents` `log` `camera` `send` `sparkle` `animal` `combustible` `social` `web` |
 
 ---
 
@@ -749,6 +753,77 @@ Always show AI confidence next to AI claims (detections, forecasts, recommendati
 ```
 Editorial header for proposal page sections: indexed rule on top, giant ink-600 index numeral, title on a 3/9 split.
 
+### Orchestrator components (REV B)
+
+All in `src/design-system/components/orchestrator.tsx`, exported from `@ds`. The types are local to the design system (`OrchTier`, `OrchAlertClass`, `OrchAudience`, `MovementStatus`) and are structurally identical to `AlertTier`, `AlertClass`, `Audience` and `MovementProposal['status']` in `src/sim/types.ts`, so sim values pass straight in. Helpers exported alongside: `TIER_BANDS`, `tierOf(score)`, `tierTone`, `alertTone(cls, tier)`, `alertClassTone`, `alertClassIcon`, `alertClassLabel`, `audienceLabel`. See section 13 for the rules they encode.
+
+#### ScoreMeter
+
+`{ score: number /* 0..100 */; size?: 'sm' | 'md'; showValue?: boolean = true }` — `<ScoreMeter score={alert.score} size="sm" />`
+
+20 segments (5 points each), filled in the tier tone (`danger` ≥ 85, `warning` 60–84, `telemetry` 35–59, `neutral` < 35). Ticks under the bar at 35 / 60 / 85 mark the tier edges. Default widths: `w-28` (sm), `w-44` (md); pass a `w-*` class to override. `role="meter"`.
+
+#### TierBadge
+
+`{ tier: 0 | 1 | 2 | 3 }` — renders `T0 | INTERRUPT` (solid ember), `T1 | FOCUS` (amber outline), `T2 | AMBIENT` (ice soft), `T3 | LOG` (hairline, mute).
+
+#### AlertCard
+
+`{ cls; tier; score; title; body?; why?; time?; notify?: Audience[]; actions?; compact?; onClick?; selected? }`
+
+```tsx
+<AlertCard cls="life" tier={1} score={78} title="2 hikers near Pine Hollow trailhead" body="…" why="Life safety · +1H band · conf 0.81"
+  time="14:32Z" notify={['fire', 'ems']} actions={<IconButton icon="locate" label="Locate" size="sm" variant="ghost" />} onClick={select} />
+```
+Left 2px rule and icon in `alertTone(cls, tier)`. Header: class label + `TierBadge` + time. Body: sans title, bone-dim body, `why` as a mono micro line with a `sparkle` (the Orchestrator's grading rationale). Footer: `ScoreMeter`, relay row (notified audiences lit, others struck through), actions on the right. `compact` = one 36px row (icon, title, score, time) for the dock count list and the log. Interactive when `onClick` is set (keyboard Enter/Space). `selected` = signal border + brackets.
+
+#### InterruptBanner
+
+`{ cls; title; body?; score; time?; notify?; onAck(); onLocate? }`
+
+Tier-0 only. Max width 640px, ember top rule, live ember dot, `T0 INTERRUPT` strip with hatch, large score, relay row, `Locate` (secondary) and `Acknowledge` (primary, the one signal action). `role="alert"` + `aria-live="assertive"`. Place it absolutely, centered at the top of the map; render one at a time.
+
+#### Freshness
+
+`{ freshness: number /* 0..1 */; live?: boolean; age?: string }` — `<Freshness freshness={obs.freshness} age="14m ago" />` or `<Freshness live />`
+
+Ice square + age text; opacity `0.35 + 0.65 f` and `grayscale(1 − f)`. Below 0.10 it shows a dashed hollow square and struck-through age (expired). `live` = phosphor pulsing dot + `LIVE`.
+
+#### OrchBubble
+
+`{ role: 'orchestrator' | 'user'; time?; children?; thinking? }` — Orchestrator: left aligned, ice left rule, `orchestrator` icon header. User: right aligned, ink-800 fill, `YOU`. `thinking` = three blinking ice squares (`role="status"`).
+
+#### PromptChip
+
+`{ children; onClick() }` — 28px suggestion chip with `sparkle` and an arrow. Sentence-case prompt text in sans. Use 2–4 below the thread.
+
+#### Drawer
+
+`{ open; onClose(); title; index?; side?: 'left' | 'right' = 'left'; width?: number = 360; offset?: number = 0; actions?; children }`
+
+Absolutely positioned inside a `relative` parent (not a portal), full height, `z-overlay`, `shadow-lift`. Slides 16px and fades with `duration-slow ease-settle`; closed drawers are `invisible` and `aria-hidden`. `offset` moves it off the anchoring edge (pass the rail width, 48). Esc closes the drawer that holds focus. Header mirrors `Panel` (signal index, mono title, actions, close).
+
+#### IconRail
+
+`{ items: { id; icon: IconName; label; badge?: number | string; tone?: Tone }[]; value: string | null; onChange(id | null) }`
+
+48px vertical rail, 48px square buttons with right-side tooltips and `aria-pressed`. Active = signal icon, signal/10 fill and a 2px signal edge. Clicking the active item calls `onChange(null)`. Badges: neutral by default, tone fill when `tone` is set; `0` or `''` hides the badge.
+
+#### FeedTile
+
+`{ label; live?; meta?; children /* video surface */; selected?; onClick? }` — `<FeedTile label="E-41 · DASH CAM" live meta="HDG 042°"><CameraView feedId={f.id} variant="thumb" /></FeedTile>`
+
+16:9 media well (`bg-void`, scanlines) with the child filling it, label chip top-left, `LIVE` (ember dot) or `CLIP` top-right, optional 24px meta strip. Selected = signal border + brackets.
+
+#### PoolBar
+
+`{ label; provider; workers; maxWorkers; queue; meta? }` — one cell per worker slot; running = ice, idle = ink-800. When the pool is saturated (`workers == maxWorkers` and `queue > 0`) the cells and the queue count turn amber. Header: label, provider tag, `07/24`, `Q03`.
+
+#### MovementCard
+
+`{ title; group; windowLabel; trigger; reason?; score; status: 'proposed' | 'approved' | 'rejected' | 'executing' | 'done'; onApprove?; onReject?; onLocate? }`
+
+Movement proposals from the Orchestrator. Signal left rule only while `proposed` (it is the pending decision); otherwise ink-500. Header: `route` icon, status (executing pulses), `ScoreMeter`. Body: title, group in mono, a `WINDOW / TRIGGER / REASON` spec list (trigger in amber). Footer: locate, `Reject` (ghost), `Approve` (primary), shown only while proposed. Rejected cards dim to 60%.
 ---
 
 ## 12. Domain patterns
@@ -778,6 +853,9 @@ The tactical map (`src/dashboard/map`) and every other map-like visual (hero, sc
 | Structure | `bone-dim` | Small hollow rect, ink-950 fill | Cluster label `STRUCTURES · 06`. |
 | Water source | `ice` | Hollow circle | |
 | POI / spot fire | `violet` / `ember` | Crosshair | |
+| Approximate location (non-live) | Class tone | 3px dot + dashed uncertainty ring, opacity by freshness | REV B. See 13.4. Live = solid square. |
+| Drone coverage cell | `ice` at low alpha | Hairline cell, fill by interest | REV B. Assigned drone shown inside its cell. |
+| Movement proposal | `signal` | Dashed route to a crosshair, phosphor hollow safety-zone circle | REV B. Only while proposed or executing. |
 | Roads | `bone-mute` | Dash-dot `6 3 1 3` | Labels micro mono (`RIDGE RD`). |
 | Creeks | `ice` at 45% | 1px solid | |
 | Contours | `ink-500` minor, `ink-300` major | 0.5 / 0.8px | Major every third level. |
@@ -814,6 +892,8 @@ Item anatomy: type icon (`video`, `image`, `news`, `sensor`, `radio`, `satellite
 
 ### 12.4 Alert severity escalation
 
+REV B: in the console, placement is decided by the Orchestrator grade (section 13.1), not by these levels. The table still applies to `Alert` used outside the console.
+
 | Level | Tone | Presentation |
 |---|---|---|
 | Info | `neutral` / `telemetry` | `LogLine` in the log only. |
@@ -826,7 +906,77 @@ Escalate one level at a time. Never use sound or full-screen flashes in this pro
 
 ---
 
-## 13. Content and voice
+## 13. Orchestrator patterns (REV B)
+
+REV B is Orchestrator-first. The default console is calm: a big map, a slim command bar and the Orchestrator dock. Everything else (forces, feeds, agent pipeline, layers, log) sits behind the left `IconRail` in `Drawer`s. The Orchestrator is an AI that works beside the commander: it grades every piece of information and the grade decides where, and whether, it shows.
+
+### 13.1 Grading and placement
+
+Every alert carries `score` 0–100. `tierOf(score)` maps it to a tier:
+
+| Score | Tier | Where it renders | Who is notified | Rules |
+|---|---|---|---|---|
+| 85–100 | T0 INTERRUPT | `InterruptBanner`, map center-top; the camera flies to the location | Console user + every field audience in range | One at a time. Must be acknowledged. Others queue behind it. |
+| 60–84 | T1 FOCUS | Orchestrator dock, "Needs attention" stack (`AlertCard`); map label shown | Console user + units nearby (fire, EMS) | Max 3 visible. The oldest drops to ambient when a fourth arrives. |
+| 35–59 | T2 AMBIENT | Map glyph only, no label; a count in the dock | Console user, passively | Read on hover or selection. |
+| 0–34 | T3 LOG | Log drawer only (`AlertCard compact`) | Nobody; recorded for audit | Never surfaced proactively. |
+
+Scoring guidance: life (humans or animals) inside or near a projection band starts at 80; combustibles inside the +3H band start at 60; projection changes are graded by how far the band moved; status is below 35. Scores of non-live findings are multiplied by freshness, so stale items sink a tier on their own.
+
+### 13.2 Alert class → tone
+
+| Class | Icon | Map glyph tone | Card tone |
+|---|---|---|---|
+| `life` | `human` / `animal` | `detection` (violet) | `danger` (ember) at T0–T1, violet at T2–T3 |
+| `hazard` (tanks, depots, vehicles) | `combustible` | `danger` | `danger` |
+| `fuel` (dry brush; irrigated fields lower risk) | `tree` | `warning` | `warning` |
+| `movement` | `route` | `signal` | `signal` |
+| `projection` | `flame` | `warning` | `warning` |
+| `status` | `radio` | `neutral` | `neutral` |
+
+Use `alertTone(cls, tier)` for cards and `alertClassTone[cls]` for map glyphs. Movement is the only class allowed to use `signal`, because a pending movement is the next action.
+
+### 13.3 Freshness and fade
+
+Time is of the essence. Anything not seen live right now is approximate and fades.
+
+- `f = 0.5 ^ (age / t½)`. Live sources (drone or ground camera currently looking) hold `f = 1`.
+- Half-lives: social video 15 min, web/news 20 min, satellite pass 40 min, a live finding after the camera moves on 5 min.
+- Rendering: `opacity = 0.2 + 0.8 f` for the glyph and label; `Freshness` adds desaturation.
+- Expiry: `f < 0.10` (about 3.3 half-lives) removes the item from the map; it stays in the log.
+- Score coupling: displayed score = graded score × f (see 13.1).
+
+### 13.4 Approximate-location glyph
+
+| Part | Non-live (article, social, satellite) | Live (camera confirmed) |
+|---|---|---|
+| Center | 3px solid dot (hollow when expired) | 8px solid square inside a 14px hollow square |
+| Ring | Dashed `3 3` circle, radius = location uncertainty (meters → pixels), 6% fill × f | None, or sensor accuracy only |
+| Opacity | `0.2 + 0.8 f` | 1 |
+| Color | Class glyph tone (life = violet) | Same |
+
+Never draw a non-live finding as a solid point; the ring is the honesty.
+
+### 13.5 Interrupt rules
+
+- Only T0 may interrupt. Only one interrupt is on screen; the next waits until acknowledgement.
+- An interrupt always says who was already notified (relay row) and offers `Locate`.
+- Acknowledge is the only primary button. No sound, no full-screen flash, no auto-dismiss.
+
+### 13.6 Orchestrator voice
+
+- **Calm.** No alarm words; the tier carries urgency.
+- **Plain.** Street names, callsigns, minutes: "HAWK-2 is 90 s out."
+- **Specific.** Numbers with units, sources named, confidence when it is a claim.
+- **One action per sentence.** "Pull DIV A back to Ridge Rd. Start within 4 minutes."
+- Headline ≤ 80 characters; brief = 3 bullets; suggestions = 2–4 `PromptChip`s.
+
+### 13.7 Movement proposals
+
+A proposal names who moves (`group`), where (`to`, safety zone), by which route, the time window (`windowMin`), the trigger, and the reason. Show it as a `MovementCard`; on the map draw the route as a dashed signal line to a crosshair and the safety zone as a hollow phosphor circle. Approve dispatches; reject logs the reason.
+
+---
+## 14. Content and voice
 
 - **Terse and operational.** Write like a dispatcher, not a marketer. "Head tracking NE at 22 m/min." not "The fire is moving quickly!"
 - **Micro labels:** mono, uppercase, 1–3 words, no trailing punctuation: `BURNED AREA`, `ROS`, `ETA`.
@@ -842,7 +992,7 @@ Escalate one level at a time. Never use sound or full-screen flashes in this pro
 
 ---
 
-## 14. Accessibility
+## 15. Accessibility
 
 - Body text uses `bone` or `bone-dim` (≥ 8.9:1). `bone-mute` (4.4:1) is for micro labels and captions only. `ink-500`/`ink-400` are decorative only.
 - Focus: global `:focus-visible` is a 1px signal outline with 2px offset. Do not remove it; components add their own equivalent.
@@ -855,7 +1005,7 @@ Escalate one level at a time. Never use sound or full-screen flashes in this pro
 
 ---
 
-## 15. File map
+## 16. File map
 
 ```
 DESIGN_SYSTEM.md                  this document
@@ -871,10 +1021,14 @@ src/design-system/
   components/                     Button, IconButton, Kbd, Badge, StatusPill, Panel, Card, SectionHeader, Tooltip,
                                   Tabs, Segmented, Toggle, Slider, Input, Select, Alert, Progress, Timeline, LogLine,
                                   Modal, Table, Sparkline, Metric, Gauge, Confidence, UnitChip, Legend, Compass
+  components/orchestrator.tsx     REV B: ScoreMeter, TierBadge, AlertCard, InterruptBanner, Freshness, OrchBubble,
+                                  PromptChip, Drawer, IconRail, FeedTile, PoolBar, MovementCard + tier helpers
   icons/index.tsx                 Icon, iconNames, IconName
 src/sim/                          simulation engine; types.ts is the contract
 src/dashboard/                    live ops console; map/ holds TacticalMap
-src/sections/                     page sections: Nav, Hero, Architecture, DashboardSection, DesignSystemSection, Footer
+src/sections/                     page sections: Nav, Hero, Architecture, Stack, DashboardSection, DesignSystemSection, Footer
+src/sections/ds/                  showcase chapters (Orchestrator.tsx = 05.8 Orchestrator patterns)
+public/rev-a/                     frozen REV A build (never edit)
 src/App.tsx                       page composition
 ```
 
@@ -890,11 +1044,11 @@ Utilities in `utils.ts`:
 
 ---
 
-## 16. Recipes
+## 17. Recipes
 
 Copy, paste, adapt. All imports come from `@ds`.
 
-### 16.1 Panel with metrics
+### 17.1 Panel with metrics
 
 ```tsx
 import { Panel, Metric, Gauge, Datum, Rule, Serial } from '@ds';
@@ -927,7 +1081,7 @@ export function IncidentPanel({ s }: { s: SimSnapshot }) {
 }
 ```
 
-### 16.2 List of units
+### 17.2 List of units
 
 ```tsx
 import { Panel, UnitChip, Progress, Badge } from '@ds';
@@ -958,7 +1112,7 @@ export function UnitList({ units, selected, onSelect }: { units: Unit[]; selecte
 }
 ```
 
-### 16.3 Alert stack
+### 17.3 Alert stack
 
 ```tsx
 import { Alert, Panel } from '@ds';
@@ -990,7 +1144,7 @@ export function AlertStack({ items, onClose }: { items: Insight[]; onClose(id: s
 }
 ```
 
-### 16.4 Editorial section shell
+### 17.4 Editorial section shell
 
 ```tsx
 import { SectionHeader, Rule, Serial } from '@ds';
@@ -1014,7 +1168,7 @@ export default function ExampleSection() {
 }
 ```
 
-### 16.5 HUD overlay on a map
+### 17.5 HUD overlay on a map
 
 ```tsx
 import { Brackets, Crosshair, Datum, Dot, fmtLat, fmtLon } from '@ds';

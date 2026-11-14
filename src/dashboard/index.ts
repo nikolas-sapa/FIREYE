@@ -1,7 +1,4 @@
 export { default as Dashboard } from './Dashboard';
-export { AgentPanel, type AgentTab } from './AgentPanel';
-export { BottomStrip } from './BottomStrip';
-export { ForcesPanel, SituationPanel } from './LeftRail';
-export { MapStage, type MapMode } from './MapStage';
-export { MediaThumb } from './MediaThumb';
-export { TopBar } from './TopBar';
+export { CommandBar } from './CommandBar';
+export { OrchestratorDock } from './OrchestratorDock';
+export type { ConsoleActions, DrawerId, MapMode, ViewMode } from './types';

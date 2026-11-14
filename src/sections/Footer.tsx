@@ -1,14 +1,14 @@
 import { RegMark, Ruler, Serial } from '@ds';
-import { FccMark } from './Nav';
+import { FccMark, REV_A_HREF } from './Nav';
 
 const META: { label: string; rows: [string, string][] }[] = [
   {
     label: 'Document',
     rows: [
       ['ID', 'FCC-PRP-0001'],
-      ['Revision', 'A'],
+      ['Revision', 'B'],
       ['Date', '2026-11-14'],
-      ['Sheets', '04'],
+      ['Sheets', '05'],
     ],
   },
   {
@@ -23,7 +23,7 @@ const META: { label: string; rows: [string, string][] }[] = [
   {
     label: 'System',
     rows: [
-      ['Core', 'ARGUS 2.1'],
+      ['Core', 'Orchestrator + agent pools'],
       ['AO', 'Sierra-7 (synthetic)'],
       ['Grid', '240 × 150 · 40 M'],
       ['Data', 'Simulated'],
@@ -34,13 +34,19 @@ const META: { label: string; rows: [string, string][] }[] = [
     rows: [
       ['01', 'Overview'],
       ['02', 'Architecture'],
-      ['03', 'Live ops'],
-      ['04', 'Design system'],
+      ['03', 'Stack'],
+      ['04', 'Live ops'],
+      ['05', 'Design system'],
     ],
   },
 ];
 
-const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '03': '#dashboard', '04': '#system' };
+const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '03': '#stack', '04': '#dashboard', '05': '#system' };
+
+const REVISIONS: { rev: string; date: string; note: string; href?: string }[] = [
+  { rev: 'A', date: '2026-11-14', note: 'Initial proposal: dashboard-first console, ARGUS core', href: REV_A_HREF },
+  { rev: 'B', date: '2026-11-14', note: 'Orchestrator-first: graded alerts, calm default view, agent pools, drone grid' },
+];
 
 export default function Footer() {
   return (
@@ -55,8 +61,8 @@ export default function Footer() {
             <span className="font-mono text-nano uppercase text-bone">Fire Command Center</span>
           </div>
           <div className="flex items-center gap-2">
-            <Serial>FCC-01 / Rev A</Serial>
-            <Serial>Sheet 04/04</Serial>
+            <Serial>FCC-01 / Rev B</Serial>
+            <Serial>Sheet 05/05</Serial>
           </div>
         </div>
 
@@ -85,6 +91,29 @@ export default function Footer() {
               </dl>
             </div>
           ))}
+        </div>
+
+        <div className="mt-px border border-t-0 border-line">
+          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+            <span className="fcc-micro text-bone-dim">Revision history</span>
+            <span className="font-mono text-micro text-ink-500">F-05</span>
+          </div>
+          <ol>
+            {REVISIONS.map((r) => (
+              <li key={r.rev} className="grid grid-cols-[48px_104px_1fr_auto] items-center gap-4 border-b border-line-faint px-5 py-2.5 last:border-b-0">
+                <span className={r.href ? 'font-mono text-tiny text-bone-mute' : 'font-mono text-tiny text-signal'}>REV {r.rev}</span>
+                <span className="font-mono text-tiny text-bone-mute fcc-num">{r.date}</span>
+                <span className="min-w-0 truncate text-sm text-bone-dim">{r.note}</span>
+                {r.href ? (
+                  <a href={r.href} className="font-mono text-micro uppercase text-bone-mute transition-colors duration-quick ease-servo hover:text-signal">
+                    Open archive ↗
+                  </a>
+                ) : (
+                  <span className="font-mono text-micro uppercase text-bone">Current</span>
+                )}
+              </li>
+            ))}
+          </ol>
         </div>
 
         <div className="relative mt-16 select-none" aria-hidden>

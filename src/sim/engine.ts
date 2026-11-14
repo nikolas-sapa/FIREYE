@@ -10,12 +10,17 @@
  */
 import {
   CELL_M, CellState, Fuel, GRID_H, GRID_W,
-  type IngestItem, type Insight, type Marker, type Recommendation, type SimEngine, type SimSnapshot,
+  type IngestItem, type Insight, type Marker, type Recommendation, type SimEngineB, type SimSnapshotB,
   type Unit, type UnitKind, type Vec,
 } from './types';
 import { buildWorld, gridRef, isFlammable, mulberry32, RELIEF_M } from './terrain';
 import { computeForecast, pointInPolygon } from './forecast';
 import { createAgent, type AgentHost, type FireStats, type RecTask } from './agent';
+import { createPipeline } from './pipeline';
+import { buildRoadGraph } from './roads';
+import { createIntel, sweepPath, type Intel } from './intel';
+import { createOrchestrator } from './orchestrator';
+import type { BHost } from './hostB';
 
 /** Sim seconds per real second at speed 1x. */
 export const SIM_TIME_SCALE = 30;
@@ -74,13 +79,31 @@ interface Brain {
   workClock: number;
   trailClock: number;
   task?: Task;
+  /** REV B movement: road route being followed. */
+  route?: Vec[];
+  routeIdx?: number;
+  routeTag?: string;
+  routeAfter?: 'standby' | 'work';
+  routeLine?: boolean;
+  doneTags?: Set<string>;
+  /** Drone recharge point chosen at RTB (helibase or the ICP battery cache). */
+  home?: Vec;
+  /** REV B coverage sweep. */
+  sweepCell?: string;
+  sweep?: Vec[];
+  sweepIdx?: number;
 }
 
 const dist = (a: Vec, b: Vec) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const wrap360 = (d: number) => ((d % 360) + 360) % 360;
 
-export function createSimulation(seed = 7): SimEngine {
+const zuluHM = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}Z`;
+};
+
+export function createSimulation(seed = 7): SimEngineB {
   const world = buildWorld(seed);
   const { grid, meta } = world;
   const burnAge = new Float32Array(N);
@@ -128,9 +151,11 @@ export function createSimulation(seed = 7): SimEngine {
 
   // forecastRev keeps counting across reset() so renderer caches invalidate.
   let revBase = 0;
-  let state: SimSnapshot = emptySnapshot();
+  let state: SimSnapshotB = emptySnapshot();
+  /** REV B modules run only after the pre-roll to t0. */
+  let bReady = false;
 
-  function emptySnapshot(): SimSnapshot {
+  function emptySnapshot(): SimSnapshotB {
     return {
       t: 0,
       clock: new Date(EPOCH),
@@ -147,6 +172,14 @@ export function createSimulation(seed = 7): SimEngine {
       history: { acres: [], containment: [], ros: [] },
       forecastRev: revBase,
       world: meta,
+      alerts: [],
+      observations: [],
+      jobs: [],
+      pools: [],
+      feeds: [],
+      coverage: [],
+      movements: [],
+      orchestrator: { status: 'monitoring', headline: '', brief: [], messages: [], suggestions: [] },
     };
   }
 
@@ -210,7 +243,7 @@ export function createSimulation(seed = 7): SimEngine {
         const jx = Math.round(x + wx * L + (rng() - 0.5) * 3), jy = Math.round(y + wy * L + (rng() - 0.5) * 3);
         if (jx >= 0 && jy >= 0 && jx < W && jy < H) {
           const j = jy * W + jx;
-          if (retardant[j] < 0.4 && rng() < dryness[j]) igniteIdx(j);
+          if (retardant[j] < 0.4 && rng() < dryness[j] && igniteIdx(j) && bReady && L > 6) intel.emberSpot({ x: jx + 0.5, y: jy + 0.5 });
         }
       }
     }
@@ -473,6 +506,8 @@ export function createSimulation(seed = 7): SimEngine {
       mkUnit('hawk-2', 'HAWK-2', 'drone', { x: ig.x + 6, y: ig.y - 8 }, { role: 'head', mode: 'orbit' }, { battery: 0.71, sensor: 'LWIR 640' }),
       mkUnit('hawk-3', 'HAWK-3', 'drone', { x: ig.x + 24, y: ig.y - 12 }, { role: 'scan', mode: 'scan' }, { battery: 0.58, sensor: 'MSI 5-BAND' }),
       mkUnit('hawk-4', 'HAWK-4', 'drone', { x: 150, y: 52 }, { role: 'town', mode: 'orbit' }, { battery: 0.93, sensor: 'EO 61MP' }),
+      mkUnit('hawk-5', 'HAWK-5', 'drone', { x: ig.x + 30, y: ig.y - 22 }, { role: 'scan', mode: 'scan', phase: 2 }, { battery: 0.66, sensor: 'LWIR 640' }),
+      mkUnit('hawk-6', 'HAWK-6', 'drone', { x: 112, y: 92 }, { role: 'perimeter', mode: 'orbit' }, { battery: 0.79, sensor: 'EO/IR 4K' }),
       mkUnit('e-41', 'E-41', 'engine', hw({ x: ig.x + 2, y: ig.y + 20 }), { role: 'ground', mode: 'work' }, { water: 0.78 }),
       mkUnit('e-17', 'E-17', 'engine', { x: meta.town.x0, y: meta.town.y1 - 1 }, { role: 'ground', mode: 'work' }, { water: 1, status: 'standby' }),
       mkUnit('e-22', 'E-22', 'engine', { ...meta.icp }, { role: 'ground', mode: 'goto', anchor: hw({ x: ig.x + 26, y: ig.y + 18 }) }, { water: 1, status: 'enroute' }),
@@ -527,7 +562,7 @@ export function createSimulation(seed = 7): SimEngine {
   }
 
   function updateDrone(u: Unit, b: Brain, dt: number) {
-    u.battery = Math.max(0, (u.battery ?? 1) - dt / 4800);
+    u.battery = Math.max(0, (u.battery ?? 1) - dt / 7200);
     if (b.mode === 'charge') {
       u.status = 'standby';
       setTarget(u, undefined);
@@ -536,10 +571,12 @@ export function createSimulation(seed = 7): SimEngine {
       return;
     }
     if (b.mode === 'rtb' || u.battery < 0.2) {
+      if (b.mode !== 'rtb') b.home = dist(u.pos, meta.icp) < dist(u.pos, meta.helibase) ? { ...meta.icp } : { ...meta.helibase };
       b.mode = 'rtb';
       u.status = 'rtb';
-      setTarget(u, meta.helibase);
-      if (moveToward(u, meta.helibase, dt, 1.2)) b.mode = 'charge';
+      const home = b.home ?? meta.helibase;
+      setTarget(u, home);
+      if (moveToward(u, home, dt, 1.3)) b.mode = 'charge';
       return;
     }
     const tk = b.task;
@@ -559,6 +596,23 @@ export function createSimulation(seed = 7): SimEngine {
       }
       return;
     }
+    const cell = bReady ? intel.assignment(u.id) : undefined;
+    if (cell) {
+      if (b.sweepCell !== cell.id || !b.sweep) {
+        b.sweepCell = cell.id;
+        b.sweep = sweepPath(cell);
+        let bi = 0, bd = Infinity;
+        b.sweep.forEach((q, i) => { const d = dist(q, u.pos); if (d < bd) { bd = d; bi = i; } });
+        b.sweepIdx = bi;
+      }
+      const wp = b.sweep[b.sweepIdx ?? 0];
+      const inside = u.pos.x >= cell.x && u.pos.y >= cell.y && u.pos.x <= cell.x + cell.w && u.pos.y <= cell.y + cell.h;
+      setTarget(u, wp);
+      if (moveToward(u, wp, dt, inside ? 1 : 1.3)) b.sweepIdx = ((b.sweepIdx ?? 0) + 1) % b.sweep.length;
+      u.status = inside ? 'active' : 'enroute';
+      return;
+    }
+    b.sweepCell = undefined;
     const f = fire;
     switch (b.role) {
       case 'perimeter': orbit(u, b, f.centroid, Math.min(f.radius + 7, 34), dt); break;
@@ -699,7 +753,35 @@ export function createSimulation(seed = 7): SimEngine {
     };
   }
 
+  function followRoute(u: Unit, b: Brain, dt: number) {
+    const route = b.route!;
+    const i = b.routeIdx ?? 0;
+    const wp = route[Math.min(i, route.length - 1)];
+    u.status = 'enroute';
+    setTarget(u, route[route.length - 1]);
+    const mult = u.kind === 'crew' ? 3.2 : u.kind === 'dozer' ? (b.routeLine ? 1.4 : 2.6) : 1.35;
+    b.timer += dt;
+    if (b.routeLine && b.timer > 4) {
+      b.timer = 0;
+      if (roads.nearest(u.pos).road === 'ridge') applyRetardant(u.pos, 1.2, 1);
+    }
+    if (moveToward(u, wp, dt, mult)) {
+      b.routeIdx = i + 1;
+      if (b.routeIdx >= route.length) {
+        b.anchor = { ...u.pos };
+        b.mode = b.routeAfter ?? 'standby';
+        if (b.routeTag) (b.doneTags ??= new Set()).add(b.routeTag);
+        b.route = undefined;
+        b.routeTag = undefined;
+        b.routeLine = false;
+        setTarget(u, undefined);
+        u.status = b.mode === 'standby' ? 'standby' : 'active';
+      }
+    }
+  }
+
   function updateGround(u: Unit, b: Brain, dt: number) {
+    if (b.route) { followRoute(u, b, dt); return; }
     const tk = b.task;
     if (tk) {
       if (tk.kind === 'protect' && u.kind === 'dozer' && tk.lineA && tk.lineB) {
@@ -853,6 +935,7 @@ export function createSimulation(seed = 7): SimEngine {
       }
       state.markers = list;
       if (p !== undefined) persons.set(m.id, p);
+      if (m.kind === 'spot' && bReady) intel.reportSpot(m.pos, 'HAWK-2 EO/IR');
       dirty = true;
     },
     updateMarker,
@@ -881,6 +964,56 @@ export function createSimulation(seed = 7): SimEngine {
   const agent = createAgent(host);
 
   // ---------------------------------------------------------------------------
+  // REV B: pipeline, intel, orchestrator
+  // ---------------------------------------------------------------------------
+  const roads = buildRoadGraph(meta);
+  const pipeline = createPipeline(() => rng());
+  const bhost: BHost = {
+    get state() { return state; },
+    world: meta,
+    pipeline,
+    roads,
+    rand: () => rng(),
+    nextId,
+    fire: () => fire,
+    fireDistance,
+    findCell: (near, radius, pred) => scanNearest(near, radius, pred),
+    zulu: (t) => zuluHM(EPOCH + t * 1000),
+    requestForecast: () => { forecastRequest = 'intel'; },
+    dispatch(unitIds, to, opts) {
+      const n = unitIds.length;
+      unitIds.forEach((uid, k) => {
+        const u = state.units.find((x) => x.id === uid);
+        const b = brains.get(uid);
+        if (!u || !b) return;
+        const off = n > 1 ? (k - (n - 1) / 2) * 1.6 : 0;
+        const end = { x: clamp(to.x + off, 1, W - 1), y: clamp(to.y + off * 0.4, 1, H - 1) };
+        const air = u.kind === 'drone' || u.kind === 'helo' || u.kind === 'tanker';
+        b.task = undefined;
+        b.route = air ? [{ ...u.pos }, end] : roads.route(u.pos, end);
+        b.routeIdx = 1;
+        b.routeTag = opts.tag;
+        b.routeAfter = opts.after;
+        b.routeLine = !!opts.line;
+        b.timer = 0;
+        b.doneTags?.delete(opts.tag);
+        u.status = 'enroute';
+      });
+      dirty = true;
+    },
+    routeDone: (uid, tag) => brains.get(uid)?.doneTags?.has(tag) ?? false,
+    markDirty: () => { dirty = true; },
+  };
+  const orch = createOrchestrator(bhost, () => intel);
+  const intel: Intel = createIntel(bhost, orch.events);
+
+  function publishB() {
+    state.jobs = pipeline.snapshotJobs();
+    state.pools = pipeline.snapshotPools();
+    state.feeds = intel.buildFeeds();
+  }
+
+  // ---------------------------------------------------------------------------
   // Main step
   // ---------------------------------------------------------------------------
   function simStep() {
@@ -897,6 +1030,7 @@ export function createSimulation(seed = 7): SimEngine {
     else if (state.t - lastForecastT >= 300) runForecast('periodic');
     if (state.t - lastHistoryT >= 60) { lastHistoryT = state.t; sampleHistory(); }
     updateMetrics(state.t % 60 === 0);
+    if (bReady) { intel.update(); orch.update(); }
   }
 
   function init() {
@@ -923,6 +1057,9 @@ export function createSimulation(seed = 7): SimEngine {
     recTasks.clear(); persons.clear(); brains.clear();
     agent.reset();
     stepAcc = 0;
+    bReady = false;
+    intel.reset();
+    orch.reset();
 
     const ig = meta.ignition;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) igniteIdx((ig.y + dy) * W + ig.x + dx);
@@ -937,6 +1074,15 @@ export function createSimulation(seed = 7): SimEngine {
     computeContainment();
     updateMetrics(true);
     state.clock = new Date(EPOCH + state.t * 1000);
+
+    // REV B start state: seed findings, then warm the pipeline for ~20 agent seconds so it is mid-flow at t0.
+    bReady = true;
+    pipeline.reset(state.t - 600);
+    intel.seed();
+    for (let k = 0; k < 300; k++) { pipeline.update(2); intel.arrivals(2); }
+    intel.update();
+    publishB();
+    orch.seed();
     grid.version++;
     dirty = true;
   }
@@ -946,12 +1092,13 @@ export function createSimulation(seed = 7): SimEngine {
     dirty = false;
     state.clock = new Date(EPOCH + state.t * 1000);
     state.units = state.units.slice();
+    publishB();
     for (const fn of listeners) fn();
   }
 
   init();
 
-  const engine: SimEngine = {
+  const engine: SimEngineB = {
     get state() { return state; },
     get paused() { return paused; },
     get speed() { return speed; },
@@ -965,9 +1112,16 @@ export function createSimulation(seed = 7): SimEngine {
         while (stepAcc >= STEP && steps < 24) { stepAcc -= STEP; simStep(); steps++; }
         if (stepAcc > STEP * 4) stepAcc = 0;
         let rem = simDt;
-        while (rem > 0) { const d = Math.min(rem, 2); updateUnits(d); rem -= d; }
+        while (rem > 0) {
+          const d = Math.min(rem, 2);
+          updateUnits(d);
+          pipeline.update(d);
+          intel.arrivals(d);
+          rem -= d;
+        }
         dirty = true;
       }
+      orch.tickReal(dtr);
       if (dirty && notifyAcc >= NOTIFY_INTERVAL) notify();
     },
     setPaused(p: boolean) { if (paused !== p) { paused = p; notify(); } },
@@ -1017,6 +1171,10 @@ export function createSimulation(seed = 7): SimEngine {
       init();
       notify();
     },
+    ask(text: string) { orch.ask(text); notify(); },
+    ackAlert(id: string) { orch.ack(id); notify(); },
+    approveMovement(id: string) { orch.approve(id); notify(); },
+    rejectMovement(id: string) { orch.reject(id); notify(); },
     subscribe(fn: () => void) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };

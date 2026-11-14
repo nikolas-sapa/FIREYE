@@ -10,3 +10,11 @@ export { Table, Sparkline, Metric, Gauge, Confidence } from './data';
 export type { TableColumn, TableProps, SparklineProps, MetricProps, GaugeProps, ConfidenceProps } from './data';
 export { UnitChip, Legend, Compass } from './domain';
 export type { UnitKind, UnitStatus, UnitChipProps, LegendItem } from './domain';
+export {
+  ScoreMeter, TierBadge, AlertCard, InterruptBanner, Freshness, OrchBubble, PromptChip, Drawer, IconRail, FeedTile, PoolBar, MovementCard,
+  TIER_BANDS, tierOf, tierTone, alertTone, alertClassTone, alertClassIcon, alertClassLabel, audienceLabel,
+} from './orchestrator';
+export type {
+  OrchTier, OrchAlertClass, OrchAudience, MovementStatus, ScoreMeterProps, AlertCardProps, InterruptBannerProps, FreshnessProps,
+  OrchBubbleProps, DrawerProps, IconRailItem, IconRailProps, FeedTileProps, PoolBarProps, MovementCardProps,
+} from './orchestrator';

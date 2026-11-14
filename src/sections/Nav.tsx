@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Button, Dot, Serial, cn, zulu } from '@ds';
+import { Button, Dot, Icon, Serial, cn, zulu } from '@ds';
+
+export const REV_A_HREF = '/rev-a/index.html';
 
 const LINKS = [
   { id: 'top', index: '01', label: 'Overview' },
   { id: 'architecture', index: '02', label: 'Architecture' },
-  { id: 'dashboard', index: '03', label: 'Live Ops' },
-  { id: 'system', index: '04', label: 'Design System' },
+  { id: 'stack', index: '03', label: 'Stack' },
+  { id: 'dashboard', index: '04', label: 'Live Ops' },
+  { id: 'system', index: '05', label: 'Design System' },
 ] as const;
 
 type SectionId = (typeof LINKS)[number]['id'];
@@ -81,7 +84,7 @@ export default function Nav() {
                 href={`#${l.id}`}
                 aria-current={on ? 'true' : undefined}
                 className={cn(
-                  'relative flex items-center gap-2 px-4 font-mono text-nano uppercase transition-colors duration-quick ease-servo',
+                  'relative flex items-center gap-2 px-3 font-mono xl:px-4 text-nano uppercase transition-colors duration-quick ease-servo',
                   on ? 'text-bone' : 'text-bone-mute hover:text-bone-dim',
                 )}
               >
@@ -90,7 +93,7 @@ export default function Nav() {
                 <span
                   aria-hidden
                   className={cn(
-                    'absolute inset-x-4 -bottom-px h-px origin-left bg-signal transition-transform duration-base ease-servo',
+                    'absolute inset-x-3 -bottom-px xl:inset-x-4 h-px origin-left bg-signal transition-transform duration-base ease-servo',
                     on ? 'scale-x-100' : 'scale-x-0',
                   )}
                 />
@@ -104,7 +107,15 @@ export default function Nav() {
             <Dot className="bg-phosphor" live size={5} />
             <span className="font-mono text-tiny text-bone fcc-num" aria-label="Zulu time">{clock}</span>
           </div>
-          <Serial className="hidden md:inline-flex">Proposal · Rev A</Serial>
+          <Serial className="hidden md:inline-flex">Proposal · Rev B</Serial>
+          <a
+            href={REV_A_HREF}
+            className="hidden items-center gap-1 font-mono text-micro uppercase text-bone-mute transition-colors duration-quick ease-servo hover:text-bone md:inline-flex"
+            title="Open the archived REV A build"
+          >
+            Rev A
+            <Icon name="arrow-up-right" size={10} />
+          </a>
           <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole}>
             View Console
           </Button>

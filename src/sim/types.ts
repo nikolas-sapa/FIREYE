@@ -194,8 +194,230 @@ export interface MapLayers {
   units: boolean;
   markers: boolean;
   grid: boolean;
+  /** REV B: drone coverage network (default on). */
+  coverage?: boolean;
+  /** REV B: approximate-location observations (default on). Replaces legacy markers on the map. */
+  observations?: boolean;
+  /** REV B: movement proposals, routes and safety zones (default on). */
+  movements?: boolean;
 }
 
 export const DEFAULT_LAYERS: MapLayers = {
   terrain: true, contours: true, fuel: false, fire: true, forecast: true, units: true, markers: true, grid: true,
+  coverage: true, observations: true, movements: true,
 };
+
+/* ===========================================================================
+ * REV B — Orchestrator-first contract (additive).
+ * Many analysis agents (one pool per input modality) feed a projection agent
+ * and a single Orchestrator, which grades everything and decides where it shows.
+ * ========================================================================= */
+
+/** Input modalities from the REV B brief. */
+export type SourceKind =
+  | 'web'        // Firecrawl search/scrape of local news & articles
+  | 'satellite'  // open satellite imagery / hotspots (NASA FIRMS, Sentinel-2, GOES)
+  | 'ground-cam' // vehicle-mounted cameras on ground forces
+  | 'drone-cam'  // supporting drone video
+  | 'social'     // geotagged social media video relevant to the fire
+  | 'weather'    // weather API
+  | 'terrain'    // terrain / elevation / fuel model API
+  | 'radio';     // CAD / radio traffic
+
+/** What an alert is about. Drives icon + color. */
+export type AlertClass = 'life' | 'hazard' | 'fuel' | 'movement' | 'projection' | 'status';
+
+/**
+ * Where the Orchestrator places an alert, derived from its importance score:
+ *  0 INTERRUPT  score >= 85  — takes over the map center, must be acknowledged, pushed to field units
+ *  1 FOCUS      score 60–84  — Orchestrator dock "Needs attention" stack
+ *  2 AMBIENT    score 35–59  — map marker + subtle dock count only
+ *  3 LOG        score < 35   — recorded in the log drawer, never surfaced proactively
+ */
+export type AlertTier = 0 | 1 | 2 | 3;
+export type Audience = 'fire' | 'ems' | 'law' | 'public';
+
+export interface OrchAlert {
+  id: string;
+  at: number; // sim s
+  cls: AlertClass;
+  tier: AlertTier;
+  score: number; // 0..100 importance, graded by the Orchestrator
+  title: string; // "2 hikers in projected path"
+  body: string; // one or two sentences
+  why: string; // grading rationale, e.g. "Life safety · inside +1H band · 0.87 conf"
+  pos?: Vec;
+  radiusCells?: number;
+  observationId?: string;
+  movementId?: string;
+  sourceIds: string[]; // AnalysisJob / IngestItem ids that support it
+  notify: Audience[]; // who the Orchestrator relayed it to
+  ack: boolean;
+  /** Scored as an interrupt but held behind another unacknowledged interrupt or the dock budget. */
+  queued?: boolean;
+  /** Subject cleared or aged out; alert kept for the log at tier 3. */
+  resolved?: boolean;
+  /** Sim time of the last re-grade that changed the alert. */
+  updatedAt?: number;
+}
+
+/** A located finding. Non-live findings fade as they age. */
+export type ObservationKind = 'human' | 'animal' | 'structure' | 'combustible' | 'fuel' | 'spot' | 'water' | 'road-block';
+
+export interface Observation {
+  id: string;
+  kind: ObservationKind;
+  pos: Vec;
+  /** Location uncertainty radius in meters; drawn as an approximate-location ring. */
+  uncertaintyM: number;
+  observedAt: number; // sim s
+  /** true when confirmed by a live feed (drone/ground cam) right now. */
+  live: boolean;
+  source: SourceKind;
+  sourceLabel: string; // "KCRA 3 article", "TikTok video · 14 min ago", "HAWK-2 EO/IR"
+  label: string; // "2 HIKERS · TRAILHEAD"
+  confidence: number; // 0..1
+  /** 1 = fresh, 0 = expired. Engine computes from age and halfLifeS (live = 1). */
+  freshness: number;
+  halfLifeS: number;
+  /** Head count for humans / animals. */
+  count?: number;
+  /** Number of independent reports that support it. */
+  sources?: number;
+  /** true once a live feed has confirmed the exact position. */
+  confirmed?: boolean;
+  /** Fuel / object sensitivity to fire. */
+  sensitivity?: 'increased' | 'decreased';
+  /** Cleared (evacuated, extinguished); kept briefly for the log. */
+  resolved?: boolean;
+}
+
+export interface AnalysisJob {
+  id: string;
+  source: SourceKind;
+  input: string; // "KCRA 3 · 'Evacuation warning for Pine Hollow'", "E-41 dash cam clip 00:42"
+  agent: string; // "VISION-07"
+  model: string; // e.g. "fal · video-understanding", "treq · claude-sonnet", "firecrawl · search"
+  status: 'queued' | 'running' | 'done';
+  queuedAt: number;
+  startedAt?: number;
+  durationS: number;
+  findings: number; // observations produced
+  observationIds?: string[];
+  /** 0..1 progress while running (1 when done). */
+  progress?: number;
+  /** Current stage, e.g. "search+scrape" then "extraction LLM" for web jobs. */
+  stage?: string;
+  /** Sandbox runtime, always "boxd". */
+  sandbox?: string;
+  /** Pool that ran it (matches AgentPool.id). Projection / Orchestrator jobs use their own pool ids. */
+  pool?: SourceKind | 'projection' | 'orchestrator';
+}
+
+export interface AgentPool {
+  id: string;
+  role: 'analysis' | 'projection' | 'orchestrator';
+  source?: SourceKind; // for analysis pools
+  label: string; // "Video analysis"
+  provider: string; // "fal", "treq", "firecrawl", "boxd"
+  model: string;
+  workers: number; // currently running sandboxes (autoscaled)
+  maxWorkers: number;
+  queue: number;
+  throughputPerMin: number;
+  p50LatencyS: number;
+  /** Sandbox runtime the workers run in ("boxd"). */
+  sandbox?: string;
+  /** Upstream inputs, e.g. "NASA FIRMS · Sentinel-2 · GOES-18". */
+  inputs?: string;
+  /** Workers still cold-starting. */
+  booting?: number;
+  /** Direction of the last autoscale action. */
+  scaling?: 'up' | 'down' | 'steady';
+  /** Jobs currently running. */
+  running?: number;
+}
+
+export interface CameraFeed {
+  id: string;
+  unitId?: string;
+  kind: 'vehicle' | 'drone' | 'social' | 'satellite';
+  label: string; // "E-41 · DASH CAM", "HAWK-2 · EO/IR"
+  live: boolean;
+  pos: Vec;
+  heading: number;
+  detections: number; // findings in last 5 min
+  /** Optional observation the feed is currently looking at. */
+  focusObservationId?: string;
+  /** Sensor description, e.g. "LWIR 640", "EO/IR 4K", "DASH CAM". */
+  sensor?: string;
+  /** Social / recorded clips: sim time the clip was captured. */
+  capturedAt?: number;
+}
+
+/** Drone coverage network: the AO is tiled and drones are assigned to the highest-interest cells. */
+export interface CoverageCell {
+  id: string; // "C-07"
+  x: number; y: number; w: number; h: number; // in cells
+  interest: number; // 0..1, from projection + observations
+  assignedUnitId?: string;
+  lastSweptAt: number; // sim s
+}
+
+/** Group movement suggestion: who moves, where, by which route, when, and the safety fallback. */
+export interface MovementProposal {
+  id: string;
+  at: number;
+  title: string; // "Pull DIV A back to Ridge Rd safety zone"
+  group: string; // "DIV A · E-41, E-17, CREW-7"
+  unitIds: string[];
+  from: Vec;
+  to: Vec;
+  route: Vec[]; // polyline incl. from/to
+  windowMin: [number, number]; // [start within, must complete by] minutes
+  safetyZone: { center: Vec; radiusCells: number; label: string };
+  trigger: string; // "+1H projection crosses HWY 49 at 14:20Z"
+  reason: string;
+  score: number; // 0..100
+  status: 'proposed' | 'approved' | 'rejected' | 'executing' | 'done';
+  /** Human readable window, e.g. "NOW → 21:45Z". */
+  windowLabel?: string;
+}
+
+export interface OrchMessage {
+  id: string;
+  at: number;
+  role: 'orchestrator' | 'user';
+  text: string;
+  refs?: string[]; // alert / observation / movement ids
+}
+
+export interface OrchestratorState {
+  status: 'monitoring' | 'analyzing' | 'briefing';
+  /** One-line current headline, e.g. "Head running NE at 32 m/min toward Pine Hollow". */
+  headline: string;
+  /** 3 short bullets: the situation in plain language. */
+  brief: string[];
+  messages: OrchMessage[]; // oldest first, capped
+  suggestions: string[]; // prompt chips the user can tap
+}
+
+/** REV B snapshot extension. Engine always populates these. */
+export interface SimSnapshotB extends SimSnapshot {
+  alerts: OrchAlert[]; // newest first
+  observations: Observation[];
+  jobs: AnalysisJob[]; // newest first, capped ~60
+  pools: AgentPool[];
+  feeds: CameraFeed[];
+  coverage: CoverageCell[];
+  movements: MovementProposal[]; // newest first
+  orchestrator: OrchestratorState;
+}
+
+export interface SimEngineB extends Omit<SimEngine, 'state'> {
+  readonly state: SimSnapshotB;
+  ask(text: string): void; // user message to the Orchestrator; reply arrives after a short "thinking" delay
+  ackAlert(id: string): void;
+  approveMovement(id: string): void; // dispatches the group along the route
+  rejectMovement(id: string): void;
+}

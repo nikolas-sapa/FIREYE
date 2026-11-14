@@ -7,10 +7,16 @@ export default function DashboardSection() {
     <section id="dashboard" className="relative border-t border-line bg-ink-950 py-24 lg:py-30">
       <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-10">
         <SectionHeader
-          index="03"
-          eyebrow="Live Operations"
-          title="The Command Surface"
-          lede="A live simulation of the FCC console. Fire spreads across procedural terrain under changing wind while ARGUS ingests drone video, imagery, news, sensor and radio traffic, flags hazards and people, re-projects the fire path and proposes tasking you can accept in one click."
+          index="04"
+          eyebrow="Live Operations · REV B"
+          title={
+            <>
+              One map.
+              <br />
+              <span className="text-bone-mute">One Orchestrator.</span>
+            </>
+          }
+          lede="Dozens of analysis agents read news, satellite passes, vehicle and drone cameras, social video, weather and terrain. The Orchestrator grades every finding from 0 to 100 and decides where it shows: life-safety interrupts the map, what needs you sits in the dock, and everything else waits quietly on the map or in the log."
           meta={<Serial>SIM · NOT LIVE DATA</Serial>}
         />
 
@@ -24,7 +30,7 @@ export default function DashboardSection() {
           {/* Bezel caption, top */}
           <div className="mb-2 flex items-center gap-3">
             <Serial>FCC-OPS / CONSOLE 01</Serial>
-            <span className="hidden fcc-micro sm:inline">Rev A · 2560×1440 · 60 Hz</span>
+            <span className="hidden fcc-micro sm:inline">Rev B · Orchestrator-first · 2560×1440</span>
             <div className="hidden flex-1 md:block">
               <Ruler ticks={80} major={10} />
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Brackets, Dot, Icon, Rule, SectionHeader, Serial, cn, type IconName } from '@ds';
+import { Brackets, Dot, Freshness, Icon, Rule, SectionHeader, Serial, TIER_BANDS, cn, type IconName } from '@ds';
 
 /* ---------------------------------------------------------------------------
  * Data
@@ -7,79 +7,81 @@ import { Brackets, Dot, Icon, Rule, SectionHeader, Serial, cn, type IconName } f
 
 type Node = { id: string; title: string; sub: string; icon: IconName; rate: string };
 
-const INPUTS: Node[] = [
-  { id: 'I-01', title: 'Drone video', sub: 'EO/IR · LWIR · 30 FPS', icon: 'video', rate: '30 HZ' },
-  { id: 'I-02', title: 'Aerial imagery', sub: 'ORTHO · MULTISPECTRAL', icon: 'image', rate: '5 MIN' },
-  { id: 'I-03', title: 'News & social', sub: 'WIRE · LOCAL TV · GEO POSTS', icon: 'news', rate: 'STREAM' },
-  { id: 'I-04', title: 'Sensors / IoT', sub: 'WX · FUEL MOISTURE · SMOKE', icon: 'sensor', rate: '1 HZ' },
-  { id: 'I-05', title: 'Satellite hotspots', sub: 'GOES-18 · VIIRS · FIRMS', icon: 'satellite', rate: '5 MIN' },
-  { id: 'I-06', title: 'Radio / CAD', sub: 'CMD NET · 911 CAD · AVL', icon: 'radio', rate: 'LIVE' },
+const INPUTS: (Node & { pool: number; live: boolean })[] = [
+  { id: 'I-01', title: 'Web & local news', sub: 'FIRECRAWL SEARCH + SCRAPE', icon: 'web', rate: '2 MIN', pool: 0, live: false },
+  { id: 'I-02', title: 'Satellite imagery', sub: 'FIRMS · SENTINEL-2 · GOES', icon: 'satellite', rate: 'PASS', pool: 1, live: false },
+  { id: 'I-03', title: 'Ground vehicle cams', sub: 'ENGINE · CREW · DOZER DASH', icon: 'camera', rate: 'LIVE', pool: 2, live: true },
+  { id: 'I-04', title: 'Drone network cams', sub: 'EO/IR · COVERAGE GRID', icon: 'drone', rate: 'LIVE', pool: 2, live: true },
+  { id: 'I-05', title: 'Social media video', sub: 'GEOTAGGED · IN-AREA', icon: 'social', rate: 'STREAM', pool: 2, live: false },
+  { id: 'I-06', title: 'Weather API', sub: 'NWS · WIND · RH · GUSTS', icon: 'wind', rate: '5 MIN', pool: 3, live: false },
+  { id: 'I-07', title: 'Terrain API', sub: 'USGS 3DEP · SLOPE · FUEL', icon: 'map', rate: 'STATIC', pool: 3, live: false },
 ];
 
-const MODULES: Node[] = [
-  { id: 'M-01', title: 'Multimodal fusion', sub: 'GEO-REGISTER · DEDUP · TRUST SCORE', icon: 'layers', rate: '0.4 S' },
-  { id: 'M-02', title: 'Detection', sub: 'FIRE EDGE · PERSONS · STRUCTURES', icon: 'eye', rate: '0.8 S' },
-  { id: 'M-03', title: 'Fire behavior model', sub: 'ROTHERMEL SPREAD + LEARNED CORR.', icon: 'flame', rate: '6.0 S' },
-  { id: 'M-04', title: 'Planner', sub: 'FORCE ALLOCATION · ROUTES · SAFETY', icon: 'route', rate: '2.0 S' },
+const POOLS: { id: string; title: string; sub: string; icon: IconName; provider: string; max: number; base: number }[] = [
+  { id: 'P-01', title: 'Text & web agents', sub: 'EXTRACT PLACES · PEOPLE · ROADS', icon: 'news', provider: 'FIRECRAWL · TREQ', max: 12, base: 3 },
+  { id: 'P-02', title: 'Imagery agents', sub: 'HOTSPOTS · BURN SCAR · NBR', icon: 'image', provider: 'FAL VISION', max: 12, base: 4 },
+  { id: 'P-03', title: 'Video agents', sub: 'LIFE · TANKS · VEHICLES · SPOTS', icon: 'video', provider: 'FAL VIDEO-UNDERSTANDING', max: 24, base: 10 },
+  { id: 'P-04', title: 'Environment agents', sub: 'WIND FIELD · FUEL MOISTURE', icon: 'thermometer', provider: 'TREQ', max: 6, base: 2 },
 ];
 
 const OUTPUTS: Node[] = [
-  { id: 'O-01', title: 'Path projection', sub: '+1H / +3H / +6H BANDS · CONF', icon: 'target', rate: '60 S' },
-  { id: 'O-02', title: 'Hazard map', sub: 'FUELS · PERSONS · STRUCTURES', icon: 'hazard', rate: 'LIVE' },
-  { id: 'O-03', title: 'Force recommendations', sub: 'RANKED MOVES · ETA · IMPACT', icon: 'crew', rate: 'P1–P3' },
-  { id: 'O-04', title: 'Situation briefs', sub: 'SITREP · IAP DELTA · PUBLIC INFO', icon: 'news', rate: '15 MIN' },
+  { id: 'O-01', title: 'Console user', sub: 'GRADED VIEW · CHAT', icon: 'eye', rate: 'T0–T3' },
+  { id: 'O-02', title: 'Firefighters', sub: 'MOVES · HAZARDS', icon: 'engine', rate: 'T0–T1' },
+  { id: 'O-03', title: 'EMS / responders', sub: 'LIFE · ACCESS', icon: 'crew', rate: 'T0–T1' },
+  { id: 'O-04', title: 'Law / evacuation', sub: 'ROADS · ZONES', icon: 'shield', rate: 'T0' },
+  { id: 'O-05', title: 'Public', sub: 'PLAIN NOTICES', icon: 'radio', rate: 'T0' },
 ];
 
 const CAPABILITIES: { id: string; icon: IconName; title: string; body: string; spec: [string, string][] }[] = [
   {
-    id: 'C-01', icon: 'layers', title: 'Multimodal fusion',
-    body: 'Video, imagery, text, telemetry and voice are geo-registered onto one grid and scored for trust before they touch the plan.',
-    spec: [['Modalities', '06'], ['Latency', '< 2 S']],
+    id: 'C-01', icon: 'agents', title: 'Agents per input',
+    body: 'Each input type gets its own pool of analysis agents in sandboxes that scale with the queue. A surge of social video never starves the satellite pass.',
+    spec: [['Pools', '04'], ['Scale', 'Queue-driven']],
   },
   {
-    id: 'C-02', icon: 'human', title: 'Human detection',
-    body: 'Thermal and visual detectors flag people in the fire path, with confidence and source frame attached for verification.',
-    spec: [['Min conf.', '0.70'], ['Review', 'Operator']],
+    id: 'C-02', icon: 'human', title: 'Life first',
+    body: 'People and animals in or near the projected path are the highest alert class. Every detection carries its source frame and a location uncertainty.',
+    spec: [['Class', 'Life'], ['Tier', 'T0–T1']],
   },
   {
-    id: 'C-03', icon: 'flame', title: 'Fire behavior model',
-    body: 'A physics spread model corrected by observed perimeter, re-run every time wind, fuels or the fire edge change.',
-    spec: [['Cell', '40 M'], ['Re-sim', '60 S']],
+    id: 'C-03', icon: 'combustible', title: 'Sensitivity to fire',
+    body: 'Propane tanks, fuel depots and vehicles raise local risk; irrigated fields and water lower it. Both feed the projection and alert nearby crews.',
+    spec: [['Raise', 'Tanks · brush'], ['Lower', 'Water · fields']],
   },
   {
-    id: 'C-04', icon: 'route', title: 'Path projection',
-    body: 'Forecast bands at one, three and six hours, each with a stated confidence, so commanders see both the edge and the doubt.',
-    spec: [['Horizon', '360 MIN'], ['Bands', '03']],
+    id: 'C-04', icon: 'flame', title: 'Projection agent',
+    body: 'A concurrent, scoped agent re-draws the +1H, +3H and +6H path every time wind, fuel or a new fire edge arrives, with stated confidence.',
+    spec: [['Horizon', '360 MIN'], ['Re-project', 'On change']],
   },
   {
-    id: 'C-05', icon: 'target', title: 'Force planner',
-    body: 'Ranked recommendations for engines, crews, aircraft and dozers, with rationale, ETA and expected impact on spread.',
-    spec: [['Priority', 'P1–P3'], ['Mode', 'Human-in-loop']],
+    id: 'C-05', icon: 'orchestrator', title: 'Orchestrator grading',
+    body: 'Every finding is scored 0 to 100. The score decides where it renders and who hears it. Only one item may interrupt, and it must be acknowledged.',
+    spec: [['Tiers', '04'], ['Interrupts', '1 at a time']],
   },
   {
-    id: 'C-06', icon: 'hazard', title: 'Hazard mapping',
-    body: 'Dry brush, structures, access roads, water and safety zones kept current as a layered, queryable hazard picture.',
-    spec: [['Layers', '08'], ['Refresh', 'Live']],
+    id: 'C-06', icon: 'route', title: 'Group movement',
+    body: 'Proposals name the group, the destination, the route, the time window, the safety zone and the trigger. The commander approves; units move.',
+    spec: [['Fields', '06'], ['Mode', 'Human-in-loop']],
   },
   {
-    id: 'C-07', icon: 'news', title: 'Situation briefs',
-    body: 'Plain-language SITREPs and shift briefings generated from the live picture, with every claim linked to its source.',
-    spec: [['Cadence', '15 MIN'], ['Citations', 'Always']],
+    id: 'C-07', icon: 'grid', title: 'Drone coverage grid',
+    body: 'The area is tiled into cells. Drones are assigned to the highest-interest cells and re-assigned as the projection moves, each with a live camera.',
+    spec: [['Cell', '1.2 KM'], ['Re-task', 'Continuous']],
   },
   {
-    id: 'C-08', icon: 'shield', title: 'Degraded-comms safe',
-    body: 'Runs at the edge on a command vehicle and syncs upstream when links return. The picture survives a lost uplink.',
-    spec: [['Edge', 'On-prem'], ['Sync', 'Eventual']],
+    id: 'C-08', icon: 'send', title: 'Audience relay',
+    body: 'The same finding is phrased differently for fire, EMS, law and the public, and each audience only gets what it can act on.',
+    spec: [['Audiences', '04'], ['Log', 'Always']],
   },
 ];
 
 const LOOP = [
-  { id: 'L-01', name: 'Ingest', body: 'Every feed lands timestamped and geo-registered.', time: '0.4', unit: 'S' },
-  { id: 'L-02', name: 'Detect', body: 'Fire edge, people, structures and fuels extracted.', time: '0.8', unit: 'S' },
-  { id: 'L-03', name: 'Forecast', body: 'Spread re-simulated across 1, 3 and 6 hour horizons.', time: '6.0', unit: 'S' },
-  { id: 'L-04', name: 'Recommend', body: 'Ranked force moves with rationale and expected impact.', time: '2.0', unit: 'S' },
-  { id: 'L-05', name: 'Act', body: 'Commander accepts. Units are dispatched over CAD.', time: 'OPR', unit: 'HUMAN' },
-  { id: 'L-06', name: 'Re-plan', body: 'Outcomes are observed and the model corrects itself.', time: 'CONT', unit: 'LOOP' },
+  { id: 'L-01', name: 'Ingest', body: 'Feeds land timestamped, located and tagged live or not.', time: '0.4', unit: 'S' },
+  { id: 'L-02', name: 'Analyze', body: 'Pools extract life, hazards, fuels and fire edges.', time: '2.5', unit: 'S' },
+  { id: 'L-03', name: 'Project', body: 'The fire path is re-projected on any material change.', time: '6.0', unit: 'S' },
+  { id: 'L-04', name: 'Grade', body: 'The Orchestrator scores, places and relays each item.', time: '0.8', unit: 'S' },
+  { id: 'L-05', name: 'Approve', body: 'The commander acknowledges and approves movements.', time: 'OPR', unit: 'HUMAN' },
+  { id: 'L-06', name: 'Re-task', body: 'Units and drones move; their cameras confirm or refute.', time: 'CONT', unit: 'LOOP' },
 ];
 
 /* ---------------------------------------------------------------------------
@@ -110,29 +112,31 @@ function useStep(count: number, ms: number, paused: boolean) {
 }
 
 /* ---------------------------------------------------------------------------
- * Schematic (SVG, 1280 x 660 design units)
+ * Schematic (SVG, 1400 x 700 design units)
  * ------------------------------------------------------------------------- */
 
-const SW = 1280;
-const SH = 660;
-const IN = { x: 0, w: 260, h: 64, y: (i: number) => 40 + i * 96 };
-const CORE = { x: 420, y: 72, w: 440, h: 512 };
-const MOD = { x: 444, w: 392, h: 84, y: (k: number) => 176 + k * 96 };
-const OUT = { x: 1020, w: 260, h: 84, y: (k: number) => 84 + k * 128 };
-const inEntry = (i: number) => 196 + i * 64;
-const outExit = (k: number) => 228 + k * 80;
+const SW = 1400;
+const SH = 700;
+const IN = { x: 0, w: 220, h: 64, y: (i: number) => 48 + i * 74 };
+const POOL = { x: 300, w: 260, h: 110, y: (k: number) => 64 + k * 124 };
+const BOX = { x: 284, y: 36, w: 292, h: 600 };
+const PROJ = { x: 640, y: 96, w: 210, h: 168 };
+const ORCH = { x: 910, y: 48, w: 260, h: 588 };
+const OUT = { x: 1240, w: 160, h: 80, y: (k: number) => 68 + k * 112 };
 
-const inPath = (i: number) => {
-  const y0 = IN.y(i) + IN.h / 2;
-  const y1 = inEntry(i);
-  return `M${IN.x + IN.w} ${y0}C${IN.x + IN.w + 90} ${y0} ${CORE.x - 90} ${y1} ${CORE.x} ${y1}`;
-};
-const outPath = (k: number) => {
-  const y0 = outExit(k);
-  const y1 = OUT.y(k) + OUT.h / 2;
-  return `M${CORE.x + CORE.w} ${y0}C${CORE.x + CORE.w + 90} ${y0} ${OUT.x - 90} ${y1} ${OUT.x} ${y1}`;
-};
-const FEEDBACK = `M${OUT.x + OUT.w / 2} ${OUT.y(3) + OUT.h}V${SH - 24}H${IN.x + IN.w / 2}V${IN.y(5) + IN.h}`;
+const curve = (x0: number, y0: number, x1: number, y1: number, k = 50) => `M${x0} ${y0}C${x0 + k} ${y0} ${x1 - k} ${y1} ${x1} ${y1}`;
+
+const poolEntry = (k: number, j: number, n: number) => POOL.y(k) + 30 + (n > 1 ? (j * 50) / (n - 1) : 25);
+const inPaths = INPUTS.map((inp, i) => {
+  const siblings = INPUTS.filter((x) => x.pool === inp.pool);
+  const j = siblings.indexOf(inp);
+  return curve(IN.x + IN.w, IN.y(i) + IN.h / 2, POOL.x, poolEntry(inp.pool, j, siblings.length), 40);
+});
+const poolToProj = POOLS.map((_, k) => curve(POOL.x + POOL.w, POOL.y(k) + 40, PROJ.x, PROJ.y + 50 + k * 22, 40));
+const poolToOrch = POOLS.map((_, k) => curve(POOL.x + POOL.w, POOL.y(k) + 76, ORCH.x, 340 + k * 34, 120));
+const projToOrch = curve(PROJ.x + PROJ.w, PROJ.y + PROJ.h / 2, ORCH.x, PROJ.y + PROJ.h / 2, 30);
+const outPaths = OUTPUTS.map((_, k) => curve(ORCH.x + ORCH.w, 150 + k * 90, OUT.x, OUT.y(k) + OUT.h / 2, 30));
+const FEEDBACK = `M${OUT.x + OUT.w / 2} ${OUT.y(4) + OUT.h}V${SH - 22}H${IN.x + IN.w / 2}V${IN.y(6) + IN.h}`;
 
 function Ticks({ x, y, w, h, className }: { x: number; y: number; w: number; h: number; className: string }) {
   const s = 7;
@@ -146,26 +150,134 @@ function Ticks({ x, y, w, h, className }: { x: number; y: number; w: number; h: 
   );
 }
 
-function SchematicNode({ n, x, y, w, h, tone = 'line' }: { n: Node; x: number; y: number; w: number; h: number; tone?: 'line' | 'module' }) {
+function SchematicNode({ n, x, y, w, h, live }: { n: Node; x: number; y: number; w: number; h: number; live?: boolean }) {
   return (
     <g>
-      <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} className={cn(tone === 'module' ? 'fill-ink-850' : 'fill-ink-900', 'stroke-line')} />
+      <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} className="fill-ink-900 stroke-line" />
       <Ticks x={x} y={y} w={w} h={h} className="stroke-ink-400" />
-      <text x={x + 16} y={y + 22} className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
+      <text x={x + 14} y={y + 20} className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
         {n.id}
       </text>
-      <text x={x + w - 16} y={y + 22} textAnchor="end" className="fill-bone-mute font-mono" fontSize={9} letterSpacing="0.14em">
+      <text x={x + w - 14} y={y + 20} textAnchor="end" className={live ? 'fill-phosphor font-mono' : 'fill-bone-mute font-mono'} fontSize={9} letterSpacing="0.14em">
         {n.rate}
       </text>
-      <g transform={`translate(${x + 16} ${y + h - 30})`} className="text-bone-dim">
+      <g transform={`translate(${x + 14} ${y + h - 30})`} className="text-bone-dim">
         <Icon name={n.icon} size={16} />
       </g>
-      <text x={x + 44} y={y + h - 26} className="fill-bone font-sans" fontSize={14} letterSpacing="-0.01em">
+      <text x={x + 40} y={y + h - 24} className="fill-bone font-sans" fontSize={13.5} letterSpacing="-0.01em">
         {n.title}
       </text>
-      <text x={x + 44} y={y + h - 12} className="fill-bone-mute font-mono" fontSize={8.5} letterSpacing="0.12em">
+      <text x={x + 40} y={y + h - 11} className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.1em">
         {n.sub}
       </text>
+    </g>
+  );
+}
+
+function PoolNode({ p, k, t }: { p: (typeof POOLS)[number]; k: number; t: number }) {
+  const x = POOL.x;
+  const y = POOL.y(k);
+  const wave = Math.sin(t * 0.5 + k * 1.9) * 0.5 + 0.5;
+  const workers = Math.min(p.max, Math.round(p.base + wave * (p.max - p.base) * 0.8));
+  const cellW = (POOL.w - 28 - (p.max - 1) * 2) / p.max;
+  return (
+    <g>
+      <rect x={x + 0.5} y={y + 0.5} width={POOL.w - 1} height={POOL.h - 1} className="fill-ink-850 stroke-line" />
+      <Ticks x={x} y={y} w={POOL.w} h={POOL.h} className="stroke-ink-400" />
+      <text x={x + 14} y={y + 20} className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
+        {p.id}
+      </text>
+      <text x={x + POOL.w - 14} y={y + 20} textAnchor="end" className="fill-bone-mute font-mono" fontSize={8.5} letterSpacing="0.12em">
+        {p.provider}
+      </text>
+      <g transform={`translate(${x + 14} ${y + 32})`} className="text-bone-dim">
+        <Icon name={p.icon} size={16} />
+      </g>
+      <text x={x + 40} y={y + 45} className="fill-bone font-sans" fontSize={14} letterSpacing="-0.01em">
+        {p.title}
+      </text>
+      <text x={x + 40} y={y + 59} className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.1em">
+        {p.sub}
+      </text>
+      {Array.from({ length: p.max }).map((_, i) => (
+        <rect
+          key={i}
+          x={x + 14 + i * (cellW + 2)}
+          y={y + 74}
+          width={cellW}
+          height={10}
+          className={cn('transition-colors duration-base', i < workers ? 'fill-ice' : 'fill-ink-700')}
+        />
+      ))}
+      <text x={x + 14} y={y + 100} className="fill-bone-mute font-mono" fontSize={8.5} letterSpacing="0.12em">
+        SANDBOXES
+      </text>
+      <text x={x + POOL.w - 14} y={y + 100} textAnchor="end" className="fill-ice font-mono" fontSize={8.5} letterSpacing="0.12em">
+        {String(workers).padStart(2, '0')}/{String(p.max).padStart(2, '0')}
+      </text>
+    </g>
+  );
+}
+
+const tierFill = ['fill-ember', 'fill-amber', 'fill-ice', 'fill-ink-400'];
+const tierText = ['fill-ember', 'fill-amber', 'fill-ice', 'fill-bone-mute'];
+const tierShort = ['BANNER · ACK · FLY-TO', 'DOCK · NEEDS ATTENTION', 'MAP GLYPH · COUNT', 'LOG DRAWER ONLY'];
+
+function Orchestrator({ active }: { active: number }) {
+  const { x, y, w, h } = ORCH;
+  const fns = [
+    ['Grade', 'SCORE 0–100 · LIFE FIRST'],
+    ['Place', 'TIER → WHERE IT SHOWS'],
+    ['Relay', 'PER-AUDIENCE PHRASING'],
+    ['Propose', 'GROUP MOVES · ROUTES'],
+  ];
+  return (
+    <g>
+      <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} className="fill-ink-950 stroke-line-strong" />
+      <Ticks x={x - 4} y={y - 4} w={w + 8} h={h + 8} className="stroke-signal" />
+      <g transform={`translate(${x + 20} ${y + 22})`} className="text-ice">
+        <Icon name="orchestrator" size={20} />
+      </g>
+      <text x={x + 48} y={y + 38} className="fill-bone font-sans" fontSize={22} letterSpacing="-0.02em">
+        Orchestrator
+      </text>
+      <text x={x + 20} y={y + 62} className="fill-bone-mute font-mono" fontSize={8.5} letterSpacing="0.14em">
+        WORKS BESIDE THE COMMANDER
+      </text>
+      {fns.map(([t, s], i) => (
+        <g key={t}>
+          <line x1={x + 20} x2={x + w - 20} y1={y + 82 + i * 42} y2={y + 82 + i * 42} className="stroke-line" />
+          <text x={x + 20} y={y + 102 + i * 42} className="fill-bone font-mono" fontSize={10} letterSpacing="0.14em">
+            {t.toUpperCase()}
+          </text>
+          <text x={x + 20} y={y + 115 + i * 42} className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.1em">
+            {s}
+          </text>
+        </g>
+      ))}
+      <text x={x + 20} y={y + 280} className="fill-bone-mute font-mono" fontSize={8.5} letterSpacing="0.14em">
+        OUTPUT STAGE · ALERT TIERS
+      </text>
+      {TIER_BANDS.map((b, i) => {
+        const ty = y + 294 + i * 70;
+        const on = active === i;
+        return (
+          <g key={b.tier}>
+            <rect x={x + 20} y={ty} width={w - 40} height={60} className={on ? 'fill-ink-850 stroke-line-strong' : 'fill-ink-900 stroke-line'} />
+            <rect x={x + 20} y={ty} width={2} height={60} className={tierFill[i]} />
+            <rect x={x + 32} y={ty + 12} width={92} height={16} className={i === 0 ? 'fill-ember' : 'fill-none'} />
+            <text x={x + 38} y={ty + 23.5} className={i === 0 ? 'fill-ink-950 font-mono' : cn(tierText[i], 'font-mono')} fontSize={8.5} letterSpacing="0.12em">
+              T{b.tier} {b.name.toUpperCase()}
+            </text>
+            <text x={x + w - 32} y={ty + 24} textAnchor="end" className="fill-bone font-mono" fontSize={10} letterSpacing="0.06em">
+              {String(b.min).padStart(2, '0')}–{b.max}
+            </text>
+            <text x={x + 32} y={ty + 46} className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.1em">
+              {tierShort[i]}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -179,88 +291,104 @@ function Packet({ path, dur, begin, className }: { path: string; dur: number; be
 }
 
 function Schematic({ reduced }: { reduced: boolean }) {
+  const t = useStep(1000, 900, reduced);
+  const tierActive = Math.floor(t / 2) % 4;
   return (
-    <svg viewBox={`0 0 ${SW} ${SH}`} className="h-auto w-full" role="img" aria-label="Signal path: six input modalities flow into the ARGUS AI core (fusion, detection, fire behavior model, planner), which produces path projections, a hazard map, force recommendations and situation briefs. Outcomes feed back into the core.">
-      {/* column captions */}
+    <svg
+      viewBox={`0 0 ${SW} ${SH}`}
+      className="h-auto w-full"
+      role="img"
+      aria-label="Signal path: seven inputs (web and news via Firecrawl, satellite imagery, ground vehicle cameras, drone cameras, social video, weather and terrain) feed four autoscaling analysis agent pools on boxd. Pools feed a concurrent projection agent and the Orchestrator. The Orchestrator grades every finding into four tiers and relays it to the console user, firefighters, EMS, law and the public. Field outcomes feed back as new inputs."
+    >
       <g className="fill-bone-mute font-mono" fontSize={9} letterSpacing="0.14em">
-        <text x={IN.x} y={20}>A · INPUTS / 06 MODALITIES</text>
-        <text x={CORE.x} y={52}>B · ARGUS AI CORE</text>
-        <text x={OUT.x} y={64}>C · OUTPUTS / OPERATIONAL PICTURE</text>
+        <text x={IN.x} y={28}>A · INPUTS / 07</text>
+        <text x={BOX.x} y={24}>B · ANALYSIS POOLS · BOXD SANDBOXES</text>
+        <text x={PROJ.x} y={PROJ.y - 14}>C · PROJECTION</text>
+        <text x={ORCH.x} y={30}>D · ORCHESTRATOR</text>
+        <text x={OUT.x} y={48}>E · AUDIENCES</text>
       </g>
 
-      {/* connectors */}
+      <rect x={BOX.x + 0.5} y={BOX.y + 0.5} width={BOX.w - 1} height={BOX.h - 1} fill="none" className="stroke-ink-600" strokeDasharray="3 3" />
+      <text x={BOX.x + BOX.w / 2} y={BOX.y + BOX.h - 10} textAnchor="middle" className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.14em">
+        AUTOSCALE ON QUEUE · MODELS VIA TREQ · FAL
+      </text>
+
       <g fill="none" strokeWidth={1}>
-        {INPUTS.map((_, i) => (
-          <path key={i} d={inPath(i)} className="stroke-ink-600" />
+        {inPaths.map((d, i) => (
+          <path key={i} d={d} className="stroke-ink-600" />
         ))}
-        {OUTPUTS.map((_, k) => (
-          <path key={k} d={outPath(k)} className="stroke-ink-600" />
+        {poolToProj.map((d, k) => (
+          <path key={k} d={d} className="stroke-ink-600" />
+        ))}
+        {poolToOrch.map((d, k) => (
+          <path key={k} d={d} className="stroke-ink-600" />
+        ))}
+        <path d={projToOrch} className="stroke-amber" strokeOpacity={0.6} />
+        {outPaths.map((d, k) => (
+          <path key={k} d={d} className="stroke-ink-600" />
         ))}
         <path d={FEEDBACK} className="stroke-signal" strokeOpacity={0.45} strokeDasharray="2 4" />
       </g>
-      <text x={(IN.x + IN.w / 2 + OUT.x + OUT.w / 2) / 2} y={SH - 32} textAnchor="middle" className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
-        FEEDBACK · OBSERVED OUTCOMES RE-ENTER AS SIGNAL · RE-PLAN CONTINUOUS
+      <text x={(IN.x + OUT.x + OUT.w) / 2} y={SH - 30} textAnchor="middle" className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
+        FEEDBACK · UNITS AND DRONES RE-TASKED · THEIR CAMERAS CONFIRM OR REFUTE · RE-PROJECT
       </text>
-      {INPUTS.map((_, i) => (
-        <rect key={i} x={CORE.x - 3} y={inEntry(i) - 3} width={6} height={6} className="fill-ink-950 stroke-ink-300" />
-      ))}
-      {OUTPUTS.map((_, k) => (
-        <rect key={k} x={CORE.x + CORE.w - 3} y={outExit(k) - 3} width={6} height={6} className="fill-ink-950 stroke-signal" />
-      ))}
 
-      {/* inputs */}
       {INPUTS.map((n, i) => (
-        <SchematicNode key={n.id} n={n} x={IN.x} y={IN.y(i)} w={IN.w} h={IN.h} />
+        <SchematicNode key={n.id} n={n} x={IN.x} y={IN.y(i)} w={IN.w} h={IN.h} live={n.live} />
+      ))}
+      {POOLS.map((p, k) => (
+        <PoolNode key={p.id} p={p} k={k} t={t} />
       ))}
 
-      {/* core */}
       <g>
-        <rect x={CORE.x + 0.5} y={CORE.y + 0.5} width={CORE.w - 1} height={CORE.h - 1} className="fill-ink-950 stroke-line-strong" />
-        <Ticks x={CORE.x - 4} y={CORE.y - 4} w={CORE.w + 8} h={CORE.h + 8} className="stroke-signal" />
-        <text x={CORE.x + 24} y={CORE.y + 48} className="fill-bone font-sans" fontSize={30} letterSpacing="-0.02em">
-          ARGUS
-        </text>
-        <text x={CORE.x + 24} y={CORE.y + 70} className="fill-bone-mute font-mono" fontSize={9} letterSpacing="0.14em">
-          AI CORE · REV 2.1 · EDGE + CLOUD
-        </text>
-        <g transform={`translate(${CORE.x + CORE.w - 24} ${CORE.y + 26})`}>
-          <rect x={-74} y={0} width={74} height={18} fill="none" className="stroke-signal" strokeOpacity={0.6} />
-          <rect x={-66} y={6} width={6} height={6} className="fill-signal" />
-          <text x={-8} y={12.5} textAnchor="end" className="fill-signal font-mono" fontSize={9} letterSpacing="0.14em">
-            ONLINE
-          </text>
+        <rect x={PROJ.x + 0.5} y={PROJ.y + 0.5} width={PROJ.w - 1} height={PROJ.h - 1} className="fill-ink-900 stroke-line-strong" />
+        <Ticks x={PROJ.x} y={PROJ.y} w={PROJ.w} h={PROJ.h} className="stroke-amber" />
+        <g transform={`translate(${PROJ.x + 16} ${PROJ.y + 16})`} className="text-amber">
+          <Icon name="flame" size={16} />
         </g>
-        {MODULES.map((m, k) => (
-          <g key={m.id}>
-            <SchematicNode n={m} x={MOD.x} y={MOD.y(k)} w={MOD.w} h={MOD.h} tone="module" />
-            {k < MODULES.length - 1 && (
-              <path d={`M${MOD.x + MOD.w / 2} ${MOD.y(k) + MOD.h}V${MOD.y(k + 1)}`} className="stroke-ink-400" strokeWidth={1} />
-            )}
-          </g>
+        <text x={PROJ.x + 40} y={PROJ.y + 29} className="fill-bone font-sans" fontSize={15}>
+          Projection agent
+        </text>
+        <text x={PROJ.x + 16} y={PROJ.y + 52} className="fill-bone-mute font-mono" fontSize={8} letterSpacing="0.12em">
+          CONCURRENT · SCOPED · RE-PROJECTS
+        </text>
+        {[0.38, 0.6, 0.85].map((s, i) => (
+          <path
+            key={i}
+            d={`M${PROJ.x + 22} ${PROJ.y + 140}q${60 * s} ${-70 * s} ${150 * s} ${-74 * s}`}
+            fill="none"
+            className={i === 0 ? 'stroke-ember' : 'stroke-amber'}
+            strokeOpacity={i === 0 ? 0.9 : 0.75 - i * 0.2}
+            strokeDasharray={i === 0 ? undefined : '4 3'}
+          />
         ))}
-        <rect x={CORE.x + 24} y={CORE.y + CORE.h - 28} width={CORE.w - 48} height={8} fill="url(#fcc-arch-hatch)" />
+        <text x={PROJ.x + PROJ.w - 16} y={PROJ.y + 156} textAnchor="end" className="fill-amber font-mono" fontSize={8.5} letterSpacing="0.14em">
+          +1H · +3H · +6H
+        </text>
       </g>
 
-      {/* outputs */}
+      <Orchestrator active={tierActive} />
+
       {OUTPUTS.map((n, k) => (
         <SchematicNode key={n.id} n={n} x={OUT.x} y={OUT.y(k)} w={OUT.w} h={OUT.h} />
       ))}
 
-      <defs>
-        <pattern id="fcc-arch-hatch" width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1={0} y1={0} x2={0} y2={6} className="stroke-ink-500" strokeWidth={1} />
-        </pattern>
-      </defs>
-
       {!reduced && (
         <g>
-          {INPUTS.map((_, i) => (
-            <Packet key={`i${i}`} path={inPath(i)} dur={2.2 + (i % 3) * 0.5} begin={i * 0.37} className="fill-ice" />
+          {inPaths.map((d, i) => (
+            <Packet key={`i${i}`} path={d} dur={2 + (i % 3) * 0.45} begin={i * 0.31} className="fill-ice" />
           ))}
-          {OUTPUTS.map((_, k) => (
-            <Packet key={`o${k}`} path={outPath(k)} dur={2.6 + (k % 2) * 0.6} begin={0.9 + k * 0.45} className="fill-signal" />
+          {poolToProj.map((d, k) => (
+            <Packet key={`p${k}`} path={d} dur={2.4} begin={0.6 + k * 0.5} className="fill-ice" />
           ))}
-          <Packet path={FEEDBACK} dur={7} begin={1.5} className="fill-signal" />
+          {poolToOrch.map((d, k) => (
+            <Packet key={`q${k}`} path={d} dur={2.8} begin={1.1 + k * 0.4} className="fill-ice" />
+          ))}
+          <Packet path={projToOrch} dur={1.6} begin={0.4} className="fill-amber" />
+          {outPaths.map((d, k) => (
+            <Packet key={`o${k}`} path={d} dur={2.2 + (k % 2) * 0.5} begin={1.2 + k * 0.35} className="fill-signal" />
+          ))}
+          <Packet path={FEEDBACK} dur={8} begin={1.5} className="fill-signal" />
         </g>
       )}
     </svg>
@@ -268,17 +396,17 @@ function Schematic({ reduced }: { reduced: boolean }) {
 }
 
 function StackedSchematic() {
-  const group = (code: string, title: string, nodes: Node[], accent = false) => (
+  const group = (code: string, title: string, rows: { id: string; icon: IconName; title: string; sub: string; rate: string }[], accent = false) => (
     <div className="relative border border-line bg-ink-900">
       {accent && <Brackets tone="signal" />}
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <span className="fcc-micro">
           <span className="text-signal">{code}</span> · {title}
         </span>
-        <span className="fcc-micro">{String(nodes.length).padStart(2, '0')}</span>
+        <span className="fcc-micro">{String(rows.length).padStart(2, '0')}</span>
       </div>
       <ul className="divide-y divide-line">
-        {nodes.map((n) => (
+        {rows.map((n) => (
           <li key={n.id} className="flex items-center gap-3 px-4 py-3">
             <Icon name={n.icon} size={16} className="text-bone-dim" />
             <div className="min-w-0 flex-1">
@@ -300,9 +428,63 @@ function StackedSchematic() {
     <div>
       {group('A', 'Inputs', INPUTS)}
       {arrow}
-      {group('B', 'ARGUS AI core', MODULES, true)}
+      {group('B', 'Analysis pools · boxd', POOLS.map((p) => ({ ...p, rate: p.provider.split(' ')[0] ?? '' })))}
       {arrow}
-      {group('C', 'Outputs', OUTPUTS)}
+      {group('C', 'Projection', [{ id: 'X', icon: 'flame', title: 'Projection agent', sub: 'Concurrent · scoped · +1H/+3H/+6H', rate: 'ON CHANGE' }])}
+      {arrow}
+      {group(
+        'D',
+        'Orchestrator / tiers',
+        TIER_BANDS.map((b, i) => ({ id: `T${b.tier}`, icon: 'orchestrator' as IconName, title: `T${b.tier} ${b.name}`, sub: tierShort[i] ?? '', rate: `${b.min}–${b.max}` })),
+        true,
+      )}
+      {arrow}
+      {group('E', 'Audiences', OUTPUTS)}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Freshness explainer
+ * ------------------------------------------------------------------------- */
+
+const FRESH_STEPS = [0, 10, 20, 35, 55];
+
+function FreshnessStrip() {
+  const half = 15;
+  return (
+    <div className="relative border border-line bg-ink-900 p-5">
+      <Brackets size={6} />
+      <div className="flex items-center justify-between">
+        <span className="fcc-micro">Social video · 2 hikers · t½ {half} min</span>
+        <span className="font-mono text-micro text-bone-mute">f = 0.5 ^ (age / t½)</span>
+      </div>
+      <div className="mt-5 grid grid-cols-5 gap-px bg-line">
+        {FRESH_STEPS.map((age) => {
+          const f = Math.pow(0.5, age / half);
+          const expired = f < 0.1;
+          return (
+            <div key={age} className="flex flex-col items-center gap-3 bg-ink-900 py-4">
+              <svg width={84} height={84} viewBox="0 0 84 84" aria-hidden>
+                <g className="text-violet" style={{ opacity: expired ? 0.25 : 0.2 + 0.8 * f }}>
+                  <circle cx={42} cy={42} r={14 + (1 - f) * 22} fill="currentColor" fillOpacity={0.06 * f} stroke="currentColor" strokeDasharray="3 3" />
+                  <circle cx={42} cy={42} r={3} fill={expired ? 'none' : 'currentColor'} stroke="currentColor" />
+                </g>
+              </svg>
+              <Freshness freshness={f} age={age === 0 ? 'Now' : `${age}m ago`} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-4 border-t border-line-faint pt-3">
+        <span className="flex items-center gap-2">
+          <svg width={18} height={18} viewBox="0 0 18 18" aria-hidden className="text-violet">
+            <rect x={5} y={5} width={8} height={8} fill="currentColor" />
+          </svg>
+          <Freshness freshness={1} live />
+          <span className="text-xs text-bone-dim">Drone confirms: glyph goes solid, ring shrinks to sensor accuracy.</span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -323,16 +505,15 @@ export default function Architecture() {
           eyebrow="Architecture"
           title={
             <>
-              Every signal.
+              Many agents.
               <br />
-              <span className="text-bone-mute">One picture.</span>
+              <span className="text-bone-mute">One calm voice.</span>
             </>
           }
-          lede="Six kinds of evidence stream into ARGUS, a fusion and reasoning core that turns them into a forecast, a hazard map and a ranked set of moves. Commanders stay in the loop; the loop never stops."
-          meta={<Serial>FCC-02 / Schematic</Serial>}
+          lede="Seven kinds of evidence are read by pools of analysis agents that scale with the load. A projection agent re-draws the fire path as they report. The Orchestrator grades everything, decides where it shows, and relays it to the people who can act on it."
+          meta={<Serial>FCC-02 / Schematic / Rev B</Serial>}
         />
 
-        {/* 02.1 signal path */}
         <div className="mt-20">
           <Rule title="02.1 — Signal path" />
           <div className="mt-10 hidden lg:block">
@@ -343,18 +524,23 @@ export default function Architecture() {
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2">
             <span className="flex items-center gap-2 fcc-micro">
-              <span className="inline-block h-1.5 w-1.5 bg-ice" /> Inbound evidence
+              <span className="inline-block h-1.5 w-1.5 bg-ice" /> Evidence and findings
             </span>
             <span className="flex items-center gap-2 fcc-micro">
-              <span className="inline-block h-1.5 w-1.5 bg-signal" /> Decision product
+              <span className="inline-block h-1.5 w-1.5 bg-amber" /> Projection
+            </span>
+            <span className="flex items-center gap-2 fcc-micro">
+              <span className="inline-block h-1.5 w-1.5 bg-signal" /> Graded relay
             </span>
             <span className="flex items-center gap-2 fcc-micro">
               <span className="inline-block w-4 border-t border-dashed border-signal" /> Feedback
             </span>
+            <span className="flex items-center gap-2 fcc-micro">
+              <span className="inline-block w-4 border-t border-dashed border-ink-400" /> Sandbox boundary
+            </span>
           </div>
         </div>
 
-        {/* 02.2 capabilities */}
         <div className="mt-24">
           <Rule title="02.2 — Capabilities" />
           <div className="mt-10 grid grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 xl:grid-cols-4">
@@ -379,26 +565,51 @@ export default function Architecture() {
           </div>
         </div>
 
-        {/* 02.3 decision loop */}
         <div className="mt-24">
-          <Rule title="02.3 — Decision loop" />
+          <Rule title="02.3 — Freshness" />
+          <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <p className="text-lg text-bone-dim">Time is of the essence. Anything that is not seen live right now is shown as approximate, and it fades.</p>
+              <ul className="mt-6 flex flex-col gap-3 text-sm text-bone-dim">
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1 w-1 shrink-0 bg-violet" />
+                  Articles, social posts and satellite passes render as a dot inside a dashed uncertainty ring.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1 w-1 shrink-0 bg-violet" />
+                  Each source has a half-life: social 15 min, web 20 min, satellite 40 min. Opacity and score both scale with freshness.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1 w-1 shrink-0 bg-violet" />
+                  Below 0.10 the finding leaves the map and stays in the log. A live camera confirmation resets it to solid.
+                </li>
+              </ul>
+            </div>
+            <div className="lg:col-span-8">
+              <FreshnessStrip />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-24">
+          <Rule title="02.4 — Decision loop" />
           <div className="mt-10 flex flex-wrap items-end justify-between gap-6">
             <p className="max-w-xl text-lg text-bone-dim">
-              A closed loop from evidence to action. Machine stages run in seconds; the one human stage is where authority
-              lives.
+              A closed loop from evidence to action. Agents run in seconds and in parallel; the one human stage is where
+              authority lives, and the Orchestrator keeps it uncluttered.
             </p>
             <div className="flex items-center gap-6">
               <div className="flex flex-col items-end">
                 <span className="fcc-micro">Median cycle</span>
                 <span className="font-mono text-2xl text-bone fcc-num">
-                  42<span className="ml-1 text-nano text-bone-mute">S</span>
+                  38<span className="ml-1 text-nano text-bone-mute">S</span>
                 </span>
               </div>
               <div className="h-10 w-px bg-line" aria-hidden />
               <div className="flex flex-col items-end">
                 <span className="fcc-micro">Machine time</span>
                 <span className="font-mono text-2xl text-bone fcc-num">
-                  9.2<span className="ml-1 text-nano text-bone-mute">S</span>
+                  9.7<span className="ml-1 text-nano text-bone-mute">S</span>
                 </span>
               </div>
             </div>
@@ -440,7 +651,7 @@ export default function Architecture() {
             <path d="M96 10L100 2L104 10" fill="none" className="stroke-signal" strokeOpacity={0.7} vectorEffect="non-scaling-stroke" />
           </svg>
           <div className="mt-1 hidden justify-center xl:flex">
-            <span className="fcc-micro text-signal">Re-plan · loop restarts on every new signal</span>
+            <span className="fcc-micro text-signal">Re-project · loop restarts on every new finding</span>
           </div>
         </div>
       </div>

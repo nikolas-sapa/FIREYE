@@ -15,7 +15,8 @@ export type IconName =
   | 'target' | 'layers' | 'play' | 'pause' | 'plus' | 'minus' | 'close' | 'check'
   | 'chevron-right' | 'chevron-down' | 'chevron-left' | 'arrow-up-right' | 'arrow-right'
   | 'locate' | 'compass' | 'eye' | 'clock' | 'signal' | 'battery' | 'route' | 'shield'
-  | 'alert' | 'search' | 'settings' | 'grid' | 'expand' | 'filter' | 'zap' | 'map';
+  | 'alert' | 'search' | 'settings' | 'grid' | 'expand' | 'filter' | 'zap' | 'map'
+  | 'animal' | 'combustible' | 'social' | 'web' | 'orchestrator' | 'agents' | 'log' | 'camera' | 'send' | 'sparkle';
 
 const glyphs: Record<IconName, ReactElement> = {
   drone: (
@@ -284,6 +285,74 @@ const glyphs: Record<IconName, ReactElement> = {
     <>
       <path d="M2.5 5.5 9 3l6 2.5L21.5 3v15.5L15 21l-6-2.5L2.5 21z" />
       <path d="M9 3v15.5M15 5.5V21" />
+    </>
+  ),
+  animal: (
+    <>
+      <path d="M3.5 10h11.5l2-4.5h3l1.5 2.5h-3L16.5 15H3.5z" />
+      <path d="M5 15v6M8.5 15v6M12 15v6M15.5 15v6" />
+      <path d="M17.5 5.5 16.5 2.5M19.5 5.5l1.5-3" />
+      <path d="M3.5 10 2 8" />
+    </>
+  ),
+  combustible: (
+    <>
+      <path d="M6.5 8h11v13.5h-11z" />
+      <path d="M9.5 8V5h5v3M10.75 5V2.5h2.5V5" />
+      <path d="M6.5 11.5h11M6.5 18h11" />
+      <path d="M12 13 13.5 15.25 12 17l-1.5-1.75z" />
+    </>
+  ),
+  social: (
+    <>
+      <rect x="6" y="2.5" width="12" height="19" />
+      <path d="M10.5 8.75v6.5L15.5 12z" />
+      <path d="M11 18.75h2M6 5.5h12" />
+    </>
+  ),
+  web: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <ellipse cx="12" cy="12" rx="4" ry="9.5" />
+      <path d="M2.5 12h19M4 7h16M4 17h16" />
+    </>
+  ),
+  orchestrator: (
+    <>
+      <path d="M12 7.5 16.5 12 12 16.5 7.5 12z" />
+      <rect x="10.5" y="1.5" width="3" height="3" />
+      <rect x="10.5" y="19.5" width="3" height="3" />
+      <rect x="1.5" y="10.5" width="3" height="3" />
+      <rect x="19.5" y="10.5" width="3" height="3" />
+      <path d="M12 4.5v3M12 16.5v3M4.5 12h3M16.5 12h3" />
+    </>
+  ),
+  agents: (
+    <>
+      <rect x="3" y="3" width="7.5" height="7.5" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" />
+      <path d="M13.5 17.25h7.5M17.25 13.5V21" strokeDasharray="2 1.5" />
+    </>
+  ),
+  log: <path d="M3 5h2M8 5h13M3 10h2M8 10h13M3 15h2M8 15h13M3 20h2M8 20h8" />,
+  camera: (
+    <>
+      <path d="M2.5 7h4l1.75-2.5h7.5L17.5 7h4v13h-19z" />
+      <circle cx="12" cy="13.25" r="3.75" />
+      <path d="M18 10h1" />
+    </>
+  ),
+  send: (
+    <>
+      <path d="M2.5 10.5 21.5 3l-7 18.5-3.5-7.5z" />
+      <path d="m11 14 10.5-11" />
+    </>
+  ),
+  sparkle: (
+    <>
+      <path d="M10 2.5 11.75 8.25 17.5 10l-5.75 1.75L10 17.5l-1.75-5.75L2.5 10l5.75-1.75z" />
+      <path d="M18.5 15.5v6M15.5 18.5h6" />
     </>
   ),
 };

@@ -1,6 +1,12 @@
 # AGENTS.md — operating rules for AI agents
 
-FCC (Fire Command Center) is a single-page proposal and live prototype: an AI-native command console for firefighting drones and first responders, running on a simulated incident. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
+FCC (Fire Command Center) is a single-page proposal and live prototype: an Orchestrator-first command console for fire departments and first responders, running on a simulated incident. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
+
+## Revisions
+
+- **REV B (current)** — Orchestrator-first. A calm default console (map, command bar, Orchestrator dock) with progressive disclosure through an icon rail and drawers. Every finding is graded 0–100 and placed by tier (`DESIGN_SYSTEM.md` section 13).
+- **REV A (frozen)** — the original dashboard-first proposal. A built copy lives in `public/rev-a/` (served at `/rev-a/index.html`) and the source is git tag `rev-a`. Never edit `public/rev-a/`; to inspect REV A source use `git show rev-a:<path>` or `git worktree add /tmp/fcc-rev-a rev-a`.
+- A new revision gets: a git tag for the previous one, a frozen build under `public/rev-<x>/`, bumped serials (Hero strip, Nav, Footer revision history, `FCC-DS / REV X`), and a note here.
 
 ## Stack
 
@@ -18,7 +24,7 @@ npm run typecheck    # tsc --noEmit only
 npm run preview      # serve the production build
 ```
 
-Page anchors: `#top` (hero), `#architecture`, `#dashboard` (live ops console), `#system` (design system showcase).
+Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and open questions), `#dashboard` (04 live ops console), `#system` (05 design system showcase). REV A archive: `/rev-a/index.html`.
 
 ## Directory map
 
@@ -28,18 +34,21 @@ AGENTS.md                   this file
 README.md                   project intro
 tailwind.config.ts          tokens wired into Tailwind utilities
 src/main.tsx                React entry
-src/App.tsx                 page composition (Nav, Hero, Architecture, DashboardSection, DesignSystemSection, Footer)
+src/App.tsx                 page composition (Nav, Hero, Architecture, Stack, DashboardSection, DesignSystemSection, Footer)
 src/index.css               fonts, base layer, .fcc-* utility classes, reduced-motion rule
 src/design-system/          the design system, imported as '@ds'
   tokens/                   tokens.css (source of truth) + index.ts (JS mirror: color, role, toneClass, Tone, ...)
   primitives/               Brackets, Frame, Label, Serial, Ruler, Crosshair, RegMark, Hatch, GridBg, Rule, Dot, Datum
   components/               Button, Panel, Metric, Table, Alert, UnitChip, ... (catalog in DESIGN_SYSTEM.md §11)
+  components/orchestrator.tsx  REV B: ScoreMeter, TierBadge, AlertCard, InterruptBanner, Freshness, OrchBubble,
+                            PromptChip, Drawer, IconRail, FeedTile, PoolBar, MovementCard, tierOf, alertTone
   icons/                    Icon, iconNames, IconName
   utils.ts                  cn, pad, fmtLat, fmtLon, zulu
 src/sim/                    simulation engine; types.ts is the shared contract
 src/dashboard/              live ops console panels
 src/dashboard/map/          TacticalMap renderer (canvas)
-src/sections/               page sections
+src/sections/               page sections (ds/ = showcase chapters)
+public/rev-a/               frozen REV A build — never edit
 ```
 
 Path aliases: `@ds` → `src/design-system/index.ts`, `@ds/*` → `src/design-system/*`, `@/*` → `src/*`.
@@ -67,12 +76,19 @@ Path aliases: `@ds` → `src/design-system/index.ts`, `@ds/*` → `src/design-sy
 - `Grid`: typed arrays for elevation, fuel (`Fuel` enum), dryness, state (`CellState`), heat, retardant, plus a `version` counter for render caching.
 - `SimSnapshot`: `t`, `clock`, `grid`, `wind`, `weather`, `forecast` (`ForecastBand[]` at 60/180/360 min), `units`, `markers`, `ingest` (intel feed), `insights` (AI output), `recommendations`, `metrics`, `history`, `forecastRev`.
 - `SimEngine`: `state`, `tick(dt)`, `setPaused`, `setSpeed`, `accept(recId)`, `dismiss(recId)`, `reset()`, `subscribe(fn)` (throttled ~4 Hz).
-- `MapLayers` / `DEFAULT_LAYERS`: layer toggles for the map.
+- `MapLayers` / `DEFAULT_LAYERS`: layer toggles for the map. REV B adds optional `coverage`, `observations`, `movements` (treated as true when absent).
+
+REV B additions (bottom of `types.ts`, additive):
+
+- `SimSnapshotB extends SimSnapshot`: `alerts: OrchAlert[]` (newest first), `observations: Observation[]`, `jobs: AnalysisJob[]`, `pools: AgentPool[]`, `feeds: CameraFeed[]`, `coverage: CoverageCell[]`, `movements: MovementProposal[]`, `orchestrator: OrchestratorState` (status, headline, brief, messages, suggestions).
+- `SimEngineB`: `SimEngine` with `state: SimSnapshotB` plus `ask(text)`, `ackAlert(id)`, `approveMovement(id)`, `rejectMovement(id)`.
+- Supporting types: `SourceKind`, `AlertClass`, `AlertTier` (0–3), `Audience`, `ObservationKind`. `OrchAlert.tier` must equal `tierOf(score)` from `@ds`; `Observation.freshness` follows `0.5 ^ (age / halfLifeS)` and is 1 while `live`.
 
 React usage:
 
-- `useSim()` from `@/sim` owns an engine instance and re-renders on its throttled updates; it exposes the current snapshot and the engine controls. See `src/sim/index.ts` for the exact return shape.
-- `TacticalMap` from `@/dashboard/map` renders the snapshot (terrain, contours, fuel, fire, forecast, units, markers, grid) according to `MapLayers`.
+- `useSim()` from `@/sim` owns an engine instance and re-renders on its throttled updates. REV B shape: `{ engine: SimEngineB, state: SimSnapshotB, version, paused, speed, setPaused, setSpeed, accept, dismiss, reset, ask(text), ackAlert(id), approveMovement(id), rejectMovement(id) }`. `useSimEngine()` returns the `SimEngineB`. See `src/sim/index.ts` for the exact shape.
+- `TacticalMap` from `@/dashboard/map` renders the snapshot (terrain, contours, fuel, fire, forecast, units, markers, grid, and in REV B coverage cells, approximate-location observations and movement routes) according to `MapLayers`. Props: `{ layers, selectedId?, onSelect?(id | null), className?, mode?: 'ortho' | 'oblique', focus?: { pos: Vec; zoom?: number; key: string } | null, highlightId? }`. `focus` flies the camera whenever `key` changes (use the alert id). Built-in map controls sit bottom-right; the left edge is reserved for the dashboard `IconRail`.
+- `CameraView` from `@/dashboard/map`: `{ feedId, variant?: 'thumb' | 'full', className? }` renders a simulated live camera for a `CameraFeed` and fills its parent. Put it inside a `FeedTile`.
 - The grid is mutated in place for performance. Consumers must treat the snapshot as read-only and key caches off `grid.version` and `forecastRev`.
 
 ## PR checklist
@@ -86,4 +102,6 @@ React usage:
 - [ ] Animations respect `prefers-reduced-motion`.
 - [ ] New components are exported from `@ds`, shown in the `#system` showcase, and documented in `DESIGN_SYSTEM.md`.
 - [ ] `src/sim/types.ts` changes are additive only.
+- [ ] Alerts are placed by tier (`tierOf`), at most one interrupt is visible, and non-live findings fade by freshness.
+- [ ] `public/rev-a/` is untouched.
 - [ ] No new dependencies, no external network requests.

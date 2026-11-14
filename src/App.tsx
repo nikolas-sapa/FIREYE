@@ -1,6 +1,7 @@
 import Nav from '@/sections/Nav';
 import Hero from '@/sections/Hero';
 import Architecture from '@/sections/Architecture';
+import Stack from '@/sections/Stack';
 import DashboardSection from '@/sections/DashboardSection';
 import DesignSystemSection from '@/sections/DesignSystemSection';
 import Footer from '@/sections/Footer';
@@ -12,6 +13,7 @@ export default function App() {
       <main>
         <Hero />
         <Architecture />
+        <Stack />
         <DashboardSection />
         <DesignSystemSection />
       </main>

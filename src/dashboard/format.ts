@@ -1,20 +1,16 @@
 import type { IconName, Tone } from '@ds';
-import { pad } from '@ds';
+import { pad, zulu } from '@ds';
 import {
   CELL_M,
   ORIGIN,
-  type IngestType,
-  type InsightKind,
-  type MarkerKind,
-  type Recommendation,
-  type Severity,
+  type ObservationKind,
+  type SourceKind,
   type UnitKind,
   type Vec,
 } from '@/sim/types';
 
 const M_PER_DEG = 111_320;
 const COS_LAT = Math.cos((ORIGIN.lat * Math.PI) / 180);
-const M2_PER_ACRE = 4046.856;
 
 /** Cell-space position to WGS84 degrees (flat-earth approximation, fine at AO scale). */
 export function cellToLatLon(p: Vec) {
@@ -38,12 +34,17 @@ export function mmss(s: number) {
   return h > 0 ? `${h}:${pad(m)}:${pad(t % 60)}` : `${pad(m)}:${pad(t % 60)}`;
 }
 
-/** Video-style timecode HH:MM:SS:FF from sim seconds. */
-export function timecode(s: number) {
-  const t = Math.max(0, s);
-  const whole = Math.floor(t);
-  const ff = Math.floor((t - whole) * 30);
-  return `${pad(Math.floor(whole / 3600))}:${pad(Math.floor((whole % 3600) / 60))}:${pad(whole % 60)}:${pad(ff)}`;
+/** Zulu wall-clock time of a past sim instant, given the current snapshot clock. */
+export function zuluAt(clock: Date, now: number, at: number) {
+  return zulu(new Date(clock.getTime() - (now - at) * 1000));
+}
+
+/** Compact age label: "42S", "12M", "1H 04M". */
+export function ageLabel(s: number) {
+  const t = Math.max(0, Math.floor(s));
+  if (t < 60) return `${t}S`;
+  if (t < 3600) return `${Math.floor(t / 60)}M`;
+  return `${Math.floor(t / 3600)}H ${pad(Math.floor((t % 3600) / 60))}M`;
 }
 
 const CARDINALS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -52,61 +53,38 @@ export const cardinal = (deg: number) => CARDINALS[Math.round((((deg % 360) + 36
 export const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
 export const pct = (v: number) => Math.round(v * 100);
 
-/** Polygon area in acres from a cell-space ring (shoelace). */
-export function polygonAcres(poly: Vec[]) {
-  if (poly.length < 3) return 0;
-  let a = 0;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    a += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
-  }
-  return (Math.abs(a / 2) * CELL_M * CELL_M) / M2_PER_ACRE;
-}
+export const dist = (a: Vec, b: Vec) => Math.hypot(a.x - b.x, a.y - b.y);
 
-export function hashStr(s: string) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+/* --------------------------------- Sources -------------------------------- */
 
-/** Recommendation confidence; the contract has no field yet, so fall back to a stable per-id value. */
-export function recConfidence(r: Recommendation) {
-  const explicit = (r as Recommendation & { confidence?: number }).confidence;
-  if (typeof explicit === 'number') return explicit;
-  const base = r.priority === 'P1' ? 0.86 : r.priority === 'P2' ? 0.78 : 0.7;
-  return Math.min(0.97, base + (hashStr(r.id) % 9) / 100);
-}
-
-export const severityTone: Record<Severity, Tone> = { low: 'neutral', med: 'warning', high: 'signal', critical: 'danger' };
-export const priorityTone: Record<Recommendation['priority'], Tone> = { P1: 'danger', P2: 'signal', P3: 'neutral' };
-
-export const ingestIcon: Record<IngestType, IconName> = {
-  video: 'video', image: 'image', news: 'news', sensor: 'sensor', radio: 'radio', satellite: 'satellite',
-};
-export const ingestCode: Record<IngestType, string> = {
-  video: 'VID', image: 'IMG', news: 'OSINT', sensor: 'RAWS', radio: 'COMMS', satellite: 'SAT',
+export const sourceIcon: Record<SourceKind, IconName> = {
+  web: 'web', satellite: 'satellite', 'ground-cam': 'camera', 'drone-cam': 'drone', social: 'social', weather: 'wind', terrain: 'map', radio: 'radio',
 };
 
-export const markerIcon: Record<MarkerKind, IconName> = {
-  human: 'human', structure: 'structure', fuel: 'tree', hazard: 'hazard', water: 'droplet', poi: 'target', spot: 'flame',
-};
-export const markerTone: Record<MarkerKind, Tone> = {
-  human: 'detection', structure: 'warning', fuel: 'signal', hazard: 'danger', water: 'telemetry', poi: 'detection', spot: 'danger',
-};
-export const markerKindLabel: Record<MarkerKind, string> = {
-  human: 'Human detection', structure: 'Structure', fuel: 'Critical fuel', hazard: 'Hazard', water: 'Water source', poi: 'Point of interest', spot: 'Spot fire',
+export const sourceCode: Record<SourceKind, string> = {
+  web: 'WEB', satellite: 'SAT', 'ground-cam': 'GND CAM', 'drone-cam': 'UAS CAM', social: 'SOCIAL', weather: 'WX', terrain: 'TERRAIN', radio: 'RADIO',
 };
 
-export const insightTone: Record<InsightKind, Tone> = {
-  analysis: 'telemetry', forecast: 'warning', recommendation: 'signal', alert: 'danger', status: 'nominal',
+/** Live sources observe the scene directly; everything else is approximate and decays. */
+export const isLiveSource = (s: SourceKind) => s === 'ground-cam' || s === 'drone-cam';
+
+/* ------------------------------ Observations ------------------------------ */
+
+export const obsIcon: Record<ObservationKind, IconName> = {
+  human: 'human', animal: 'animal', structure: 'structure', combustible: 'combustible', fuel: 'tree', spot: 'flame', water: 'droplet', 'road-block': 'alert',
 };
 
-export const unitIcon: Record<UnitKind, IconName> = {
-  drone: 'drone', engine: 'engine', crew: 'crew', helo: 'helo', tanker: 'tanker', dozer: 'dozer',
+export const obsKindLabel: Record<ObservationKind, string> = {
+  human: 'Persons', animal: 'Animals', structure: 'Structure', combustible: 'Combustible', fuel: 'Dry fuel', spot: 'Spot fire', water: 'Water', 'road-block': 'Road block',
 };
+
+export const obsTone: Record<ObservationKind, Tone> = {
+  human: 'detection', animal: 'detection', structure: 'neutral', combustible: 'danger', fuel: 'warning', spot: 'danger', water: 'telemetry', 'road-block': 'warning',
+};
+
+/* ---------------------------------- Units --------------------------------- */
+
 export const unitGroupLabel: Record<UnitKind, string> = {
   drone: 'UAS / Recon', helo: 'Rotor wing', tanker: 'Fixed wing', engine: 'Engines', crew: 'Hand crews', dozer: 'Heavy equip',
 };
-export const UNIT_ORDER: UnitKind[] = ['drone', 'helo', 'tanker', 'engine', 'crew', 'dozer'];
+export const UNIT_ORDER: UnitKind[] = ['engine', 'crew', 'dozer', 'drone', 'helo', 'tanker'];

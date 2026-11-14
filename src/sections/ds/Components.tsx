@@ -80,7 +80,7 @@ export function ComponentsSpec() {
   return (
     <SubSection
       id="system-components"
-      index="04.7"
+      index="05.7"
       kicker="Components"
       title="The working parts."
       lede="Every component in the library, in every variant and state. All of them are live: hover, focus, press, and type into them."

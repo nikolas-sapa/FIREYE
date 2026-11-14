@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Brackets, Button, Datum, Dot, GridBg, Label, RegMark, Ruler, cn, fmtLat, fmtLon, pad } from '@ds';
+import { Brackets, Button, Datum, Dot, GridBg, Icon, Label, RegMark, Ruler, cn, fmtLat, fmtLon, pad } from '@ds';
 import { ORIGIN } from '@/sim/types';
 
 /* ---------------------------------------------------------------------------
@@ -383,7 +383,7 @@ function PoiLayer({ reduced }: { reduced: boolean }) {
       {structures.map((s, i) => (
         <rect key={i} x={s[0] - 3} y={s[1] - 2.5} width={6} height={5} className="fill-ink-950 stroke-bone-dim" strokeWidth={0.75} />
       ))}
-      <Callout at={sc} dx={52} dy={-58} label="STRUCTURES · 06" sub="PINE HOLLOW · THREAT +2H" tone="bone" />
+      <Callout at={sc} dx={52} dy={-58} label="HAZARD · T1 · 78" sub="PINE HOLLOW · PROPANE ×3 · +2H" tone="bone" />
 
       <g transform={`translate(${n1(human[0])} ${n1(human[1])})`}>
         {!reduced && (
@@ -392,10 +392,11 @@ function PoiLayer({ reduced }: { reduced: boolean }) {
             <animate attributeName="opacity" values="0.9;0" dur="1.8s" repeatCount="indefinite" />
           </circle>
         )}
+        <circle r={15} className="fill-violet/5 stroke-violet" strokeOpacity={0.7} strokeWidth={0.75} strokeDasharray="2 2" />
         <rect x={-6} y={-6} width={12} height={12} fill="none" className="stroke-violet" strokeWidth={0.9} />
         <rect x={-1.5} y={-1.5} width={3} height={3} className="fill-violet" />
       </g>
-      <Callout at={[human[0] + 6, human[1] + 6]} dx={46} dy={40} label="HUMAN DETECTED 0.87" sub="2 PERSONS · TRAILHEAD" tone="violet" />
+      <Callout at={[human[0] + 6, human[1] + 6]} dx={46} dy={40} label="LIFE · T0 INTERRUPT · 93" sub="2 HIKERS · SOCIAL 14 MIN · ±150 M" tone="violet" />
     </g>
   );
 }
@@ -449,6 +450,13 @@ function HeroVisual() {
           <span className="font-mono text-micro uppercase text-bone">Live · Sim</span>
           <span className="font-mono text-micro text-bone-mute fcc-num">{tplus}</span>
         </div>
+        <div className="pointer-events-none absolute right-3 top-3 hidden items-center gap-2 border border-line-strong bg-ink-950/80 px-2 py-1 sm:flex">
+          <Icon name="orchestrator" size={11} className="text-ice" />
+          <span className="font-mono text-micro uppercase text-bone">Orchestrator</span>
+          <span className="font-mono text-micro uppercase text-ember fcc-num">1 interrupt</span>
+          <span className="font-mono text-micro uppercase text-amber fcc-num">2 focus</span>
+          <span className="font-mono text-micro uppercase text-bone-mute fcc-num">6 ambient</span>
+        </div>
         <div className="pointer-events-none absolute bottom-3 left-3 hidden gap-5 sm:flex">
           <Datum label="Ctr" value={`${fmtLat(ORIGIN.lat - 0.0117)} ${fmtLon(ORIGIN.lon + 0.0321)}`} />
           <Datum label="Wind" value="247° / 28" unit="KPH" tone="text-amber" />
@@ -471,10 +479,10 @@ function HeroVisual() {
  * ------------------------------------------------------------------------- */
 
 const STATS = [
-  { k: 'S-01', pre: '<', value: '2', unit: 'S', label: 'Ingest-to-insight latency' },
-  { k: 'S-02', pre: '', value: '06', unit: '', label: 'Input modalities fused' },
+  { k: 'S-01', pre: '', value: '07', unit: '', label: 'Input sources analysed' },
+  { k: 'S-02', pre: '', value: '04', unit: '', label: 'Alert tiers, graded 0–100' },
   { k: 'S-03', pre: '', value: '360', unit: 'MIN', label: 'Fire path projection horizon' },
-  { k: 'S-04', pre: '', value: '01', unit: '', label: 'Shared operational picture' },
+  { k: 'S-04', pre: '', value: '01', unit: '', label: 'Interrupt at a time, acknowledged' },
 ];
 
 const scrollTo = (id: string) => () => {
@@ -494,16 +502,16 @@ export default function Hero() {
         <div className="flex h-10 items-center justify-between gap-4 border-b border-line">
           <span className="truncate font-mono text-micro uppercase text-bone-mute">
             FCC <span className="text-ink-500">//</span> Proposal <span className="text-ink-500">//</span>{' '}
-            <span className="text-bone-dim">Unclassified</span> <span className="text-ink-500">//</span> Rev A · 2026-11-14
+            <span className="text-bone-dim">Unclassified</span> <span className="text-ink-500">//</span> Rev B · 2026-11-14
           </span>
           <span className="hidden font-mono text-micro uppercase text-bone-mute fcc-num md:inline">
-            {fmtLat(ORIGIN.lat)} {fmtLon(ORIGIN.lon)} · Sheet 01/04
+            {fmtLat(ORIGIN.lat)} {fmtLon(ORIGIN.lon)} · Sheet 01/05
           </span>
         </div>
 
         <div className="grid flex-1 grid-cols-1 items-center gap-12 py-12 lg:grid-cols-12 lg:gap-8 lg:py-16">
           <div className="relative z-raised lg:col-span-5">
-            <Label index="01">Overview · AI-native fire command</Label>
+            <Label index="01">Overview · Orchestrator-first fire command</Label>
             <h1 className="mt-8 font-sans text-4xl font-medium text-bone sm:text-5xl xl:text-6xl">
               <span className="block">Command</span>
               <span className="block whitespace-nowrap">
@@ -512,10 +520,10 @@ export default function Hero() {
             </h1>
             <p className="mt-6 font-sans text-2xl text-bone-mute xl:text-3xl">See it before it moves.</p>
             <p className="mt-8 max-w-md text-lg text-bone-dim">
-              FCC is a single operational picture for firefighting drones and first responders. Its AI core, ARGUS, fuses
-              drone video, imagery, sensors, radio and the news in real time, projects the fire path six hours out, flags
-              people and structures in danger, and tells commanders where to move their forces. Every new signal re-plans
-              the attack.
+              FCC is a calm, unified picture of a moving fire. Analysis agents read local news, satellite passes, vehicle
+              and drone cameras, social video, weather and terrain. A projection agent re-draws the fire path as evidence
+              arrives. The Orchestrator works beside the commander: it grades every finding, shows only what matters, relays
+              it to fire, EMS, law and the public, and proposes where each group should move.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
               <Button variant="primary" size="lg" iconRight="arrow-right" onClick={scrollTo('dashboard')}>
@@ -526,7 +534,7 @@ export default function Hero() {
               </Button>
             </div>
             <div className="mt-12 flex gap-8 border-t border-line pt-4">
-              <Datum label="Core" value="ARGUS 2.1" />
+              <Datum label="Core" value="Orchestrator" />
               <Datum label="Mode" value="Human-in-loop" />
               <Datum label="Data" value="Simulated" tone="text-amber" />
             </div>

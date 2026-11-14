@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { createSimulation } from './engine';
-import type { SimEngine, SimSnapshot } from './types';
+import type { SimEngineB, SimSnapshotB } from './types';
 
 interface Store {
-  engine: SimEngine;
+  engine: SimEngineB;
   version: number;
   subscribe(fn: () => void): () => void;
   getVersion(): number;
@@ -11,7 +11,7 @@ interface Store {
 
 const SimContext = createContext<Store | null>(null);
 
-function createStore(engine: SimEngine): Store {
+function createStore(engine: SimEngineB): Store {
   const listeners = new Set<() => void>();
   const store: Store = {
     engine,
@@ -75,9 +75,9 @@ function useStore(): Store {
 }
 
 export interface SimApi {
-  engine: SimEngine;
+  engine: SimEngineB;
   /** Live snapshot (same object between notifications; arrays replaced on change). */
-  state: SimSnapshot;
+  state: SimSnapshotB;
   /** Increments on every engine notification (~4 Hz while running). */
   version: number;
   paused: boolean;
@@ -87,6 +87,11 @@ export interface SimApi {
   accept(recId: string): void;
   dismiss(recId: string): void;
   reset(): void;
+  /** Send a question to the Orchestrator; the reply lands in state.orchestrator.messages after ~1.2 s. */
+  ask(text: string): void;
+  ackAlert(id: string): void;
+  approveMovement(id: string): void;
+  rejectMovement(id: string): void;
 }
 
 /** Re-renders on throttled engine notifications (~4 Hz). */
@@ -99,13 +104,20 @@ export function useSim(): SimApi {
   const accept = useCallback((id: string) => engine.accept(id), [engine]);
   const dismiss = useCallback((id: string) => engine.dismiss(id), [engine]);
   const reset = useCallback(() => engine.reset(), [engine]);
+  const ask = useCallback((t: string) => engine.ask(t), [engine]);
+  const ackAlert = useCallback((id: string) => engine.ackAlert(id), [engine]);
+  const approveMovement = useCallback((id: string) => engine.approveMovement(id), [engine]);
+  const rejectMovement = useCallback((id: string) => engine.rejectMovement(id), [engine]);
   return useMemo(
-    () => ({ engine, state: engine.state, version, paused: engine.paused, speed: engine.speed, setPaused, setSpeed, accept, dismiss, reset }),
-    [engine, version, setPaused, setSpeed, accept, dismiss, reset],
+    () => ({
+      engine, state: engine.state, version, paused: engine.paused, speed: engine.speed,
+      setPaused, setSpeed, accept, dismiss, reset, ask, ackAlert, approveMovement, rejectMovement,
+    }),
+    [engine, version, setPaused, setSpeed, accept, dismiss, reset, ask, ackAlert, approveMovement, rejectMovement],
   );
 }
 
 /** Engine reference without subscribing; for renderers that read `engine.state` every frame. */
-export function useSimEngine(): SimEngine {
+export function useSimEngine(): SimEngineB {
   return useStore().engine;
 }

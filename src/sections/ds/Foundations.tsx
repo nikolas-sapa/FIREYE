@@ -14,7 +14,7 @@ const principles = [
 
 export function Principles() {
   return (
-    <SubSection id="system-principles" index="04.1" kicker="Principles" title="Six rules the interface never breaks." lede="Written for the people who build FCC. Each rule resolves a real failure mode of operational software under stress.">
+    <SubSection id="system-principles" index="05.1" kicker="Principles" title="Six rules the interface never breaks." lede="Written for the people who build FCC. Each rule resolves a real failure mode of operational software under stress.">
       <div className="grid grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 xl:grid-cols-3">
         {principles.map((p, i) => (
           <article key={p.code} className="group relative flex min-h-[220px] flex-col bg-ink-950 p-6 transition-colors duration-base ease-servo hover:bg-ink-900">
@@ -129,7 +129,7 @@ export function ColorSpec() {
   return (
     <SubSection
       id="system-color"
-      index="04.2"
+      index="05.2"
       kicker="Color"
       title="Graphite, bone, and one fire-orange signal."
       lede="A cool-neutral ink ramp carries structure. Warm bone carries language. Color is assigned by role, never by taste."
@@ -225,7 +225,7 @@ export function TypeSpec() {
   return (
     <SubSection
       id="system-type"
-      index="04.3"
+      index="05.3"
       kicker="Typography"
       title="Two families. Thirteen sizes. No exceptions."
       lede="Inter Tight sets language for humans. JetBrains Mono sets anything a machine produced: numbers, coordinates, labels, serials."
@@ -290,7 +290,7 @@ export function TypeSpec() {
           <Label index="03">Fire behavior</Label>
         </Spec>
         <Spec code="<Serial>" tag="micro">
-          <Serial>FCC-01 / REV A</Serial>
+          <Serial>FCC-01 / REV B</Serial>
         </Spec>
         <Spec code=".fcc-micro" tag="micro">
           <span className="fcc-micro">Sensor array / 12 of 14 online</span>
@@ -316,7 +316,7 @@ export function SpaceSpec() {
   return (
     <SubSection
       id="system-space"
-      index="04.4"
+      index="05.4"
       kicker="Spacing & Grid"
       title="A 4px grid at micro scale. A 12-column rail at macro scale."
       lede="Dense where data lives, generous where decisions live. All spacing resolves to multiples of four."

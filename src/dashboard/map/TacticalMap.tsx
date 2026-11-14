@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react';
 import { cn, fmtLat, fmtLon, font } from '@ds';
 import { useSimEngine } from '@/sim/SimProvider';
 import { gridRef, RELIEF_M } from '@/sim/terrain';
+import { sweepPath } from '@/sim/intel';
 import {
   CELL_M, CellState, GRID_H, GRID_W, ORIGIN,
-  type ForecastBand, type Grid, type MapLayers, type Marker, type SimSnapshot, type Unit, type Vec, type WorldMeta,
+  type CoverageCell, type ForecastBand, type Grid, type MapLayers, type Marker, type MovementProposal, type Observation,
+  type OrchAlert, type SimSnapshot, type Unit, type Vec, type WorldMeta,
 } from '@/sim/types';
 import {
-  C, buildContours, buildFuelCanvas, buildHatch, buildTerrainCanvas, createFireRaster, rasterFire, rgba, type RGB,
+  C, buildContours, buildFuelCanvas, buildHatch, buildTerrainCanvas, createFireRaster, mixRgb, rasterFire, rgba, type RGB,
 } from './layers';
 
 export type MapMode = 'ortho' | 'oblique';
@@ -18,6 +20,16 @@ export interface TacticalMapProps {
   onSelect?(id: string | null): void;
   className?: string;
   mode?: MapMode;
+  /** Fly the camera to `pos` whenever `key` changes (use the alert id or a sequence key). */
+  focus?: MapFocus | null;
+  /** Observation, unit, movement or alert id to emphasise (ring + label) without selecting it. */
+  highlightId?: string | null;
+}
+
+export interface MapFocus {
+  pos: Vec;
+  zoom?: number;
+  key: string;
 }
 
 const TILT_DEG = 35;
@@ -76,7 +88,7 @@ function niceStep(target: number, steps: number[]) {
   return steps[steps.length - 1];
 }
 
-export function TacticalMap({ layers, selectedId = null, onSelect, className, mode = 'ortho' }: TacticalMapProps) {
+export function TacticalMap({ layers, selectedId = null, onSelect, className, mode = 'ortho', focus = null, highlightId = null }: TacticalMapProps) {
   const engine = useSimEngine();
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -86,8 +98,8 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
   const zoomRef = useRef<HTMLSpanElement>(null);
   const scaleBarRef = useRef<HTMLDivElement>(null);
   const scaleLabelRef = useRef<HTMLSpanElement>(null);
-  const props = useRef({ layers, selectedId, onSelect, mode });
-  props.current = { layers, selectedId, onSelect, mode };
+  const props = useRef({ layers, selectedId, onSelect, mode, focus, highlightId });
+  props.current = { layers, selectedId, onSelect, mode, focus, highlightId };
   const api = useRef<{ zoomBy(f: number): void; reset(): void; focusFire(): void; relayout(): void } | null>(null);
 
   useEffect(() => {
@@ -196,7 +208,12 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
         const d = Math.hypot(p.x - u, p.y - v);
         if (d < best) { best = d; id = un.id; }
       }
-      if (ly.markers) for (const m of s.markers) {
+      if (ly.observations !== false) for (const o of s.observations) {
+        const p = w2s(o.pos.x, o.pos.y);
+        const d = Math.hypot(p.x - u, p.y - v) + (o.live ? 0 : 1);
+        if (d < best) { best = d; id = o.id; }
+      }
+      else if (ly.markers) for (const m of s.markers) {
         const p = w2s(m.pos.x, m.pos.y);
         const d = Math.hypot(p.x - u, p.y - v) + 2;
         if (d < best) { best = d; id = m.id; }
@@ -400,13 +417,16 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       const uL = toStage(0, L.PH).u, uR = toStage(L.PW, L.PH).u;
       for (const l of lons) {
         if (l.u < uL + 70 || l.u > uR - 70) continue;
+        // Keep clear of the bottom-left metric strip and the bottom-centre cursor readout.
+        const sx = fromStage(l.u, vBot).x;
+        if (L.PW < 1000 || sx < 420 || Math.abs(sx - L.PW / 2) < 240 || sx > L.PW - 90) continue;
         ctx.fillStyle = rgba(C.bone, 0.35);
         ctx.fillRect(Math.round(l.u), vBot - 6, 1, 6);
         plateText(fmtLon(l.lon, 3), Math.round(l.u) + 4, vBot - 8, C.boneMute, 8, 0.85);
       }
       for (const l of lats) {
         const sy = fromStage(L.SW / 2, l.v).y;
-        if (sy < 60 || sy > L.PH - 40) continue;
+        if (sy < 110 || sy > L.PH - 90) continue;
         const ul = Math.max(u0, toStage(0, sy).u + 2);
         ctx.fillStyle = rgba(C.bone, 0.35);
         ctx.fillRect(ul, Math.round(l.v), 6, 1);
@@ -519,8 +539,10 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       glyph(meta.airbase, 'air');
       glyph(meta.icp, 'icp');
       for (const lm of meta.landmarks) {
-        const q = w2s(lm.pos.x, lm.pos.y);
         const town = lm.id === 'lm-town';
+        // Secondary place names only appear once zoomed in.
+        if (!town && view.z < 2) continue;
+        const q = w2s(lm.pos.x, lm.pos.y);
         ctx.font = fontStr(town ? 10 : 8, town ? 600 : 500);
         setSpacing(ctx, town ? '0.28em' : '0.16em');
         const w = ctx.measureText(lm.label).width;
@@ -539,7 +561,7 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       }
     }
 
-    function drawMarker(m: Marker, t: number, selected: boolean) {
+    function drawMarker(m: Marker, t: number, selected: boolean, labeled: boolean) {
       const p = w2s(m.pos.x, m.pos.y);
       if (p.x < -40 || p.y < -40 || p.x > L.SW + 40 || p.y > L.SH + 40) return;
       const col = markerColor(m);
@@ -585,6 +607,7 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
           ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x - 2, p.y); ctx.moveTo(p.x + 2, p.y); ctx.lineTo(p.x + 6, p.y);
           ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x, p.y - 2); ctx.moveTo(p.x, p.y + 2); ctx.lineTo(p.x, p.y + 6); ctx.stroke();
       }
+      if (!labeled) return;
       leaderLabel(p, [
         { text: m.label, col },
         { text: `${Math.round(m.confidence * 100)}% · ${gridRef(m.pos)}`, col: C.boneMute, px: 8 },
@@ -597,7 +620,7 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       return u.kind === 'drone' || u.kind === 'helo' || u.kind === 'tanker' ? C.ice : C.bone;
     }
 
-    function drawUnit(u: Unit, t: number, S: number) {
+    function drawUnit(u: Unit, t: number, S: number, labeled: boolean) {
       const p = w2s(u.pos.x, u.pos.y);
       if (p.x < -60 || p.y < -60 || p.x > L.SW + 60 || p.y > L.SH + 60) return;
       const col = unitColor(u);
@@ -692,6 +715,7 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
           break;
       }
       ctx.restore();
+      if (!labeled) return;
       const sub = typeof u.battery === 'number' ? `BAT ${Math.round(u.battery * 100)}` : typeof u.water === 'number' ? `H2O ${Math.round(u.water * 100)}` : u.kind === 'crew' ? 'HAND CREW' : 'DOZER';
       leaderLabel(p, [
         { text: u.callsign, col: u.status === 'standby' ? C.boneDim : C.bone },
@@ -757,8 +781,232 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       plateText(`HEAD · ${Math.round(s.metrics.rateOfSpreadMpm)} M/MIN`, q.x + wx * 10 + 4, q.y + wy * 10 + 3, C.ember, 8, 0.95);
     }
 
+    // --- REV B overlays --------------------------------------------------------------
+    function obsColor(o: Observation): RGB {
+      switch (o.kind) {
+        case 'human': case 'animal': return C.violet;
+        case 'combustible': case 'spot': return C.ember;
+        case 'fuel': return o.sensitivity === 'decreased' ? C.phosphor : C.amber;
+        case 'road-block': return C.amber;
+        case 'water': return C.ice;
+        default: return C.bone;
+      }
+    }
+
+    function obsGlyph(kind: Observation['kind'], x: number, y: number, col: RGB, a: number) {
+      ctx.strokeStyle = rgba(col, a);
+      ctx.fillStyle = rgba(col, a);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      switch (kind) {
+        case 'human':
+          ctx.arc(x, y, 2.8, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
+          break;
+        case 'animal':
+          ctx.moveTo(x, y - 4.5); ctx.lineTo(x + 4.5, y); ctx.lineTo(x, y + 4.5); ctx.lineTo(x - 4.5, y); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, 6.5, 0, Math.PI * 2); ctx.stroke();
+          break;
+        case 'combustible':
+          ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y + 5); ctx.lineTo(x - 6, y + 5); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = rgba(C.ink950, 1);
+          ctx.fillRect(x - 0.75, y - 2.5, 1.5, 4); ctx.fillRect(x - 0.75, y + 2.5, 1.5, 1.5);
+          break;
+        case 'fuel':
+          ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y + 5); ctx.lineTo(x - 6, y + 5); ctx.closePath(); ctx.stroke();
+          ctx.fillRect(x - 1, y + 0.5, 2, 2);
+          break;
+        case 'spot':
+          ctx.moveTo(x, y - 5.5); ctx.lineTo(x + 5.5, y); ctx.lineTo(x, y + 5.5); ctx.lineTo(x - 5.5, y); ctx.closePath(); ctx.fill();
+          break;
+        case 'structure':
+          ctx.rect(x - 5, y - 5, 10, 10); ctx.stroke();
+          ctx.fillRect(x - 2, y - 2, 4, 4);
+          break;
+        case 'water':
+          ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x - 3.5, y); ctx.quadraticCurveTo(x - 1.75, y - 2, x, y); ctx.quadraticCurveTo(x + 1.75, y + 2, x + 3.5, y); ctx.stroke();
+          break;
+        case 'road-block':
+          ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillRect(x - 3.5, y - 1, 7, 2);
+          break;
+      }
+    }
+
+    function drawObservation(o: Observation, now: number, S: number, labeled: boolean) {
+      const p = w2s(o.pos.x, o.pos.y);
+      const rPx = Math.max(7, (o.uncertaintyM / CELL_M) * S);
+      if (p.x < -rPx - 40 || p.y < -rPx - 40 || p.x > L.SW + rPx + 40 || p.y > L.SH + rPx + 40) return;
+      const f = o.live ? 1 : clamp(o.freshness, 0, 1);
+      const base = obsColor(o);
+      // Stale findings lose saturation toward the neutral ink and fade out.
+      const col = o.live ? base : mixRgb(C.boneMute, base, 0.3 + 0.7 * f);
+      const a = (o.resolved ? 0.35 : 1) * (o.live ? 1 : 0.22 + 0.68 * f);
+      if (!o.live) {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rPx);
+        g.addColorStop(0, rgba(col, 0.2 * a));
+        g.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, rPx, 0, Math.PI * 2); ctx.fill();
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = rgba(col, 0.55 * a);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = rgba(col, 0.9 * a);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = rgba(col, 0.4 * a);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        if (rPx > 9) {
+          ctx.strokeStyle = rgba(col, 0.3);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, rPx, 0, Math.PI * 2); ctx.stroke();
+        }
+        obsGlyph(o.kind, p.x, p.y, col, a);
+        // LIVE tick: short phosphor stem off the upper-left with a nano tag.
+        ctx.strokeStyle = rgba(C.phosphor, 0.9);
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.x - 7, p.y - 7); ctx.lineTo(p.x - 11, p.y - 11); ctx.stroke();
+        ctx.font = fontStr(7, 600);
+        setSpacing(ctx, '0.14em');
+        const w = ctx.measureText('LIVE').width;
+        ctx.fillStyle = rgba(C.phosphor, 0.95);
+        ctx.fillText('LIVE', p.x - 12 - w, p.y - 10);
+      }
+      if (!labeled) return;
+      const ageMin = Math.max(0, Math.round((now - o.observedAt) / 60));
+      const src = o.sourceLabel.toUpperCase();
+      const meta = o.live ? `LIVE · ${src}` : `${src} · ${ageMin} MIN · ±${Math.round(o.uncertaintyM)} M`;
+      leaderLabel(p, [{ text: o.label.toUpperCase(), col }, { text: meta, col: C.boneMute, px: 8 }], col, Math.max(a, 0.7));
+    }
+
+    function drawCoverage(cells: CoverageCell[]) {
+      if (!cells.length) return;
+      ctx.strokeStyle = rgba(C.bone, 0.035);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const c of cells) {
+        const p = w2s(c.x, c.y), q = w2s(c.x + c.w, c.y + c.h);
+        ctx.rect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5, q.x - p.x, q.y - p.y);
+      }
+      ctx.stroke();
+      for (const c of cells) {
+        const p = w2s(c.x, c.y), q = w2s(c.x + c.w, c.y + c.h);
+        if (q.x < 0 || q.y < 0 || p.x > L.SW || p.y > L.SH) continue;
+        if (c.assignedUnitId) {
+          const k = Math.min(10, (q.x - p.x) * 0.18);
+          const i = 3;
+          ctx.strokeStyle = rgba(C.ice, 0.5);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (const [x, y, sx, sy] of [[p.x + i, p.y + i, 1, 1], [q.x - i, p.y + i, -1, 1], [q.x - i, q.y - i, -1, -1], [p.x + i, q.y - i, 1, -1]]) {
+            ctx.moveTo(x, y + sy * k); ctx.lineTo(x, y); ctx.lineTo(x + sx * k, y);
+          }
+          ctx.stroke();
+          const path = sweepPath(c);
+          ctx.setLineDash([2, 3]);
+          ctx.strokeStyle = rgba(C.ice, 0.16);
+          ctx.beginPath();
+          path.forEach((pt, j) => { const s = w2s(pt.x, pt.y); if (j === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y); });
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (c.interest > 0.55) {
+          ctx.fillStyle = rgba(C.amber, 0.02 + 0.04 * c.interest);
+          ctx.fillRect(p.x, p.y, q.x - p.x, q.y - p.y);
+        }
+      }
+    }
+
+    function drawMovement(m: MovementProposal, t: number, S: number, emph: boolean) {
+      if (m.status === 'rejected' || m.status === 'done' || m.route.length < 2) return;
+      const solid = m.status === 'approved' || m.status === 'executing';
+      const pts = m.route.map((q) => w2s(q.x, q.y));
+      const a = emph ? 1 : solid ? 0.85 : 0.7;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = rgba(C.ink950, 0.55 * a);
+      ctx.lineWidth = emph ? 4 : 3;
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.stroke();
+      ctx.strokeStyle = rgba(C.signal, a);
+      ctx.lineWidth = emph ? 1.75 : 1.25;
+      if (!solid) {
+        ctx.setLineDash([6, 4]);
+        ctx.lineDashOffset = reduced ? 0 : -t * 10;
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      // Chevrons every ~48 px along the route, drifting forward while executing.
+      const SP = 48;
+      let carry = solid && !reduced ? (t * 18) % SP : SP / 2;
+      ctx.strokeStyle = rgba(C.signal, a);
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1], p1 = pts[i];
+        const len = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+        if (len < 0.01) continue;
+        const ux = (p1.x - p0.x) / len, uy = (p1.y - p0.y) / len;
+        let d = carry;
+        while (d < len) {
+          const cx = p0.x + ux * d, cy = p0.y + uy * d;
+          ctx.moveTo(cx - ux * 4 - uy * 3.5, cy - uy * 4 + ux * 3.5);
+          ctx.lineTo(cx, cy);
+          ctx.lineTo(cx - ux * 4 + uy * 3.5, cy - uy * 4 - ux * 3.5);
+          d += SP;
+        }
+        carry = d - len;
+      }
+      ctx.stroke();
+      const z = m.safetyZone;
+      const c = w2s(z.center.x, z.center.y);
+      const r = Math.max(9, z.radiusCells * S);
+      ctx.fillStyle = rgba(C.phosphor, 0.06);
+      ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = rgba(C.phosphor, 0.75 * a);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = rgba(C.phosphor, 0.9 * a);
+      ctx.fillRect(c.x - 1.5, c.y - 1.5, 3, 3);
+      plateText(`SZ · ${z.label.toUpperCase()}`, c.x + r * 0.72 + 4, c.y - r * 0.72, C.phosphor, 8, 0.9 * a);
+      const s0 = pts[0];
+      ctx.fillStyle = rgba(C.signal, a);
+      ctx.beginPath(); ctx.arc(s0.x, s0.y, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawPing(al: OrchAlert, t: number) {
+      if (!al.pos) return;
+      const p = w2s(al.pos.x, al.pos.y);
+      if (p.x < -60 || p.y < -60 || p.x > L.SW + 60 || p.y > L.SH + 60) return;
+      const col = al.cls === 'life' || al.cls === 'hazard' ? C.ember : C.amber;
+      const t0 = al.tier === 0;
+      const span = t0 ? 26 : 16;
+      const rings = t0 ? [0, 0.5] : [0];
+      ctx.lineWidth = t0 ? 1.5 : 1;
+      for (const off of rings) {
+        const ph = reduced ? 0.45 + off * 0.5 : (t * (t0 ? 0.9 : 0.55) + off) % 1;
+        ctx.strokeStyle = rgba(col, (1 - ph) * (t0 ? 0.9 : 0.55));
+        ctx.beginPath(); ctx.arc(p.x, p.y, 9 + ph * span, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    function drawHighlight(p: { x: number; y: number }) {
+      ctx.strokeStyle = rgba(C.ice, 0.85);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { ctx.moveTo(p.x + dx * 13, p.y + dy * 13); ctx.lineTo(p.x + dx * 18, p.y + dy * 18); }
+      ctx.stroke();
+    }
+
     // --- frame loop ------------------------------------------------------------------
     let raf = 0;
+    let focusKey: string | null = null;
     let lastNow = performance.now();
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
@@ -768,6 +1016,13 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       const s = engine.state;
       const g = s.grid;
       if (!st) st = getStatic(g, s.world);
+      const fc = props.current.focus;
+      if (fc && fc.key !== focusKey) {
+        focusKey = fc.key;
+        goal.cx = fc.pos.x; goal.cy = fc.pos.y;
+        goal.z = clamp(fc.zoom ?? Math.max(goal.z, 2.2), MIN_Z, MAX_Z);
+        clampView(goal);
+      } else if (!fc) focusKey = null;
       const ly = props.current.layers;
       const t = now / 1000;
 
@@ -830,23 +1085,62 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
 
       // Screen space.
       ctx.setTransform(D, 0, 0, D, 0, 0);
+      const sel = props.current.selectedId;
+      const hl = props.current.highlightId;
+      // Ids that earn a text label this frame: selection, hover, highlight, and tier 0/1 subjects.
+      const named = new Set<string>();
+      if (sel) named.add(sel);
+      if (hoverId) named.add(hoverId);
+      if (hl) named.add(hl);
+      const pings: OrchAlert[] = [];
+      const movesById = new Map(s.movements.map((m) => [m.id, m] as const));
+      for (const al of s.alerts) {
+        const subject = al.tier <= 1 && !al.ack && !al.resolved;
+        const lit = al.id === hl || al.id === sel;
+        if (!subject && !lit) continue;
+        if (al.observationId) named.add(al.observationId);
+        if (al.movementId) {
+          named.add(al.movementId);
+          for (const id of movesById.get(al.movementId)?.unitIds ?? []) named.add(id);
+        }
+        if (subject && al.pos) pings.push(al);
+      }
+      for (const id of [sel, hl]) {
+        const mv = id ? movesById.get(id) : undefined;
+        if (mv) for (const u of mv.unitIds) named.add(u);
+      }
+      const showObs = ly.observations !== false;
+      if (ly.coverage !== false) drawCoverage(s.coverage);
       if (ly.forecast && s.forecast.length) drawForecast(s.forecast, s);
       if (ly.grid) drawGrid();
       drawLandmarks(s.world);
       if (ly.fire) drawHead(s);
-      const sel = props.current.selectedId;
-      if (ly.markers) for (const m of s.markers) drawMarker(m, t, m.id === sel);
-      if (ly.units) for (const u of s.units) drawUnit(u, t, S);
+      if (ly.movements !== false) for (const m of s.movements) drawMovement(m, t, S, m.id === sel || m.id === hl);
+      for (const al of pings) drawPing(al, t);
+      // Observations replace the legacy markers whenever that layer is on.
+      if (ly.markers && !showObs) for (const m of s.markers) drawMarker(m, t, m.id === sel, named.has(m.id));
+      if (showObs) {
+        const byFresh = [...s.observations].sort((a, b) => Number(a.live) - Number(b.live) || a.freshness - b.freshness);
+        for (const o of byFresh) drawObservation(o, s.t, S, named.has(o.id));
+      }
+      if (ly.units) for (const u of s.units) drawUnit(u, t, S, named.has(u.id));
+      const findPos = (id: string): Vec | undefined =>
+        s.units.find((x) => x.id === id)?.pos ??
+        (showObs ? s.observations.find((x) => x.id === id)?.pos : s.markers.find((x) => x.id === id)?.pos) ??
+        movesById.get(id)?.safetyZone.center ??
+        s.alerts.find((x) => x.id === id)?.pos;
+      if (hl && hl !== sel) {
+        const pos = findPos(hl);
+        if (pos) drawHighlight(w2s(pos.x, pos.y));
+      }
       if (sel) {
-        const u = s.units.find((x) => x.id === sel);
-        const m = u ? undefined : s.markers.find((x) => x.id === sel);
-        const pos = u?.pos ?? m?.pos;
+        const pos = findPos(sel);
         if (pos) drawReticle(w2s(pos.x, pos.y), t);
       }
 
       // HUD readouts (DOM, updated only on change).
       const mpp = CELL_M / S;
-      const len = niceStep(mpp * 90, [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000]);
+      const len = niceStep(mpp * 56, [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000]);
       const key = `${len}|${Math.round(len / mpp)}|${view.z.toFixed(1)}`;
       if (key !== scaleKey) {
         scaleKey = key;
@@ -894,45 +1188,44 @@ export function TacticalMap({ layers, selectedId = null, onSelect, className, mo
       </div>
       <div aria-hidden className="pointer-events-none absolute inset-0 fcc-scanlines opacity-60" />
 
-      {/* Cursor readout + scale bar (top center) */}
-      <div className="pointer-events-none absolute left-1/2 top-3 z-raised flex -translate-x-1/2 items-center gap-3 whitespace-nowrap border border-line bg-ink-950/85 px-2.5 py-1.5 font-mono text-micro uppercase text-bone-mute fcc-num">
+      {/* Cursor readout + scale bar (bottom center; the top edge stays clear for the interrupt banner) */}
+      <div className="pointer-events-none absolute bottom-1.5 left-1/2 z-raised flex max-w-[calc(100%-96px)] -translate-x-1/2 items-center gap-2 overflow-hidden whitespace-nowrap bg-ink-950/70 px-2 py-0.5 font-mono text-nano uppercase text-bone-mute fcc-num">
         <span ref={coordRef} className="text-bone-dim">{`${fmtLat(ORIGIN.lat, 4)} ${fmtLon(ORIGIN.lon, 4)}`}</span>
-        <span className="h-3 w-px bg-line" />
+        <span className="h-2.5 w-px bg-line" />
         <span ref={gridRefEl}>GRID A-01</span>
-        <span className="h-3 w-px bg-line" />
+        <span className="h-2.5 w-px bg-line" />
         <span className="flex items-center gap-1.5">
-          <span ref={scaleBarRef} className="h-1.5 border-x border-b border-bone-dim" style={{ width: 80 }} />
+          <span ref={scaleBarRef} className="h-1 border-x border-b border-bone-dim" style={{ width: 80 }} />
           <span ref={scaleLabelRef} className="text-bone-dim">1 KM</span>
         </span>
       </div>
 
-      {/* North arrow + zoom controls (left center) */}
-      <div className="absolute left-3 top-1/2 z-raised flex -translate-y-1/2 flex-col items-center gap-px">
-        <div aria-hidden className="mb-1.5 grid h-9 w-7 place-items-center border border-line bg-ink-950/90 text-bone">
-          <svg width="14" height="26" viewBox="0 0 14 26" fill="none" className="text-bone">
+      {/* North arrow + zoom controls (compact stack, bottom right) */}
+      <div className="absolute bottom-3 right-3 z-raised flex flex-col items-center gap-px">
+        <div aria-hidden className="mb-1 grid h-8 w-7 place-items-center border border-line bg-ink-950/90 text-bone">
+          <svg width="10" height="20" viewBox="0 0 14 26" fill="none" className="text-bone">
             <path d="M7 1 L12 14 L7 11 L2 14 Z" fill="currentColor" />
             <path d="M7 11 L12 14 L7 25 L2 14 Z" stroke="currentColor" strokeWidth="1" opacity="0.45" />
           </svg>
         </div>
-        <span className="mb-1 font-mono text-micro text-bone-mute">N</span>
-        <button type="button" aria-label="Zoom in" className={btn} onClick={() => api.current?.zoomBy(1.5)}>
+        <button type="button" aria-label="Zoom in" title="Zoom in" className={btn} onClick={() => api.current?.zoomBy(1.5)}>
           <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.25"><path d="M6 1v10M1 6h10" /></svg>
         </button>
-        <button type="button" aria-label="Zoom out" className={btn} onClick={() => api.current?.zoomBy(1 / 1.5)}>
+        <button type="button" aria-label="Zoom out" title="Zoom out" className={btn} onClick={() => api.current?.zoomBy(1 / 1.5)}>
           <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.25"><path d="M1 6h10" /></svg>
         </button>
-        <button type="button" aria-label="Focus active fire" className={btn} onClick={() => api.current?.focusFire()}>
+        <button type="button" aria-label="Focus active fire" title="Focus active fire" className={btn} onClick={() => api.current?.focusFire()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25">
             <circle cx="7" cy="7" r="3.5" />
             <path d="M7 0.5v3M7 10.5v3M0.5 7h3M10.5 7h3" />
           </svg>
         </button>
-        <button type="button" aria-label="Reset view" className={btn} onClick={() => api.current?.reset()}>
+        <button type="button" aria-label="Reset view" title="Reset view" className={btn} onClick={() => api.current?.reset()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25">
             <path d="M1.5 5V1.5H5M9 1.5h3.5V5M12.5 9v3.5H9M5 12.5H1.5V9" />
           </svg>
         </button>
-        <span ref={zoomRef} className="mt-1 font-mono text-micro text-bone-mute fcc-num">1.0X</span>
+        <span ref={zoomRef} className="mt-1 font-mono text-nano text-bone-mute fcc-num">1.0X</span>
       </div>
     </div>
   );
