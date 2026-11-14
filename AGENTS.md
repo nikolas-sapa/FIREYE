@@ -3,10 +3,11 @@
 ## Planning gate
 
 - Read [README](README.md) and [TASKBOARD](TASKBOARD.md) before work.
-- Keep this repository planning-only until the owner approves product scope, numeric test plan, non-goals, simulator fidelity, runtime and source/reuse permissions.
+- Full V1 remains gated until owner approves its scope/tests/non-goals/fidelity/runtime/source permissions. USER-GO-2026-11-14 approved ONLY Convex eventual canonical authority, one teammate simulator producer and the protocol-only first coding PR described in [bounded spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md).
 - Put named tests with numeric pass criteria before the implementation plan. Return architectural changes to the spec for approval.
 - Do not infer application approval from repository, collaboration or scoped authentication setup.
-- Do not add application source, package manifests, dependencies, database/schema migrations or CI configuration during this planning lane.
+- Approved exception: claimed pure `backend/protocol/**`, `backend/state/**`, `backend/tests/**` plus isolated `backend/package.json`, `package-lock.json`, `tsconfig.json`, `.gitignore`; Node >=24, native Node tests, dev-only TypeScript 5.9.3 and @types/node 24.10.1. Follow the [four-task RED/GREEN plan](docs/superpowers/plans/2026-11-14-backend-protocol.md). No other application/dependency/CI/database/provider scope unlocked.
+- No Convex SDK/provisioning/live server, provider calls, deployment, real auth implementation, physics or `proposal/**` edits in this slice. Separate trusted ActorContext from body actor fields; local CAS tests are not distributed transaction proof. Producer loss freezes until explicit reconciled takeover.
 
 ## Ownership and integration
 
