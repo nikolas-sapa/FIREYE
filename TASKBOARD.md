@@ -1,141 +1,206 @@
 # Fire Command Center shared taskboard
 
-Snapshot: 2026-11-14, Europe/Athens. This repository board is the shared truth for future task claims and status updates. It preserves the 37 original task identities, adds 3 setup cards and updates stale administrative facts. The earlier local board remains an untouched historical snapshot.
+Snapshot: 2026-11-14, Europe/Athens. Preserve 44 planning task IDs plus PROP-01 (45 total on this proposal branch). Separate research/admin receipts, submitted source and verified product milestones. [Brief](README.md) · [Rules](AGENTS.md) · [Parameter DRAFT/numeric cases](docs/specs/simulator-parameter-contract.md).
 
-41 cards: 14 done, 1 draft-ready, 1 active, 9 owner-action, 13 gated, 3 deferred. Application implementation completed: 0. New private repositories created: 1. “Done” below includes completed research/admin work, not a built application.
+## Completion dashboard
 
-[Brief and non-goals](README.md) · [Resident collaboration rules](AGENTS.md)
+- **Product implementation estimate: ~30%, plausible range 25–40%.** Provisional static source coverage of bounded V1 below, not measured readiness. Submitted UI/local world/fire/weather/synthetic feeds/scripted proposals/replay provide foundation. Authority, honest evidence/projection, delivery/energy faults, genuine providers, tests and integration remain incomplete/absent. No earned milestone credit without runnable receipts.
+- **Verified product acceptance: 0/13 P0 cards complete, 0% independently verified V1 numeric acceptance.** No product card checked. Isolated build/typecheck independently passed on pinned PR2 source; author screenshots remain unverified. These are foundation checks, not V1 numeric acceptance.
+- **Research/admin/draft checkbox ratio: 18/44 = 40.9%, not project completion.** Research/admin partition: 18/28 checked = 64.3%; 13 gated product + 3 deferred cards form remaining 16. Equal weights apply only to administrative ratios.
+- **45 cards:** 18 done, 1 draft-ready, 1 active (PROP-01), 9 owner-action, 13 gated, 3 deferred. REF-01/PARAM-01 done as published **unapproved documents**, not app features. Administrative ratios above retain the original 44-card planning denominator.
+- Private [draft PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1): planning at cba56a4, main bootstrap 053ff54 unchanged. This board delta awaits coordinator delivery. [Draft PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), author marcseli, source 6bdb58843a33a70806ff9ca053407d57926ac6aa: submitted prototype, **not adopted/merged**. Independent isolated Node 26.11.1/npm ci --ignore-scripts/build/typecheck passed at pinned head; no V1/provider/shared-client/browser-perf acceptance. GitHub CI/check receipts 0.
+- This proposal branch reconciles the TASKBOARD-only conflict with planning commit `722b04f`, preserving its 44 IDs plus PROP-01 (45 total). This is branch maintenance, not product adoption or permission to merge.
 
-Working submission target: Sunday 2026-11-15, 18:00 Athens. Actual portal, organizer-confirmed deadline, required artifacts and video limit still need confirmation. The proposed 90-second story is not an organizer limit.
+PR2 uses Vite 5/React 18/strict TypeScript/Tailwind 3/Cesium, Node ≥22, real dev/build/typecheck/preview scripts. No test script, CI or backend. ConsoleProvider/runtime/world/director/StageArea/evidence/feed UI is locally wired; WebSocket adapter is built **unwired**, 0 connector calls. Store reads simulator snapshots, not a received-event reducer. Backend-contract prose overstates reducer/command-sink implementation. Static audit flags high-risk autoapproval, cosmetic battery, future-ground-truth projection and Inter/orange theme. **0 genuine Google/Iris/fal/Treg product calls.** Independent isolated build/typecheck passed, not browser/evidence/approval/fault validation. Earlier “no app code exists” prose is stale for PR2, still true of main/planning delta; do not edit another owner's files to hide discrepancy.
 
-## Scope and approval boundary
+## Scope, gate and non-goals
 
-Candidate: incident intelligence for firefighters/first responders. Firecrawl retrieves recent web news/articles; open satellite imagery, authorized ground/relevant public social video, weather API data and terrain provide additional typed inputs. Analysts surface unverified humans/animals/vulnerable objects/possible fuel hazards. A projection agent models possible paths; the orchestrator fuses relative area danger (including terrain, houses and animals) and proposes drone/ground-team placement for human review. Execution is simulated, not field orders.
+Bounded V1 candidate: small human crew, shared received Map + dedicated Camera Room, role presets, ranked PIP feeds/replay. **Every simulated drone has a thermal camera**; contract/observations/backend are root-owned, simulator/render/feed UI teammate-owned. EO may be an optional second channel. Chief approves collection scope and revised simulated ground placement. Distinguish proposed/approved/sent/delivered/accepted/completed. Wind/terrain-shadow blackout preserves last-known state, reserve and reconciled rejoin. Weather/terrain inform explicitly relative toy fire projections, not operational forecasts.
 
-Greece 3D mountains/forest/smoke/weather/comms simulation remains a candidate. Exact region, bounded prototype scope, full PX4 versus browser fidelity, runtime/database/dependencies, Google/Iris routes and cloud logical contexts versus actual edge inference are not selected. fal credit readiness is owner-reported, not API-call verified. No application code, copied components, provider inference or deployment is claimed by this planning PR.
+Actual analysis candidate: labelled synthetic exercise media, hidden planted person/canister/dry-brush truth; models inspect pixels, never answer metadata. Every drone thermal feed must have feed_id/modality, acquisition versus receipt clocks and explicit synthetic/real/radiometric/calibration status. False-color simulation is not measured temperature or thermal detection proof; no invented temperature/range/confidence. Must verify Google/fal thermal support before selecting task; Iris ranks by actual modality/capability. Google orchestrates, Iris ranks finite feasible choices if access ready; fal Florence/video-understanding/SAM analysis selection pending. Treg is a tool registry/source retrieval, not model router. Boxd CPU jobs bounded/disabled pending budget, 0 VMs. Provider outage must preserve deterministic fallback.
 
-Architecture draft exists outside this repository, updated to this brief but unapproved. All open-card acceptance numbers are proposed targets, not measured results. Test plan must precede implementation plan; explicit non-goals and permissions/reuse gates remain mandatory.
+North Evia/Greek data is a candidate; existing PR2 Caldor is placeholder, not silently replaced. Region/fidelity/fixture (proposed 2 bases/4 drones/2 fires/2 vehicles), runtime/authority/providers/spend/sources/tests require adoption. Parameter DRAFT: 14 proposed numeric tests; latest external MVP/UI draft: 14 MVP tests; architecture draft: 17. Different unapproved documents, not passed tests. Architectural changes return to spec approval.
 
-Prior [wildfire-sweep](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3c9), baseline `66bb3c9` (2026-11-10), is pre-event research. Frozen outputs remain untouched. Reuse needs source files/commits, licenses, notices, attribution and an honest prior/adapted/new-work split.
+Non-goals: real aircraft/vehicle control, field orders/public alarms, validated identification/fire forecast/safe placement, full PX4/rotor/controller training, local Gemma/on-device claims, unlimited ingestion/autoscaling, unauthorized provisioning/paid calls/undisclosed reuse. Optional internal voice **output** needs defined threshold/ack/mute/cooldown; input/resident view deferred. Prior [wildfire-sweep 66bb3c9](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3c9) pre-event/frozen/untouched; reuse requires file/commit/license/notices and prior/adapted/new split.
 
 ## Current ownership claims
 
-| Lane | Accountable owner | Branch / exact file boundary |
+| Lane | Owner | Branch / exact boundary |
 |---|---|---|
-| Shared planning receipts | Planning docs worker | `chore/hackathon-planning`: `TASKBOARD.md` and ignored `.scratch/planning-pr-body.md` only; other planning files already published |
-| Repository delivery | Git specialist | Git/GitHub operations only on the planning branch; explicit approved paths, coordinator review before integration |
-| Scoped backend setup | Backend setup agent, coordinator supervised | Local Boxd/Treg auth/config only, outside this repository; exact private paths belong in the setup handoff, no repository file claim |
-| Teammate application work | Unassigned, GitHub handle unknown | No app files or branch claimed; invitation and file ownership still pending |
-| FCC console proposal (PROP-01) | marcseli (Droid agent) | `proposal/fcc-console`: `proposal/**` only, plus this claim row and card PROP-01. Submitted for owner review; not merged into `main` |
+| Board/coworking documentation | /root/detailed_taskboard_update, USER-OWN-2026-11-14 coordinator reassignment | chore/hackathon-planning: TASKBOARD.md, AGENTS.md, ignored .scratch/taskboard-pr-body.md only; no app/Git writes |
+| REF-01 published source | /root/visual_catalog_github, lane finished | chore/hackathon-planning: docs/references/operational-clarity-supplied.md, docs/references/operational-clarity-index.md |
+| PARAM-01 published DRAFT | /root/simulator_parameter_contracts, lane finished | chore/hackathon-planning: docs/specs/simulator-parameter-contract.md |
+| Design/simulator/frontend | Frontend/simulator teammate (PR2 author marcseli; identity pending) | proposal/fcc-console: proposal/fcc/** exclusively, including runtime/store/sim/render/assets/package-lock; other proposal/** preserved |
+| Architecture/data/backend/agents/integration | Coordinator/root lane, USER-OWN-2026-11-14 | Future backend/**, docs/contracts/**, docs/data/**, docs/architecture/**; no edits to teammate app code |
+| Thermal/crew interface planning | /root/thermal_camera_contracts, coordinator claimed | chore/hackathon-planning: docs/contracts/thermal-camera.md, docs/contracts/crew-agent-boundaries.md ONLY; claimed planning responsibility, source pending, app cards gated |
+| Git delivery | Authorized Git specialist/coordinator | Explicit approved planning paths only, review before integration; no blanket staging |
+| Local setup | Supervised backend setup agent | Boxd/Treg auth outside repo; no application/provider inference implied |
+| FCC console proposal (PROP-01) | marcseli (Droid agent) | `proposal/fcc-console`: `proposal/**` only, plus this claim row/card and conflict reconciliation. Submitted for owner review; no main merge |
 
-No application role below is assigned. App file boundaries will be set in the approved spec. Any later worker must claim a task, exact files and branch before coding.
+**Functional ownership confirmed, exact future app-file claims still gated.** Frontend/simulator teammate (PR #2 author marcseli, identity confirmation pending) owns design + ALL proposal/fcc/**, including world/runtime/store/adapters/camera render/assets/frontend lock. Coordinator/root owns architecture/data/backend/agents/integration: future backend/** plus docs/contracts/**, docs/data/**, docs/architecture/**. Root never edits teammate app files; teammate consumes versioned root contracts. Frontend lock: teammate; future backend lock/schema: root; shared CI/integration: coordinator, exactly one active owner per file. Listed future backend/document paths are candidates, not stack approval; claim exact files/branch before application edits. Teammate identity confirmation does not undo assigned functional ownership.
 
-## Done research and administration
+## Product milestones, prospective weights
 
-- [x] D01 · P0 · Status: done · Kickoff rules and project intake
-  - Owner: coordinator. Receipt: 1 rules/intake review completed; 0 implementation approvals inferred.
-- [x] D02 · P0 · Status: done · Prior-repo provenance
-  - Owner: coordinator. Receipt: 1 prior repository and 1 baseline commit identified; 0 components copied.
-- [x] D03 · P0 · Status: done · Architecture options
-  - Owner: coordinator. Receipt: 1 browser/heavier-simulation and agent-boundary options pass completed; 0 options approved.
-- [x] D04 · P0 · Status: done · Proposed 90-second demo outline
-  - Owner: coordinator. Receipt: 1 new-work/fallback story prepared; 0 claims that 90 seconds is the organizer's limit.
-- [x] D05 · P0 · Status: done · Google, Iris and fal role research
-  - Owner: coordinator. Receipt: 3 provider roles reviewed; 0 live inference runs or final provider selections claimed.
-- [x] D06 · P0 · Status: done · Weather retrieval boundaries
-  - Owner: coordinator. Receipt: 1 retrieval/projection distinction recorded, including timestamp/unit/source requirements; 0 validated forecast claims.
-- [x] D07 · P0 · Status: done · OSS rendering and SDK options
-  - Owner: coordinator. Receipt: 1 license-aware rendering/SDK review completed; 0 dependencies chosen or components imported.
-- [x] D08 · P0 · Status: done · Command-center visual references
-  - Owner: coordinator. Receipt: 2 reference families reviewed (Anduril/Palantir); current Anduril mission cycle checked. One-screen UI draft refined with objective/rehearsal strip and debrief, still outside this repository and unapproved. 0 copied branding or approved prototype/UI choices.
-- [x] D09 · P0 · Status: done · Fact-check and provenance workflow
-  - Owner: coordinator. Receipt: 1 attribution/new-work workflow defined; 0 fabricated milestones.
-- [x] D10 · P0 · Status: done · Original taskboard document
-  - Owner: original board writer. Receipt: 1 historical board with 37 unique tasks prepared and structurally checked; that receipt is not application implementation.
-- [x] A02 · P0 · Status: done · Local Google instructions and Oumi registration draft
-  - Owner: setup research role. Receipt: all 8 pages of local organizer instructions read; 1 registration abstract written and verified at 1,137 characters. No Google/Oumi account registration or API calls; access confirmation remains pending. No credentials/private account details copied into shared docs.
-- [x] O02 · P0 · Status: done · New-repo identity and creation
-  - Owner: Nikolas, Git specialist. Receipt: `nikolas-sapa/fire-command-center`, private visibility and new project location chosen; private repo created and fresh planning branch checked. No old-repo mutations or application code implied.
+Weights total 100% of proposed bounded V1, exclude research/admin/deferred scope. Priorities for later verified tracking, not automatically earned progress or selected architecture.
+
+| Reviewable milestone | Weight | Cards / next dependents |
+|---|---:|---|
+| M1 Adopt/reconcile spec + runnable PR2 foundation | 10% | P0-01/P0-12 → M2–M9 |
+| M2 Contracts, sole authority, two-client approval | 15% | P0-02/P0-10 → M3/M4/M6/M7 |
+| M3 Honest evidence/clocks/weather/projection/map fade | 12% | P0-03/P0-04/P0-08 → M5/M6/M7 |
+| M4 Delivery/loss/rejoin/routes/reserve | 15% | P0-05/P0-06/P0-10 → M6/M9 |
+| M5 Source/sample-media ingestion + genuine analysis | 12% | P0-07/P0-08 → M6/M9 |
+| M6 Validated Google/Iris adapters + cheap fallback | 10% | P0-07/P0-10 → M7/M9 |
+| M7 Camera Room/ranked PIP/role presets/replay | 12% | P0-09 → M9 |
+| M8 Simple Geist/blue theme, optional alert output | 4% | P0-09, voice opt-in only → M9 |
+| M9 Integration/CI/perf/fresh demo/access/submission | 10% | P0-11/P0-12/P0-13; O04/O05/O07–O09 |
 
 ## Active proposal
 
 - [ ] PROP-01 · P0 · Status: active · FCC console proposal for owner review
-  - Owner: marcseli with Factory Droid agent. Branch: `proposal/fcc-console`. Files: `proposal/**` (app in `proposal/fcc/`, `proposal/HANDOFF.md`, `proposal/AGENT_PROTOCOL.md`). Receipt: `npm run build` in `proposal/fcc` passes with 0 TypeScript errors; 6 demo beats screenshot-reviewed at 1920 × 1080 on a MacBook (darwin 25.2), Chromium headless, seed 20210816, run 2026-11-14. The team's numeric acceptance tests have not been run. Execution is simulated; 0 provider inference calls. Pushed with marcseli's explicit instruction ahead of the planning gate; adoption, merge and architecture approval remain with Nikolas (O01). Agent messages follow `proposal/AGENT_PROTOCOL.md`.
+  - Owner: marcseli with Factory Droid agent. Branch: `proposal/fcc-console`. Files: `proposal/**`, this claim/card and planning-conflict reconciliation only. REV D adds Mati reconstruction, dual themes, prototype DEM/fuel/weather spread and prediction checks. Timed high-risk demo approvals removed; all high-risk drafts require clicks. `node scripts/check-console.mjs` passes both 190 s tours, six beat jumps, one-click approval isolation and future-fire independence; 1 maximum Z0. `npm run build` passes. This does not pass the team's unapproved V1 tests, multi-client authority, thermal-camera contract or real-provider gates. Stage visual integration remains under validation. 0 provider inference calls. User authorized this proposal ahead of the planning gate, not adoption/main merge. See `proposal/HANDOFF.md` and `proposal/AGENT_PROTOCOL.md`.
 
-## Drafting and setup
+## Completed research/admin, never product credit
 
-- [ ] A01 · P0 · Status: draft-ready · Latest architecture draft, approval pending
-  - Owner: architecture draft writer, coordinator review. Scope: architecture note outside this repository only. Receipt: latest incident-intelligence draft written with 16 named proposed numeric tests and non-goals. Completion gate: 1 owner-approved product/fidelity/runtime decision set and test plan; draft is not an approved implementation spec.
-- [x] SETUP-01 · P0 · Status: done · Publish shared planning board and governance
-  - Owner: planning docs worker; delivery by Git specialist. Receipt: 4 reviewed planning files published at `59ee562` in private [draft PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1); all 4 remote file blobs verified exactly, main unchanged. 37 original IDs plus 3 setup cards preserved; local links checked; 0 app source or credential artifacts included. Later receipt updates still require Git-specialist delivery.
-- [x] SETUP-03 · P0 · Status: done · Scoped local backend access setup
-  - Owner: backend setup agent, coordinator supervised. Receipt: Boxd v0.3.5 live authentication verified behind a read-only guard; Treg v0.30.0 scoped authentication and CLI identity verified for the intended team. Private local configuration stays outside this repository, directories `0700` and files `0600`. Unsafe onboarding rerun skipped. 0 global MCP/skill/model-routing changes, paid model calls or VM creation. Authentication checks do not verify application/provider inference; no private paths, balances, team IDs or credentials published.
+- [x] REF-01 · P0 · done, published source DRAFT · Reference lane: both complete essays archived at cba56a4, [index](docs/references/operational-clarity-index.md) covers 9 retrieved resources/179 raw URL occurrences, not verified full catalog; 0 media imports/app approval.
+- [x] PARAM-01 · P0 · done, published unapproved DRAFT · Parameter lane: [contract](docs/specs/simulator-parameter-contract.md) at cba56a4, 14 numeric cases/20 parameters/7 records/10 edge classes, 0 executable schema/test passes.
+- [x] SPEC-01 · P0 · done · Coordinator: latest external MVP-SPEC-DRAFT.md (103 lines/14 proposed tests), SIMPLE-UI-DRAFT.md (71 lines), refinement only, 0 adoption/runtime selection.
+- [x] PROVIDER-01 · P0 · done · Coordinator: 3 fal analysis schemas researched, SAM separate, Treg role clarified; credits reported/access unverified; pasted Oumi abstract is not submission.
+- [x] D01 · P0 · done · Coordinator: 1 kickoff/intake review, 0 implementation approvals.
+- [x] D02 · P0 · done · Coordinator: 1 prior repo/baseline identified, 0 imports.
+- [x] D03 · P0 · done · Coordinator: 1 architecture/options pass, 0 choices adopted.
+- [x] D04 · P0 · done · Coordinator: 1 proposed 90-second story, 0 organizer-limit claims.
+- [x] D05 · P0 · done · Coordinator: 3 provider roles researched, 0 inference receipts.
+- [x] D06 · P0 · done · Coordinator: 1 weather retrieval/projection boundary, 0 validated forecasts.
+- [x] D07 · P0 · done · Coordinator: 1 licensing/rendering/SDK options pass, 0 dependency selection.
+- [x] D08 · P0 · done · Coordinator: 2 reference families/UI draft reviewed, 0 adopted design/copied branding.
+- [x] D09 · P0 · done · Coordinator: 1 provenance/new-work workflow, 0 fake milestones.
+- [x] D10 · P0 · done · Original writer: 37-ID historical board checked, remains untouched.
+- [x] A02 · P0 · done · Setup research: 8 organizer pages read, latest crew-updated 1,417-character abstract supplied/pasted; 0 actual registration/API receipts.
+- [x] O02 · P0 · done · Nikolas/Git specialist: 1 new private repo, 0 old-repo mutations.
 
-## Owner actions
+## Draft and owner actions
 
-- [ ] O01 · P0 · Status: owner-action · Approve design and numeric test plan
-  - Owner: Nikolas. Acceptance: 1 explicit approval covering latest product boundary, simulator fidelity, region/fixture, cloud-logical versus edge cognition, provider roles, test criteria and non-goals; 0 silent architecture choices.
-- [ ] O03 · P0 · Status: owner-action · Choose Greece demo region
-  - Owner: Nikolas. Acceptance: 1 named region and 1 approved map extent; no country-wide fidelity implied.
-- [ ] O04 · P0 · Status: owner-action · Confirm every teammate's Oumi registration
-  - Owner: each teammate, Nikolas coordinates. Use [official Oumi registration](https://labs.oumi.ai/hackathon-village/genai-summit-athens-2026). Acceptance: registered count equals confirmed team size; access status recorded for 100% of teammates, with no credentials copied here.
-- [ ] O05 · P0 · Status: owner-action · Confirm provisioned Google access
-  - Owner: Nikolas/team. Follow organizer instructions through private access channels. Acceptance: 1 provisioned project and 1 approved API/access route confirmed; status only, no login addresses, keys or auth bundles on this board. Credential presence alone does not pass.
-- [ ] O06 · P0 · Status: owner-action · Select UI reference and authorized assets
-  - Owner: Nikolas. Acceptance: 1 reference direction plus asset/source/license choices, following Geist Sans and blue `#006bff`, no orange/emoji. Reference selection does not assign frontend ownership or approve app implementation. No further deck research required.
-- [ ] O07 · P0 · Status: owner-action · Confirm submission mechanics
-  - Owner: Nikolas/organizer. Acceptance: 1 actual submission URL, 1 confirmed deadline/video limit and 1 required-artifact checklist before the working deadline.
-- [ ] O08 · P0 · Status: owner-action · Approve disclosed reuse and source permissions
-  - Owner: Nikolas, organizer clarification if needed. Acceptance: 1 approved manifest covers 100% of proposed reused files/assets and source permissions; licenses/notices/attribution retained; 0 hidden or backdated prior work.
-- [ ] O09 · P0 · Status: owner-action · Confirm applicable entry and reuse terms
-  - Owner: Nikolas/organizer. Acceptance: 1 current confirmation or “not applicable” decision for any remaining entry/reuse condition. Keep personal eligibility and account details in private channels, not this shared board.
-- [ ] SETUP-02 · P0 · Status: owner-action · Identify and invite teammate
-  - Owner: Nikolas; Git specialist performs only explicitly authorized invitation. Acceptance: 1 confirmed GitHub handle, 1 authorized invite and accepted collaboration access; 1 agreed task/branch/exact-file claim before teammate edits. Unknown handle remains unassigned.
+- [ ] A01 · P0 · draft-ready · Architecture writer/coordinator: external DRONE-ARCHITECTURE-DRAFT.md, 17 proposed tests/13 failure cases/non-goals; needs 1 aligned owner approval, not draft existence.
+- [x] SETUP-01 · P0 · done · Docs/Git specialist: initial 4 planning files at 59ee562 remote-blob checked; later docs cba56a4/draft PR1, not app milestone.
+- [x] SETUP-03 · P0 · done · Supervised setup: Boxd/Treg scoped read-only auth verified, private configs outside repo, 0 VMs/paid calls/global routing changes; unsafe onboarding rerun skipped.
 
-## Approval-gated P0
+Next owner decisions (3): **(1)** adopt/adapt PR2 versus rebuild, written V1/region/test/source choices; **(2)** confirm marcseli identity and exact-file handoffs within already assigned teammate/root lanes; **(3)** confirm Oumi/Google access and bounded provider/Boxd budget privately. No keys/login addresses here. Organizer submission confirmation still pending.
 
-All 13 cards remain gated, roles unassigned. Dependencies below describe approval/work boundaries, not permission to start. Proposed fixture numbers are not selected architecture or performance evidence.
+- [ ] O01 · P0 · owner-action · Nikolas: 1 explicit foundation/scope/fidelity/authority/provider/test/non-goal decision set, unlock P0-01/P0-12.
+- [ ] O03 · P0 · owner-action · Nikolas: 1 region/extent, Caldor placeholder versus Greece case, unlock P0-03/P0-04/P0-08.
+- [ ] O04 · P0 · owner-action · Team/Nikolas: registered count = confirmed team size, 100% Oumi access statuses; abstract is 0 receipts.
+- [ ] O05 · P0 · owner-action · Team: 1 provisioned Google project/authorized route verified privately; credential presence fails; unlock real P0-07.
+- [ ] O06 · P0 · owner-action · Nikolas: 1 approved direction/assets, Geist/#006bff/no orange/no emoji, unlock theme P0-09.
+- [ ] O07 · P0 · owner-action · Nikolas/organizer: 1 portal/deadline/video-limit/artifact checklist. Working target 2026-11-15 18:00 Athens unconfirmed; 90 seconds proposed story only.
+- [ ] O08 · P0 · owner-action · Nikolas: 1 file-level source/reuse manifest, 100% selected files/assets licensed/attributed, 0 hidden/backdated work.
+- [ ] O09 · P0 · owner-action · Nikolas/organizer: 1 entry/reuse-terms confirmation or not-applicable decision, personal details private.
+- [ ] SETUP-02 · P0 · owner-action · Nikolas/authorized Git specialist: 1 confirmed handle, authorized/accepted invite if needed, task/branch/files agreed; PR author ≠ confirmed identity/invite. Functional frontend/simulator/design ownership already assigned, not blocked by name.
 
-- [ ] P0-01 · P0 · Status: gated · Freeze approved spec, tests and reuse manifest
-  - Owner: spec/review role, unassigned. Requires: latest draft, owner approval and reuse/source choices. Acceptance: at least 16 named numeric tests; 1 approved spec with non-goals; 1 manifest covering 100% of reused files/assets; 0 mid-plan architectural substitutions.
-- [ ] P0-02 · P0 · Status: gated · Typed contracts and verification pipeline in new repo
-  - Owner: contracts/pipeline role, unassigned. Repo already exists; contracts and CI do not. Requires: approved spec and single-owner file claims. Acceptance: typed evidence/proposal/world/action/event contracts and 1 passing approved pipeline; 100% copied files attributed; 0 prior-repo mutations. Runtime/schema/dependencies remain unchosen.
-- [ ] P0-03 · P0 · Status: gated · Seeded world and incident fixtures
-  - Owner: simulation role, unassigned. Requires: approved contracts, region and simulator choice. Proposed acceptance: 2 bases, 4 drones, 2 fires, 16 observation regions and 2 synthetic ground-team markers; 3/3 identical-input runs yield identical event/state hashes; models never write simulation truth.
-- [ ] P0-04 · P0 · Status: gated · Toy environment, fire and smoke
-  - Owner: environment role, unassigned. Requires: approved world/parameters. Proposed acceptance: 10 seeds × 600 ticks, 0 NaN/Infinity or out-of-range state values; 100% parameter boundaries covered; every path/fire/smoke layer labelled simulated, not calibrated forecasting.
-- [ ] P0-05 · P0 · Status: gated · Drone battery, routes and missions
-  - Owner: drone executor role, unassigned. Requires: approved world/flight bounds. Proposed acceptance: 40/40 infeasible route/energy cases rejected; all 4 baseline drones respect selected battery/separation bounds; 0 overlapping assignments or false return/completion claims.
-- [ ] P0-06 · P0 · Status: gated · Transport, line of sight, ACK and retry
-  - Owner: transport role, unassigned. Requires: approved executor/message contracts. Proposed acceptance: 100 unique commands with 30% loss, 20% duplicate injection and 0–8-second latency; 0 false acceptance ACKs, duplicate executions or stale telemetry overwrites; retries bounded by approved limits. ACK is never completion.
-- [ ] P0-07 · P0 · Status: gated · Typed analysis, fusion and reviewed proposals
-  - Owner: agent integration role, unassigned. Requires: approved evidence/proposal contracts, source permissions and provider access/budget. Proposed acceptance: 24 invalid/stale outputs rejected with 0 dispatches; unverified detections retain source/geo/time/uncertainty; at least 2 genuine authorized provider decisions, including 1 typed-analysis and 1 finite-action receipt if Google/Iris roles are selected. No invented provider route or unrestricted source-driven tools.
-- [ ] P0-08 · P0 · Status: gated · Evidence, weather, projection and relative danger layers
-  - Owner: evidence/weather/projection role, unassigned. Requires: selected region, source permissions and spec. Proposed acceptance: 20 weather fixtures with 0 invalid inputs accepted and 100% accepted units/time/source retention; 24 missing-geo/contradiction/stale/injection fixtures with 0 exact placements from missing geography, erased contradictions or executed source instructions. Relative danger/path outputs remain unvalidated prototypes.
-- [ ] P0-09 · P0 · Status: gated · 3D command-center UI
-  - Owner: frontend role, unassigned. Requires: approved design/assets, contracts and module claim. Proposed acceptance: all 4 drones/2 bases visible; sourced-evidence, relative danger/path, unverified exposure, review and event layers; 2 checked viewport screenshots. Target average ≥30 FPS and p95 frame time ≤33 ms at 1920×1080 on a named machine, measured later, not achieved now.
-- [ ] P0-10 · P0 · Status: gated · Fault reconciliation and replanning
-  - Owner: resilience role, unassigned. Requires: reviewed transport/agent/UI contracts. Proposed acceptance: 12 documented fault classes pass; 0 false completions or stale approvals reused; 10/10 simulated ground placements require matching current human approval; 0 actual ground-team orders. Numeric convergence limits must be approved in spec.
-- [ ] P0-11 · P0 · Status: gated · Integration, security and visual/performance verification
-  - Owner: verification/review roles, unassigned. Requires: integrated candidate and approved tests. Acceptance: 100% applicable named tests pass; 0 blocking review findings; at least 1 non-mocked external/dist check per integration package; genuine provider receipts distinguished from replay; 2 checked screenshots; proposed 10-minute 1080p average ≥30 FPS/p95 ≤33 ms measured on named machine. Untested is not done.
-- [ ] P0-12 · P0 · Status: gated · Genuine working PR milestones and new-work receipts
-  - Owner: delivery/review roles, unassigned. Requires: approved spec, ownership and working changes; final closure requires verification. Proposed acceptance: at least 3 independently working milestone PRs with test receipts, count subject to approval; 100% reuse attributed; 0 fake/backdated progress history. This planning PR is not a working application milestone.
-- [ ] P0-13 · P0 · Status: gated · Demo, backup video and submission
-  - Owner: demo/submission role, unassigned; Nikolas submits. Requires: verified candidate, new-work receipts and confirmed submission/entry rules. Acceptance: 1 fresh-session demo, 1 fallback recording within actual organizer limit and 1 submission receipt before confirmed deadline; visibly distinguish prototype/synthetic/recorded/live and prior/new work.
+## Detailed build cards, all gated
 
-## Deferred scope
+Evidence: static PR2 audit at 6bdb5884 + independent isolated build/typecheck PASS (Node 26.11.1/npm ci --ignore-scripts), **not V1 acceptance**. Each card has 6 ordered checkpoints: named RED cases → minimal implementation → GREEN → review → integrate → proof. None checked. Candidate paths require spec/author reconciliation before claim. E01–E10/P11–P14 refer to parameter DRAFT; numeric targets remain proposed.
 
-- [ ] P1-01 · P1 · Status: deferred · Push-to-talk voice commands
-  - Owner: voice/UI role, unassigned. Requires: core P0 verification and owner opt-in. Proposed acceptance: 10 ambiguous commands yield 0 unconfirmed simulated dispatches; 1 explicit push-to-talk control; 0 always-listening or validator-bypass paths.
-- [ ] P1-02 · P1 · Status: deferred · Optional fal exercise media
-  - Owner: media role, unassigned. Credits owner-reported ready; task/model/API contract and real access unverified. Requires: meaningful approved media task, permissions and owner opt-in. Proposed acceptance: at least 1 labelled synthetic asset, 100% provenance/license records, 0 generated imagery promoted to real incident evidence.
-- [ ] P2-01 · P2 · Status: deferred · Resident read-only view
-  - Owner: frontend/access role, unassigned. Requires: core P0 verification and owner opt-in. Proposed acceptance: 1 read-only view, 10 attempted mutations rejected, 0 fleet commands or automatic public alarms; any reports remain moderated/unconfirmed evidence.
+- [ ] P0-01 · P0 · gated · Adopt spec/tests/manifest. Owner: Coordinator/root architecture/spec/review lane. Evidence: drafts documented, adoption **absent**. Depends O01/O03/O06/O08/O09 → every build card. Candidate: docs/architecture/v1-approved.md, docs/data/reuse-manifest.md, TASKBOARD.md (coordinator lane).
+  - [ ] RED S01: 100% approved requirements mapped to named numeric cases, 0 unresolved architecture choices/undisclosed imports; missing-map fixture fails before impl plan.
+  - [ ] Minimal: reconcile drafts/PR2, selected scope/non-goals/authority/providers, pin source licenses/attribution.
+  - [ ] GREEN S01: 1 aligned owner-approved spec + 1 complete manifest; runtime cases stay unrun.
+  - [ ] Review: owner/coordinator, 0 silent architecture substitutions/unsupported readiness claims.
+  - [ ] Integrate: reviewed planning PR, agreed file ownership; no inferred app approval.
+  - [ ] Proof: approval/date/spec hash/manifest receipt, 100% adopted/deferred requirements visible.
+- [ ] P0-02 · P0 · gated · Contracts/validators/sole authority/CI. Owner: Coordinator/root backend/contracts/CI lane; teammate consumes frontend interface. Evidence: typed domain **built**, isolated typecheck/build **passed**, reducer/command semantics **absent**, WebSocket **unwired**, CI **absent**. Depends P0-01/P0-12 → P0-03/P0-06/P0-07/P0-09/P0-10. Candidate: backend/contracts/events.ts, backend/authority/session.ts, backend/authority/approval.ts, backend/transport/websocket.ts, backend/package.json, backend/package-lock.json, .github/workflows/verify.yml (new stack still gated); proposal/fcc/** consumers/lock teammate-only.
+  - [ ] RED C02/E02: 2 clients/20 approval races → 1 winner each; 20 old-owner approvals → 0 accepts; 24 malformed/cross-run events → 0 mutations.
+  - [ ] Minimal: root backend schema/reducer/compare-and-commit + versioned interface; teammate wires frontend transport/store, root never edits it; approved test scripts/CI.
+  - [ ] GREEN C02: same authoritative version 20/20 trials, 10 local view changes affect 0 peer selections; real dist imports checked.
+  - [ ] Review: contracts/TS/security, 0 blockers; backend prose matches actual reducer/command behavior.
+  - [ ] Integrate: single schema/lock/CI owner, 100% signature call sites updated, approved foundation only.
+  - [ ] Proof: commit/CI receipt/2-client race traces, not socket-open/mock-only success.
+- [ ] P0-03 · P0 · gated · Seeded editable world/fixtures. Owner: Frontend/simulator teammate. Evidence: Caldor world/units **builtwired/unverified**, proposed fixture/editor **absent**. Depends P0-01/P0-02/O03 → P0-04/P0-05/P0-08/P0-09. Candidate: teammate-only proposal/fcc/** world/scenario/parameter modules, exact existing paths teammate claims; root docs/architecture/simulator-boundary.md, docs/contracts/world-observation.md only.
+  - [ ] RED W03/E01: exact approved fixture (candidate 2/4/2/2), 10 seeds × 600 ticks × 2 runs → identical canonical hashes, 0 model writes to truth.
+  - [ ] Minimal: teammate builds bounded world/editor/presets/thermal camera simulator; root defines coordinate/observation contracts, hidden test truth separate.
+  - [ ] GREEN W03: 100% boundaries tested, 0 NaN/Infinity/out-of-tile states; pause/reset logged, 0 skipped ticks.
+  - [ ] Review: simulation/source, 0 unsupported reconstruction/fidelity; Caldor/Evia choice explicit.
+  - [ ] Integrate: approved contracts/region/manifest, reconcile author world modules, pin scenario version.
+  - [ ] Proof: seeds/input/scenario/final hashes + machine/run date, not source existence.
+- [ ] P0-04 · P0 · gated · Toy terrain/weather/fuel/fire/smoke. Owner: Frontend/simulator teammate, root data/architecture contract support. Evidence: Caldor layers/cached weather **builtwired/unverified**. Depends P0-03/O03/O08 → P0-05/P0-08. Candidate: teammate-only proposal/fcc/** environment/fire/smoke/render, exact paths teammate claims; root docs/data/case-manifest.md, docs/contracts/weather.md.
+  - [ ] RED W04/E01/E09: 10 seeds × 600 ticks → 0 non-finite/out-of-bounds states; 20 weather fixtures → 0 invalid accepts, RH 0/100 accepted.
+  - [ ] Minimal: teammate toy wind/moisture/slope/fire/smoke controls; root supplies documented source units/epoch/terrain-fuel proxies, no frontend edits.
+  - [ ] GREEN W04: 100% accepted weather source/units/time/geo retained, 0 reanalysis called as-issued forecast, all layers simulated/relative.
+  - [ ] Review: weather/source, 0 fire/RF/safety calibration or future burn-context leaks.
+  - [ ] Integrate: approved world bounds only, no silent dataset/dependency substitution.
+  - [ ] Proof: manifest/6,000-tick state checks/assumptions, screenshots alone insufficient.
+- [ ] P0-05 · P0 · gated · Feasible drone/ground routes/reserve/mission state. Owner: Frontend/simulator teammate, root mission/feasibility contract support. Evidence: routes/movement **partial**, cosmetic battery/energy-separation verification **absent**. Depends P0-02/P0-03/P0-04 → P0-06/P0-10. Candidate: teammate-only proposal/fcc/** units/routes/energy/mission simulator, exact paths teammate claims; root docs/contracts/mission-feasibility.md, backend/validation/feasibility.ts.
+  - [ ] RED X05/E05: 40 feasible + 40 infeasible routes at 0/6/10 m/s wind, reject 40/40 infeasible; 10 closed bases → 0 false returns.
+  - [ ] Minimal: teammate tick-based burn/routes/local failsafe/hold/events; root feasibility/mission/reservation contract and backend validation.
+  - [ ] GREEN X05: approved separation/clearance/≥10 battery pp at confirmed return, 0 in-flight energy increases/overlapping assignments.
+  - [ ] Review: executor/security, 0 click-driven fake arrival/completion; limits illustrative.
+  - [ ] Integrate: authoritative reservation/approval versions, dependents read actual executor events.
+  - [ ] Proof: route/energy/distance/speed/dwell traces and transported terminal receipts.
+- [ ] P0-06 · P0 · gated · Delivery/ACK/LOS/loss/retry/rejoin. Owner: Coordinator/root backend delivery contract; teammate simulator link/executor adapter. Evidence: mission semantics **absent**, unused WebSocket reconnect is not mission transport. Depends P0-02/P0-05 → P0-10/P0-11. Candidate: backend/transport/messages.ts, backend/transport/reconcile.ts, backend/transport/delivery.test.ts, docs/contracts/delivery.md; proposal/fcc/** simulated link/executor adapter teammate-only.
+  - [ ] RED T06/E03–E05: 100 commands/30% loss/20 duplicate injections/0–8 s delay/reorder 5 → 0 fake ACKs/duplicate executes/stale overwrites; ≤2 retries.
+  - [ ] Minimal: root separate sent/delivered/accepted/terminal backend contracts/reconcile; teammate seeded link/terrain-shadow simulator and executor adapter.
+  - [ ] GREEN T06/E04: 30 s blackout → stale ≤6 s/failsafe ≤11 s; 20 expired/offline intents → 0 reconnect dispatches; unlock after 2 fresh heartbeats.
+  - [ ] Review: transport/security, 0 ACK-as-completion/forged receipts/resumed stale approvals.
+  - [ ] Integrate: executor revalidates commands, shared UI only transported receipts/last-known state.
+  - [ ] Proof: command/transmission IDs/fault draws/receipt clocks/rejoin traces, send ≠ delivery.
+- [ ] P0-07 · P0 · gated · Real typed analysis/Google-Iris finite proposals/fallback. Owner: Coordinator/root backend/agents/data integration. Evidence: scripted agents/drafts **builtwired**, actual Google/Iris/fal/Treg **absent**. Depends P0-01/P0-02/P0-08/O04/O05/O08 + authorized spend → P0-10/P0-11. Candidate: backend/providers/google.ts, backend/providers/iris.ts, backend/providers/fal.ts, backend/tools/news.ts, backend/analysis/hypotheses.ts, backend/orchestrator/finite-actions.ts, backend/analysis/hidden-truth.test.ts; docs/contracts/thermal-camera.md, docs/contracts/crew-agent-boundaries.md.
+  - [ ] RED A07/E08/P12/P13: 24 invalid/stale + 20 superseded replies → 0 dispatches; 3 planted hazard types/EO-thermal capability cases → 0 answer leaks/invented temperatures; measure detections, no 100% promise.
+  - [ ] Minimal: root validated modality-aware pixel/source analysis + finite choices, cheap fallback/server-side keys; verify actual Google/fal thermal capabilities, Treg tools only; teammate provides labelled thermal pixels.
+  - [ ] GREEN A07 after authorization: ≥2 genuine typed-analysis/finite-choice decisions with model/route/latency/trace; timeout ≤8 s, ≤2 in flight/≤30 calls per 10 min/queue ≤8; 600 ticks offline.
+  - [ ] Review: TS/security/provider, 0 key/source-instruction leaks; Boxd ≤2 CPU jobs/≤30 s each only if approved, 0 VMs/recursive spawn.
+  - [ ] Integrate: received evidence/current approval versions, revalidate return/approval/acceptance; fixtures never labelled live.
+  - [ ] Proof: genuine receipts/spend cap/failure-fallback runs, credentials/scripted cards count 0 integration receipts.
+- [ ] P0-08 · P0 · gated · Media/provenance/clocks/uncertainty/weather/projection/fade. Owner: Coordinator/root data/evidence/projection backend; teammate renders layers. Evidence: cached inputs/age **partial**, full provenance/contradictions **absent**, future-arrival truth projection **invalid evidence forecast**. Depends P0-02/P0-03/P0-04/O03/O08 → P0-07/P0-09. Candidate: backend/evidence/records.ts, backend/evidence/ingestion.ts, backend/evidence/received-clock.ts, backend/projection/relative.ts, backend/evidence/evidence.test.ts, docs/data/source-manifest.md; all proposal/fcc/** UI/simulation teammate-only.
+  - [ ] RED E08/E07/E09: 100 evidence + 24 contradiction/injection fixtures → 0 invented pins/confidence/erased contradictions/source executions; 20 weather fixtures → 0 invalid accepts.
+  - [ ] Minimal: root source/acquisition/post/retrieve/receive/geo/license/modality/calibration records and relative backend projection; teammate supplies rendered observations; no hidden future arrays/non-radiometric temperatures.
+  - [ ] GREEN E08: 100% provenance retained, age 20 unresolved life alerts → 0 silent clearances; 3 sample hazard types synthetic/unverified, 0 future truth reads in analysts/projection.
+  - [ ] Review: evidence/source, 0 synthetic/live confusion, identification/forecast claims or invented social author/location.
+  - [ ] Integrate: shared receipt reducer/manifest, fading presentation only, unresolved evidence remains.
+  - [ ] Proof: source/sample manifest/observation-retrieval receipts/hidden-truth isolation/fade results.
+- [ ] P0-09 · P0 · gated · Shared Map/Camera Room/PIP/presets/replay/Geist. Owner: Frontend/simulator teammate, root feed/observation/ranking contract. Evidence: 3D/feeds/ranking/local replay **builtwired/unverified**, dedicated Camera Room/PIP/presets **absent/partial**, required thermal feeds **not demonstrated**, Inter/orange theme noncompliant. Depends P0-02/P0-03/P0-08/O06 → P0-11/P0-13. Candidate: teammate-only proposal/fcc/** Map/Camera Room/PIP/presets/replay/theme/thermal render, exact component paths teammate claims; root docs/contracts/thermal-camera.md, backend/feeds/ranking.ts, backend/feeds/observations.ts.
+  - [ ] RED U09/E06/E10/P14: 6 feeds/100 frames → ≤1 owner/feed/100% ticks-clocks-mode; 20 stale choices → 0 promoted current; 3 replay runs → 0 future events/new calls.
+  - [ ] Minimal: teammate dedicated Map+Camera/PIP/presets/replay/Geist/thermal render; root feed metadata/ranking/versioned thermal contract, frontend adapters teammate-only.
+  - [ ] GREEN U09: 4/4 proposed baseline drone thermal feeds show feed_id/modality/source/synthetic/calibration unknown-or-valid, 0 synthetic temperatures; 2 screenshots/10 changes affect 0 peers; >3 s age stale ≤1 update. Optional approved voice: 20 repeats ≤1/key/cooldown, mute 20/20.
+  - [ ] Review: UI/accessibility/source, 0 fake-fresh overlays; ack/mute ≠ incident resolution; no emoji/voice dispatch.
+  - [ ] Integrate: approved freshness/rank/contracts, Map retained alongside preview, author components handed off first.
+  - [ ] Proof: proposed M3/16 GiB with recorded OS/browser, 2 clients/10 min/1920×1080 each ≥30 FPS/p95 ≤33.3 ms/0 skipped ticks; unrun remains unclaimed.
+- [ ] P0-10 · P0 · gated · Chief approval/fault replanning/last-known/reserve/rejoin. Owner: Coordinator/root approval/agents/replan backend; teammate simulator executor/runtime. Evidence: scripted withdrawal/replay **partial**, director high-risk autoapproval as user, Chief/fault semantics **absent**. Depends P0-02/P0-05/P0-06/P0-07/P0-08 → P0-11/P0-13. Candidate: backend/orchestrator/replan.ts, backend/authority/approval.ts (P0-02 owner), backend/resilience/replan.test.ts, docs/contracts/crew-agent-boundaries.md; all proposal/fcc/** simulator/runtime changes teammate-only.
+  - [ ] RED R10/E02–E05/E08/E10: 20 races/20 old-owner approvals → 0 duplicate/stale accepts; 10 revised ground placements → 10 current Chief approvals/0 fabricated user approvals.
+  - [ ] Minimal: root proposal/approval/revalidation/backend replan; teammate removes scripted autoapproval via reviewed contract revision, implements simulator local holds/reserve/rejoin.
+  - [ ] GREEN R10: all 10 E01–E10 + trace/overload classes recorded; 20 replay/offline approvals → 0 dispatches/fake completions; reconcile bound approved after 2 fresh heartbeats.
+  - [ ] Review: safety/TS/security, 0 real orders/unbounded autonomy/stale intent revived.
+  - [ ] Integrate: approval shared-file owner only, transport/executor factual state, 0 conflicting schema owners.
+  - [ ] Proof: Chief/race/blackout/rejoin traces; scripted demo is not human-approval evidence.
+- [ ] P0-11 · P0 · gated · E2E/security/CI/visual/performance verification. Owner: Coordinator/root integration/review, teammate UI/simulator proof. Evidence: numeric/E2E/CI **absent**, isolated build/typecheck **passed**, V1/shared-client/browser/perf **unrun**. Depends P0-02–P0-10 + foundation phase P0-12 → P0-13. Candidate: backend/tests/integration/approval.test.ts, backend/tests/integration/providers.test.ts, docs/verification/v1-receipts.md; teammate owns proposal/fcc/** browser/sim test files, CI coordinator-owned.
+  - [ ] RED V11: enumerate 100% approved cases, reproduce autoapproval/future-truth/cosmetic-energy gaps before trusting fixes.
+  - [ ] Minimal: root backend/integration/security harness/receipts, teammate browser/sim/thermal fixtures; ≥1 non-mocked external/dist check per integration package.
+  - [ ] GREEN V11: 100% applicable named tests pass/0 blockers; proposed M3/16 GiB, 2 clients/10 min/1080p ≥30 FPS/p95 ≤33.3 ms/0 skipped ticks, OS/browser recorded.
+  - [ ] Review: independent TS/security/UI reviewers, skipped/live-fixture distinctions visible, 0 operational/inference overclaims.
+  - [ ] Integrate: exact candidate commit/CI/coordinator review, 0 unresolved merge/lock/schema conflicts/stale-server results.
+  - [ ] Proof: commands/exit codes/commit/environment/seeds/perf/trace location + actual authorized provider receipts, push ≠ deployment.
+- [ ] P0-12 · P0 · gated · Adopt/reconcile foundation, genuine working PR milestones. Owner: Coordinator/root Git integration; teammate source review/handoff. Evidence: submitted source **present**, adoption/integration **absent**, board-only conflict/0 checks. Depends O01/P0-01 → P0-02–P0-11; final closure after P0-11. Candidate: TASKBOARD.md/AGENTS.md (coordinator docs), docs/verification/foundation-receipt.md; author-approved exact proposal/fcc/** subsets teammate-only, no wildcard edit grant to root.
+  - [ ] RED I12: 1 adoption/author ownership decision, 0 board conflicts; retain 44 IDs + PROP-01 = 45 after approved merge, 100% selected sources attributed; fresh build/typecheck exposes failures first.
+  - [ ] Minimal: reconcile planning board/base with author, preserve prototype, correct unsupported claims, real reviewable slices not fake commit tasks.
+  - [ ] GREEN I12: retain independent isolated install/build/typecheck PASS on 6bdb5884/Node26.11.1/npm ci --ignore-scripts; add preview/real-browser/thermal receipts on exact adopted commit. Whole checkpoint incomplete, provider/approval acceptance 0.
+  - [ ] Review: coordinator/TS/security after conflict settled, 0 blockers; independent isolated build/typecheck passed; screenshots/browser/acceptance unverified.
+  - [ ] Integrate: genuine working milestone PRs with receipts, count by real boundaries not arbitrary quota; docs worker never pushes/merges.
+  - [ ] Proof: base/head/review/check/merged-state per milestone, 100% prior/adapted/new disclosed; planning PR earns 0 product milestone credit.
+- [ ] P0-13 · P0 · gated · Honest fresh demo/backup/submission. Owner: Coordinator/root demo/integration, teammate visual/sim demo, Nikolas submission. Evidence: author-scripted ~185 s demo **present/unverified**, team fresh demo/submission **absent**. Depends P0-11/P0-12/O04/O05/O07–O09. Candidate: docs/demo/runbook.md, docs/demo/attribution.md, docs/verification/submission-receipt.md; teammate proposal/fcc/** visual/sim changes, approved recording outside source.
+  - [ ] RED D13: 1 confirmed portal/deadline/video/artifact checklist, 0 unlabeled synthetic/recorded/live/prior claims; 90 s story only if allowed.
+  - [ ] Minimal: evidence → analysis → reviewed placement → factual delivery/acceptance → blackout/rejoin/replay; explicit fallback/source attribution.
+  - [ ] GREEN D13: 1 fresh-session demo + 1 backup within actual limit; mode/unverified labels on 100% shown decisions.
+  - [ ] Review: owner, 0 false operational/provider/new-work claims, complete materials/permissions.
+  - [ ] Integrate: final verified commit/assets locked, submission only after authorization; deploy/provision separately gated.
+  - [ ] Proof: actual submission before confirmed deadline/receipt/demo commit/run date/backup link; abstract or PR is not submission.
 
-## Status and claim rules
+## Deferred scope, excluded from estimate
 
-- Checked cards require actual research/admin/runtime receipts appropriate to their scope. `draft-ready` means written but unapproved, not done application work.
-- Move gated work only after dependencies and owner approvals; move to active only with concrete owner, branch and exact files. No implicit assignment to a friend or another agent.
-- Shared contract/schema/lock/CI files have one designated owner. Preserve teammate edits and integrate through reviewed PRs.
-- Record provider access as reported, installed, present, verified or untested precisely. Store no credentials, personal contact details or raw auth/browser logs here.
-- Update summary counts with every status change. This repository supersedes the local snapshot for future work, not pre-event history.
+- [ ] P1-01 · P1 · deferred · Voice input, owner unassigned. Candidate teammate-only proposal/fcc/** push-to-talk file, exact path teammate claims after opt-in/P0-11. Test: 10 ambiguous commands → 0 unconfirmed dispatches, 1 push-to-talk control, 0 always-listening/bypass. Optional output belongs P0-09.
+- [ ] P1-02 · P1 · deferred · Generated fal exercise media, owner unassigned. Candidate docs/provenance/generated-media.md after opt-in/O08/authorized spend. Test: ≥1 synthetic asset/100% provenance/license/0 imagery presented real. Actual sample analysis core P0-07, not optional generation.
+- [ ] P2-01 · P2 · deferred · Resident read-only view, owner unassigned. Candidate teammate-only proposal/fcc/** resident view, exact path teammate claims after opt-in/P0-11. Test: 10 attempted mutations rejected, 0 fleet commands/public alarms; reports moderated/unconfirmed.
+
+## Status/receipt rules
+
+Done requires scoped evidence. Builtwired means connected source, not runtime-tested; partial/unwired/absent unfinished. 6 checkpoints/P0 card = 78 workflow steps, not 78 new cards. Claimed thermal/crew contract planning docs remain pending, not checked app completion. Unknown never checked. Preserve 44 IDs, reconcile 45 only with approved PROP-01 merge, update counts.
+
+Code gate remains until concrete prototype/spec adoption. Exact-file/branch claims before work; preserve peers/reviewed PRs. Board authorizes no provider calls/VMs/invites/deploy/submission. Credentials stay outside. Critical chain: **adopt/reconcile PR2 → shared authority/honest approval tests → verified evidence-to-delivery slice**, then genuine providers/camera/fault/demo gates.
