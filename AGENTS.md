@@ -12,7 +12,11 @@
 
 - Claim a task card with owner, exact repo-relative file/module list and branch before editing. No claim means no edit.
 - Give each file one active owner. Give shared schemas/contracts, package-lock files and CI one designated owner each.
-- Keep unassigned cards unassigned. Do not assign the unnamed teammate frontend work before identity and exact file claim are agreed.
+- USER-OWN-2026-11-14: teammate owns design, simulator and frontend UI/UX, exclusive `proposal/fcc/**` including world/runtime/store/adapters, camera render/feed UI/assets and frontend package/lock. Functional ownership is explicit; PR #2 author `marcseli` identity confirmation does not block coworking.
+- Coordinator/root lane owns architecture, data, backend, agents and integration: future `backend/**`, shared contract documents `docs/contracts/**`, data-source documents `docs/data/**` and architecture documents `docs/architecture/**`. Application paths/stack still need approved scope and exact claims. Root never edits teammate simulation/render/UI code.
+- Root publishes versioned contracts; teammate implements frontend adapters/store consumption. Change interface through reviewed contract revision, not silent cross-owner edits. Frontend lock owner: teammate; future backend lock/schema owner: root; shared CI/integration owner: coordinator. Each shared file has exactly one named active owner before editing.
+- Thermal cameras required on every simulated drone. Contract/observations/backend metadata belong to root; thermal simulation/render/feed UI belong to teammate. Every feed preserves modality/feed ID, acquisition and receipt clocks, source/synthetic/real/radiometric/calibration flags. False-color simulation is not real thermal measurement or detection proof; never invent temperatures, range or confidence. Provider thermal support requires verification.
+- Preserve unresolved critical alerts despite source aging/fading; freshness presentation does not silently clear an alert. Keep unclaimed exact files unclaimed until responsible lane claims them.
 - Use separate task branches and worktrees for implementation. Preserve other workers' changes; never revert, amend, rebase or overwrite their work.
 - Reassign ownership through the coordinator before handoff or touching another owner's file.
 - Use GPT-6.1 Sol (`gpt-6.1-sol`) for all authorized builder agents. Do not silently switch models.
