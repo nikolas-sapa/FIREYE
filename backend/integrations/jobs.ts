@@ -63,7 +63,8 @@ export class SponsorJobs {
     try { return validSnapshot(job.snapshot, (this.#config.now ?? Date.now)()) && this.#config.is_current!(job.snapshot); } catch { return false; }
   }
   #atRead(job: SponsorJob, result: Promise<Result<unknown>>): Promise<Result<unknown>> {
-    return result.then(value => this.#current(job) ? value : fail('STALE'));
+    return result.then(value => !this.#current(job) ? fail('STALE')
+      : (this.#config.now ?? Date.now)() >= job.deadline_at_ms ? fail('DEADLINE') : value);
   }
   #drain(): void {
     while (this.#active < 2 && this.#queue.length) {

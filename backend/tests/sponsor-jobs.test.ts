@@ -151,6 +151,77 @@ test('G4Q05 20 default Gemma jobs invoke/reserve 0', async () => {
   assert.deepEqual(jobs.counts(), { in_flight: 0, queued: 0, retained: 0 });
 });
 
+test('G4Q07a 20 actual Gemma cached deadline aliases reject at read, 1 call/reservation each', async () => {
+  for (let n = 0; n < 20; n++) {
+    const input = gemmaJob(n);
+    let wall = input.snapshot.received_cutoff_ms;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall }));
+    const run = async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => createGemmaClient({ ...config({ budget, now: () => wall }),
+      runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500, reservation,
+      transport_mode: 'fixture', transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+    assert.equal((await jobs.submit(input, run)).ok, true);
+    const cached = jobs.submit({ ...input, job_id: `alias${n}`, deadline_at_ms: wall + 1 }, run);
+    wall += n % 2 ? 2 : 1;
+    const result = await cached;
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'DEADLINE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
+
+test('G4Q07b 20 actual Gemma fresh-result microtask expiries reject before read, 1 call/reservation each', async () => {
+  for (let n = 0; n < 20; n++) {
+    const base = gemmaJob(n);
+    let wall = base.snapshot.received_cutoff_ms;
+    const input = { ...base, deadline_at_ms: wall + 100 };
+    let returned = false;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall, is_current: () => {
+      if (returned) queueMicrotask(() => { wall = input.deadline_at_ms + n % 2; });
+      return true;
+    } }));
+    const result = await jobs.submit(input, async (_signal, reservation, bound) => {
+      const value = await createGemmaClient({ ...config({ budget, now: () => wall }), runtime: 'hosted-rest', model: input.model,
+        max_call_micro: 100, deadline_ms: 500, reservation, transport_mode: 'fixture',
+        transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+      assert.equal(value.ok, true);
+      returned = true;
+      return value;
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'DEADLINE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
+
+test('G4Q07c 20 stale-and-expired actual Gemma cache reads preserve STALE priority, 0 extra calls', async () => {
+  for (let n = 0; n < 20; n++) {
+    const input = gemmaJob(n);
+    let wall = input.snapshot.received_cutoff_ms;
+    let current = true;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall, is_current: () => current }));
+    const run = async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => createGemmaClient({ ...config({ budget, now: () => wall }),
+      runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500, reservation,
+      transport_mode: 'fixture', transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+    assert.equal((await jobs.submit(input, run)).ok, true);
+    const cached = jobs.submit({ ...input, deadline_at_ms: wall + 1 }, run);
+    wall += 2;
+    current = false;
+    const result = await cached;
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'STALE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
+
 test('SP03 default budget and scheduler grant 0 unapproved calls', async () => {
   assert.equal(new SponsorBudget().reserve(1), false);
   const jobs = new SponsorJobs();
