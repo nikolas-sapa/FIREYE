@@ -8,11 +8,9 @@ import type { LocalBackend } from '../scripts/start-local.ts';
 import { createBridgeAuthority } from '../integration/session.ts';
 import { createExerciseCoordinator, createPlanningSnapshot, exerciseCourseFingerprint } from '../orchestration/coordinator.ts';
 import { generateMissionCandidates } from '../planning/mission-candidates.ts';
-import { SponsorJobs } from '../integrations/jobs.ts';
 import { SponsorBudget } from '../integrations/receipts.ts';
-import { createIrisClient } from '../integrations/iris/client.ts';
+import { createQueuedIrisClient } from '../orchestration/queued-iris.ts';
 import type { Snapshot } from '../integrations/receipts.ts';
-import type { IrisClient, IrisInput } from '../integrations/iris/types.ts';
 import type { ExerciseLayout, ExerciseObjective } from '../orchestration/types.ts';
 import type { BridgeView } from '../integration/received-view.ts';
 import type { Command, EventInput, IncidentSeed } from '../protocol/types.ts';
@@ -106,23 +104,14 @@ test('BC01-03 actual startup/planner/jobs/Iris/Chief/5 receipts/2 HTTP readers/r
     const budget = new SponsorBudget(1, 100);
     const is_current = (snapshot: Snapshot) => snapshot.input_revision === authority.read().input_revision;
     const now = () => Date.parse(clock().received_at);
-    const jobs = new SponsorJobs({ enabled: true, authorization_id: 'local-fixture', budget, is_current, now });
-    const iris: IrisClient = { async analyze(input: unknown) {
-      const bound = input as IrisInput;
-      const result = await jobs.submit({ job_id: 'composition-ranking', adapter: 'iris', task_version: 'fixture.v1', model,
-        snapshot: bound.snapshot, deadline_at_ms: now() + 1000, max_call_micro: 100,
-        task_input: { candidate_ids: bound.candidate_ids } }, async (_signal, reservation, task) =>
-        createIrisClient({ enabled: true, authorization_id: 'local-fixture', budget, is_current, now,
-          max_call_micro: 100, deadline_ms: 1000, reservation, model, registered_candidate_ids: bound.candidate_ids,
-          transport_mode: 'local-http', transport: request => {
-            assert.equal(request.url, 'https://inference.oumi.ai/v1/systemone');
-            assert.deepEqual(request.headers, { 'Content-Type': 'application/json' });
-            return fetch(endpoint, { method: request.method, body: request.body,
-              signal: request.signal, redirect: request.redirect });
-          } }).analyze(task));
-      // Actual jobs/client guards validate this finite-ranking fixture result.
-      return result as Awaited<ReturnType<IrisClient['analyze']>>;
-    } };
+    const iris = createQueuedIrisClient({ enabled: true, authorization_id: 'local-fixture', budget, is_current, now,
+      max_call_micro: 100, deadline_ms: 1000, model, registered_candidate_ids: [fixture.reviewed.candidate_id],
+      transport_mode: 'local-http', transport: request => {
+        assert.equal(request.url, 'https://inference.oumi.ai/v1/systemone');
+        assert.deepEqual(request.headers, { 'Content-Type': 'application/json' });
+        return fetch(endpoint, { method: request.method, body: request.body,
+          signal: request.signal, redirect: request.redirect });
+      } });
     const coordinator = createExerciseCoordinator(authority, { analyst: context('analyst').actor,
       layout, reviewed_courses: [fixture.reviewed], iris });
     const results = await Promise.all(Array.from({ length: 20 }, () => coordinator.assess(objective)));
@@ -135,7 +124,7 @@ test('BC01-03 actual startup/planner/jobs/Iris/Chief/5 receipts/2 HTTP readers/r
     assert.equal(assessment.ranking.receipt?.fresh_provider_call, false);
     assert.equal(invocations, 1);
     assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
-    assert.equal(jobs.counts().retained, 1);
+    assert.equal(iris.counts().retained, 1);
     accepted(coordinator.commitReview(assessment.assessment_id, fixture.reviewed.option_id));
     assert.equal(Object.keys(authority.read().commands).length, 0);
     assert.equal(coordinator.approve(assessment.assessment_id, 'composition-approval', context('analyst').actor).ok, false);
@@ -185,7 +174,7 @@ test('BC01-03 actual startup/planner/jobs/Iris/Chief/5 receipts/2 HTTP readers/r
     assert.equal(authority.read().log.filter(value => value.kind === 'command.receipt').length, 5);
     assert.equal(invocations, 1);
     assert.equal(coordinator.read().in_flight, 0);
-    assert.equal(jobs.counts().in_flight, 0);
+    assert.equal(iris.counts().in_flight, 0);
     const final = await call(server, 'reader', 'snapshot') as BridgeView;
     // Unknown acquisition time is retained in canonical history, not used to
     // overwrite a known-acquisition latest-per-feed presentation entry.
