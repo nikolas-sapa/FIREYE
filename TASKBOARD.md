@@ -16,6 +16,22 @@ Implementation: reconcile preserved WIP with actual current exports, apply only 
 
 Non-goals: frontend/proposal edits or launch, new architecture/dependencies/schema/lock/CI, providers or credential creation, media/Convex/cloud/dynamic activation, paid calls, VM/deploy/merge, operational claims. Partial issue delivery never claims full acceptance or closes remaining gates.
 
+BATCH-20261115-10 independent final review: TypeScript /root/issue10_typescript and dedicated security task01a1ddf4-3cab-74e3-9acd-e4f600204b5d APPROVE frozen two-source hashes,0blockers. Root inspected full diff, re-ran deciding native289+compiled289/typecheck/compiler PASS, verified source scope/hashes. Additional reviewer1024exactcaps/0over-under and20duplicates→1localhostcall. Coordinator authorized exact-path branch delivery; no issue closure/provider enforcement or paid smoke claimed.
+
+
+BATCH-20261115-10 coordinator fresh verification: Root full actual checker exit0, native289/289 and compiled289/289, noEmit/fullsourcecompiler exit0,0failures/skips. Source hashes client9219139fd4091e4aef2981e79222f059421de7241f80d0d037e6515407024dd8/testsae56d8275dad21b02e92c8e7cbe3c64f7d84e13b89ec1c3c1b251688aac170fb; fresh RED reproduced original+1micro defect. Two owned source paths plus coordinator board only; preserved old WIP unchanged. Independent TypeScript/security completion pending,0genuinecalls.
+
+
+## BATCH-20261115-10, current issue continuation
+
+Root coordinator assigned /root/issue10_builder, issue #10, branch `task/fcc-20261115-issue10`, clean base `b1e5572b3c2be25ad46630805ae713fa2d6abca9`. Exact source/document ownership: `backend/integrations/treg/client.ts`, `backend/tests/treg-client.test.ts` only. Prior interrupted workers' worktrees remain read-only and preserved; this new isolated branch owns continuation. Coordinator exclusively owns this board and Git delivery. Independent reviewers read only.
+
+Test plan before implementation: CAP01: reproduce the old positive-safe-integer micro-USD round-up, then 28 accepted ceiling cases produce 0 values over authorized cap. CAP02: actual exported provider setup→smoke→Treg loopback composes with 0 provider/account calls and no retries. CAP03: native and compiled suites/typecheck each exit 0 with 0 failing/skipped tests; independent TypeScript/security verdicts contain 0 blocking findings.
+
+Implementation: reconcile preserved WIP with actual current exports, apply only approved exact-path delta, complete numeric checks, freeze hashes, obtain independent review and coordinator re-verification, then coordinator commit/push and open branch PR. No worker Git mutation.
+
+Non-goals: frontend/proposal edits or launch, new architecture/dependencies/schema/lock/CI, providers or credential creation, media/Convex/cloud/dynamic activation, paid calls, VM/deploy/merge, operational claims. Partial issue delivery never claims full acceptance or closes remaining gates.
+
 
 ## PR38-CI-2026-11-15, headless frontend verification
 
