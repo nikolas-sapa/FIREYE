@@ -62,7 +62,8 @@ export function plainJson(value: unknown): boolean {
     if (typeof input === 'number') return Number.isFinite(input);
     if (typeof input !== 'object' || types.isProxy(input) || active.has(input)) return false;
     const array = Array.isArray(input);
-    if (Object.getPrototypeOf(input) !== (array ? Array.prototype : Object.prototype) && Object.getPrototypeOf(input) !== null) return false;
+    const prototype = Object.getPrototypeOf(input);
+    if (array ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) return false;
     const keys = Reflect.ownKeys(input);
     if (keys.length > 1024 || (array && keys.length !== input.length + 1)) return false;
     active.add(input);
@@ -71,6 +72,7 @@ export function plainJson(value: unknown): boolean {
       const descriptor = Object.getOwnPropertyDescriptor(input, key)!;
       if (!Object.hasOwn(descriptor, 'value')) return false;
       if (array && key === 'length') continue;
+      if (array && (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= input.length)) return false;
       if (!descriptor.enumerable || !visit(descriptor.value, depth + 1)) return false;
     }
     active.delete(input);
@@ -96,9 +98,9 @@ export function validSnapshot(input: unknown, now: number): input is Snapshot {
   for (const e of input.evidence) {
     if (!closed(e, ['evidence_id', 'source_id', 'rights_manifest_id', 'source_kind', 'captured_at_ms', 'received_at_ms', 'modality', 'synthetic', 'radiometric', 'calibration', 'content_hash', 'byte_length', 'width_px', 'height_px'])
       || !id(e.evidence_id) || seen.has(e.evidence_id) || !id(e.source_id) || !id(e.rights_manifest_id)
-      || !['simulated', 'uploaded', 'live', 'public-link'].includes(String(e.source_kind))
+      || typeof e.source_kind !== 'string' || !['simulated', 'uploaded', 'live', 'public-link'].includes(e.source_kind)
       || !integer(e.captured_at_ms) || !integer(e.received_at_ms) || e.captured_at_ms > e.received_at_ms || e.received_at_ms > input.received_cutoff_ms
-      || now - e.captured_at_ms > 60_000 || !['eo', 'thermal', 'text'].includes(String(e.modality))
+      || now - e.captured_at_ms > 60_000 || typeof e.modality !== 'string' || !['eo', 'thermal', 'text'].includes(e.modality)
       || typeof e.synthetic !== 'boolean' || ![false, 'unknown'].includes(e.radiometric as false | 'unknown') || e.calibration !== null
       || typeof e.content_hash !== 'string' || !/^[a-f0-9]{64}$/.test(e.content_hash) || !integer(e.byte_length) || e.byte_length > 262_144
       || !(e.width_px === null || positive(e.width_px)) || !(e.height_px === null || positive(e.height_px))) return false;

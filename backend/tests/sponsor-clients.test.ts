@@ -170,3 +170,35 @@ test('SP06 3 unsupported hard-ceiling provider transports issue 0 global fetches
     if (!result.ok) assert.equal(result.code, 'UNSUPPORTED');
   }
 });
+
+test('SP04 actual Iris rejects array-coerced source/modality, 0 transports', async () => {
+  let calls = 0;
+  const input = adapters[0].input();
+  const client = createIrisClient(config(async () => { calls++; return Response.json(irisReply); }, adapters[0].extra));
+  for (const mutation of [{ source_kind: ['simulated'], synthetic: false }, { modality: ['eo'] }]) {
+    const malformed = { ...input, snapshot: { ...input.snapshot, evidence: [{ ...input.snapshot.evidence[0], ...mutation }] } };
+    assert.equal((await client.analyze(malformed)).ok, false);
+  }
+  assert.equal(calls, 0);
+});
+
+test('SP04 actual Iris null-prototype/sparse/custom/accessor arrays return typed rejection, 0 traps/calls', async () => {
+  let calls = 0;
+  let traps = 0;
+  const client = createIrisClient(config(async () => { calls++; return Response.json(irisReply); }, adapters[0].extra));
+  const nullPrototype = ['c1', 'c2'];
+  Object.setPrototypeOf(nullPrototype, null);
+  const custom = ['c1', 'c2'];
+  delete custom[1];
+  Object.defineProperty(custom, 'extra', { value: 'c2', enumerable: true });
+  const accessor = ['c1', 'c2'];
+  Object.defineProperty(accessor, '1', { enumerable: true, get() { traps++; return 'c2'; } });
+  const proxy = new Proxy(['c1', 'c2'], { get() { traps++; throw Error('no trap'); } });
+  for (const candidate_ids of [nullPrototype, Array(2), custom, accessor, proxy]) {
+    const result = await client.analyze({ ...adapters[0].input(), candidate_ids });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'INVALID_INPUT');
+  }
+  assert.equal(calls, 0);
+  assert.equal(traps, 0);
+});
