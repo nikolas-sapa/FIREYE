@@ -33,6 +33,7 @@ export type ClientConfig = Readonly<{
   credential?: string; model?: string; registered_candidate_ids?: readonly string[];
   transport?: Transport; transport_mode?: 'fixture' | 'local-http';
   reservation?: Reservation;
+  on_transport_settled?: () => void;
 }>;
 
 const reservationBrand: unique symbol = Symbol('server-budget-reservation');
@@ -239,7 +240,11 @@ export async function perform<T>(adapter: Adapter, snapshot: Snapshot, input: un
       const value = parse(body, response);
       if (value === null) return Object.freeze({ ...fail('INVALID_REPLY'), receipt: receipt('INVALID_REPLY', response) });
       return freeze({ ok: true as const, value, receipt: receipt('accepted', response) });
-      } finally { config.budget!.release(); }
+      } finally {
+        config.budget!.release();
+        // Trusted server lifecycle notification, actual work not deadline race.
+        try { config.on_transport_settled?.(); } catch { /* Notification cannot alter result or released budget. */ }
+      }
     };
     const deadline = new Promise<Result<T>>(resolve => {
       timer = setTimeout(() => { controller.abort(); resolve(Object.freeze({ ...fail('DEADLINE'), receipt: receipt('DEADLINE') })); }, config.deadline_ms!);
