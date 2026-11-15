@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { types } from 'node:util';
 
-export type Adapter = 'iris' | 'gemini' | 'fal' | 'treg';
+export type Adapter = 'iris' | 'gemini' | 'gemma' | 'fal' | 'treg';
 export type Failure = 'DISABLED' | 'UNAUTHORIZED' | 'UNSUPPORTED' | 'INVALID_INPUT' | 'STALE' | 'BUDGET' | 'DEADLINE' | 'TRANSPORT' | 'REDIRECT' | 'OVERSIZE' | 'INVALID_REPLY' | 'QUEUE_FULL' | 'IDENTITY_CONFLICT';
 export type Result<T> = Readonly<{ ok: true; value: T; receipt?: Receipt }> | Readonly<{ ok: false; code: Failure; receipt?: Receipt }>;
 export type Evidence = Readonly<{
@@ -175,6 +175,8 @@ export async function perform<T>(adapter: Adapter, snapshot: Snapshot, input: un
   const endpointAllowed = adapter === 'treg' ? spec.url === 'https://treg.to/call/treg.web.search' && spec.model === null
     : adapter === 'iris' ? spec.url === 'https://inference.oumi.ai/v1/systemone'
     : adapter === 'fal' ? spec.url === 'https://fal.run/fal-ai/florence-2-large/caption'
+    : adapter === 'gemma' ? ['gemma-4-31b-it', 'gemma-4-26b-a4b-it'].includes(spec.model ?? '')
+      && spec.url === `https://generativelanguage.googleapis.com/v1beta/models/${spec.model}:generateContent`
     : /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-[a-z0-9.-]{1,80}:generateContent$/.test(spec.url);
   if (!endpointAllowed) return fail('UNSUPPORTED');
   const now = config.now ?? Date.now;
