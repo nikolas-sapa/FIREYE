@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppearanceToggle, Button, FireyeMark, Icon, cn } from '@ds';
 import type { Geo, ScenarioPack } from '../contracts';
+import { WildfireFatalityChart } from '../ui/WildfireFatalityChart';
 import { clc2018, finalPerimeter, loadScenario, scenarioExtras } from '../scenario/load';
 import type { EnvInput } from '../world3d/env';
 import type { ArchiveImage } from '../stage3d/feeds/ArchiveCamera';
@@ -226,7 +227,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
       <div className="ml-auto flex gap-2"><Button size="sm" variant="ghost" disabled={saved} onClick={() => { setNow(Date.now()); setRefresh(n => n + 1); }}>Refresh sources</Button>
         <Button size="sm" variant="ghost" onClick={save}>Save real data</Button></div>
     </div>
-    <div className="flex min-h-0 flex-1 max-[900px]:flex-col">
+    <div className={cn('flex min-h-0 flex-1 max-[900px]:flex-col', view === 'mati' && 'max-[900px]:overflow-y-auto')}>
       <main className="relative min-h-[280px] min-w-0 flex-1 overflow-hidden" aria-label="Source-aware globe">
         <MonitoringGlobe pack={context} view={view} time={time} detections={detections} cameras={cameras} geometry={geometry}
           imagery={satellite ? image : undefined} imageryBounds={imageMode === 'detail' ? detailImage.bbox : VIEWS[view].bbox}
@@ -250,7 +251,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
         </div>
         {danger && dangerImage && <img className="absolute bottom-14 right-4 z-[2] max-h-48 max-w-[180px] border border-line bg-ink-900" src={dangerImage.replace('kind=danger', 'kind=legend')} alt="EFFIS Fire Weather Index legend" />}
       </main>
-      <aside className="flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line bg-ink-900 max-[1100px]:w-[310px] max-[900px]:max-h-[38vh] max-[900px]:w-full max-[900px]:border-l-0 max-[900px]:border-t" aria-label="Source information">
+      <aside className={cn('flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line bg-ink-900 max-[1100px]:w-[310px] max-[900px]:max-h-[38vh] max-[900px]:w-full max-[900px]:border-l-0 max-[900px]:border-t', view === 'mati' && 'max-[900px]:h-[38vh]')} aria-label="Source information">
         <div className="flex shrink-0 border-b border-line">
           <Button className="flex-1" size="md" variant="ghost" aria-pressed={panel === 'sources'} onClick={() => setPanel('sources')}>Sources</Button>
           <Button className="flex-1" size="md" variant="ghost" aria-pressed={panel === 'cameras'} onClick={() => setPanel('cameras')}>Cameras · {cameras.length}</Button>
@@ -292,6 +293,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
               <Section title="Documented historical reports">
                 {(pack.reports ?? []).slice(0, 10).map(r => <article key={r.id} className="mb-3 border-b border-line pb-2"><p className="font-mono text-micro text-bone-mute">{stamp(r.t)} · {r.publisher}</p><p className="my-1 text-xs leading-5 text-bone-dim">{r.summary}</p><External href={r.url}>Original source</External></article>)}
               </Section>
+              <WildfireFatalityChart />
             </> : <Section title="Copernicus incident mapping">
               {mapping.value && <><p className="font-mono text-2xl fcc-num">{num(mapping.value.data.burnedHa, ' ha', 1)}</p>
                 <p className="mt-1 font-mono text-micro uppercase text-bone-mute">Initial mapped burned area · EMSR746</p>

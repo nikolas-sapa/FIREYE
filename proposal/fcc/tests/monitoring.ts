@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './wildfire-fatalities';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
