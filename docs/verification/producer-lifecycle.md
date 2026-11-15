@@ -29,7 +29,8 @@ PL02: ten independent actual HTTP runs, ten positive pre-observation acceptance 
 Every test-owned bridge closed in finally; HTTP driver uses non-pooled requests. Existing checker removed its unique generated compiled directory; no persistent listeners or heartbeat drivers left running. Coordinator TypeScript review/Git delivery and new hosted Node24/26 CI remain pending. No genuine provider, frontend, VM or deployment work performed.
 
 Ten-minute real-client/Marco-producer acceptance remains **deferred, unrun**. This is8 physical seconds of synthetic fixture activity plus5 seconds of producer-loss proof, not600 seconds, no integrated three-drone mission execution, no production authentication/distributed authority proof. [Producer handoff](../contracts/producer-handoff.v1.md) records unknown mappings and exact owner questions.
-# Consolidated follow-up verification
+
+## Consolidated follow-up verification
 
 Root complete native and TypeScript-compiled checks on source `cbcae6a`,
 2026-11-15, Node26.11.1: 242/242 native and 242/242 compiled, zero failures/skips,
@@ -37,4 +38,3 @@ typecheck/check-runner exit0. Compiled duration13640.896167ms. Includes Gemma
 queue, corrected cached-result deadline, safe provider preflight and this
 fixture producer harness. No provider account check, inference, frontend or VM
 startup occurred in these tests. Hosted Node24/26 follow-up CI pending.
-
