@@ -21,6 +21,8 @@ Owned delta: `backend/orchestration/types.ts`, `backend/orchestration/coordinato
 - `git diff --check`, exit 0. Root independent review and Git delivery pending, no worker commit/push.
 - Follow-up RED: OR13 raw receipt retained secret sentinel, OR14 cached result returned stale success, 2/2 failed as expected. Fix: descriptor-only reply inspection, receipt brand/exact request binding, finite failure allowlist, cache-resolution refresh.
 - Follow-up GREEN: 15/15 focused, 0 skipped (307.812458 ms), typecheck exit 0. OR13 20 hostile receipt trials, 0 sentinels/getters/traps; OR14 20 cache-resolution interleaves, 0 stale successes; OR15 actual tick1→tick2 proposal/approval/checked-command/receipt succeeds, tick7 expiry rejects. Previous 141 combined receipt predates these follow-up cases/dependency fixes; final root combined rerun pending.
+- Final TS review RED: OR16 first-result microtask race returned stale success before consumption. Initial promise now uses same resolution-time currentness/expiry gate as duplicate path. Twenty received-frame microtasks must return 0 stale successes and 0 proposals.
+- Final worker GREEN: 16/16 focused, 0 skipped (352.946167 ms), typecheck/diff-check exit 0. OR16 observed 20/20 stale rejections, 0 proposals. Root final combined/review/delivery pending.
 
 ## Genuine walking slice
 

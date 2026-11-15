@@ -237,7 +237,11 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
         reasons: [...job.assessment.reasons, selected ? 'exact_seed_registered_exercise_course' : 'dynamic_registration_absent_review_only'] });
       resolve(success(job.assessment));
     })();
-    return promise;
+    return promise.then(result => {
+      refresh();
+      return job.assessment.status === 'superseded'
+        ? reject('Assessment superseded', 'STALE_VERSION') : result.ok ? success(job.assessment) : result;
+    });
   }
 
   function commitReview(assessmentId: string, optionId: string): BridgeResult<ExerciseAssessment> {

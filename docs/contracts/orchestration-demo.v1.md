@@ -21,6 +21,7 @@ EXERCISE only. Local received-metadata orchestration, no operational forecasts.
 | OR13 receipt boundary | 20 hostile receipts/failure codes, 0 sentinels leaked and 0 getters/traps invoked |
 | OR14 cached currentness | 20 authority changes between cached request/resolution, 0 stale successes |
 | OR15 advancing clock | Tick1 assessment → tick2 proposal/Chief/checked command/sent receipt succeeds; tick7 snapshot expiry rejects |
+| OR16 first-result currentness | 20 received-frame microtasks between first assessment creation/resolution, 0 stale successes or proposals |
 
 ## Implementation plan
 

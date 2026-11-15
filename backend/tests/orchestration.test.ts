@@ -337,3 +337,14 @@ test('OR15 actual advancing clock preserves current course but expiry rejects ap
   assert.equal(coordinator.approve(assessed.assessment_id, 'expired-approval', context('human').actor).ok, false);
   assert.equal(coordinator.read().assessments[0].status, 'superseded');
 });
+
+test('OR16 twenty fresh promise microtask races return zero stale successes', async () => {
+  for (let n = 0; n < 20; n++) {
+    const { authority, coordinator } = fixture();
+    const pending = coordinator.assess(objective());
+    queueMicrotask(() => { accepted(authority.ingest(receivedFrame(2), context().actor)); });
+    assert.equal((await pending).ok, false);
+    assert.equal(coordinator.read().assessments[0].status, 'superseded');
+    assert.equal(Object.keys(authority.read().proposals).length, 0);
+  }
+});
