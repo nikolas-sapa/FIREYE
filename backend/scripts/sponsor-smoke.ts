@@ -4,10 +4,11 @@ import { createProviderSetup } from '../setup/provider-config.ts';
 import type { ProviderSetup } from '../setup/provider-config.ts';
 import { SponsorJobs } from '../integrations/jobs.ts';
 import type { SponsorJob } from '../integrations/jobs.ts';
-import { closed, fail, ids, plainJson, record, secretLike, SponsorBudget, validPng } from '../integrations/receipts.ts';
+import { closed, fail, id, ids, plainJson, record, secretLike, SponsorBudget, validPng } from '../integrations/receipts.ts';
 import type { Adapter, Result, Snapshot, Transport } from '../integrations/receipts.ts';
 import { createIrisClient } from '../integrations/iris/client.ts';
 import { createGeminiClient } from '../integrations/gemini/client.ts';
+import { createGemmaClient } from '../integrations/gemma/client.ts';
 import { createFalClient } from '../integrations/fal/client.ts';
 import { createTregClient } from '../integrations/treg/client.ts';
 
@@ -15,6 +16,15 @@ export type SmokeOptions = Readonly<{
   now?: () => number; is_current: (snapshot: Snapshot) => boolean;
   transport?: Transport; transport_mode?: 'fixture' | 'local-http';
 }>;
+
+function validGemmaTask(task: unknown, snapshot: Snapshot): boolean {
+  if (!closed(task, ['evidence_id', 'text']) || !id(task.evidence_id) || typeof task.text !== 'string' || !task.text.trim() || task.text.length > 16_384) return false;
+  const evidence = snapshot.evidence[0];
+  const bytes = Buffer.from(task.text, 'utf8');
+  return snapshot.evidence.length === 1 && evidence.evidence_id === task.evidence_id && evidence.modality === 'text'
+    && evidence.width_px === null && evidence.height_px === null && bytes.length <= 16_384 && bytes.length === evidence.byte_length
+    && bytes.toString('utf8') === task.text && createHash('sha256').update(bytes).digest('hex') === evidence.content_hash;
+}
 
 export function createSmokeSession(setup: ProviderSetup, options: SmokeOptions) {
   const now = options.now ?? Date.now;
@@ -26,7 +36,7 @@ export function createSmokeSession(setup: ProviderSetup, options: SmokeOptions) 
   return Object.freeze({
     usage: () => budget.usage(),
     submit: async (input: unknown): Promise<Result<unknown>> => {
-      if (!plainJson(input) || !record(input) || typeof input.adapter !== 'string' || !['iris', 'gemini', 'fal', 'treg'].includes(input.adapter)
+      if (!plainJson(input) || !record(input) || typeof input.adapter !== 'string' || !['iris', 'gemini', 'gemma', 'fal', 'treg'].includes(input.adapter)
         || !record(input.snapshot) || !Array.isArray(input.snapshot.evidence)) return fail('INVALID_INPUT');
       const job = input as SponsorJob;
       const fixture = !!options.transport && (options.transport_mode === 'fixture' || options.transport_mode === 'local-http');
@@ -34,11 +44,14 @@ export function createSmokeSession(setup: ProviderSetup, options: SmokeOptions) 
       if (!gate.ok) return gate;
       const task: unknown = job.task_input;
       if (job.adapter === 'iris' ? !closed(task, ['candidate_ids']) || !ids(task.candidate_ids)
+        : job.adapter === 'gemma' ? !validGemmaTask(task, job.snapshot)
         : job.adapter === 'treg' ? !closed(task, ['query']) || typeof task.query !== 'string' || !task.query.trim()
           || task.query.length > 256 || secretLike(task.query) || /[\r\n]/.test(task.query)
         : !closed(task, ['evidence_id', 'png_base64']) || typeof task.evidence_id !== 'string'
           || !job.snapshot.evidence.some(evidence => evidence.evidence_id === task.evidence_id && evidence.modality === 'eo' && validPng(task.png_base64, evidence))) return fail('INVALID_INPUT');
-      const identity = createHash('sha256').update(JSON.stringify([job.adapter, job.model, job.task_version, job.snapshot, job.task_input])).digest('hex');
+      const taskIdentity = job.adapter === 'gemma' && 'text' in job.task_input
+        ? { evidence_id: job.task_input.evidence_id, text: job.task_input.text } : job.task_input;
+      const identity = createHash('sha256').update(JSON.stringify([job.adapter, job.model, job.task_version, job.snapshot, taskIdentity])).digest('hex');
       const claimed = claims.get(job.adapter);
       if (claimed && claimed !== identity) return fail('BUDGET');
       // Scheduler validates the complete closed job and supplies the bound immutable input.
@@ -48,6 +61,7 @@ export function createSmokeSession(setup: ProviderSetup, options: SmokeOptions) 
         if (job.adapter === 'iris') return createIrisClient({ ...config,
           registered_candidate_ids: 'candidate_ids' in bound ? bound.candidate_ids : [] }).analyze(bound);
         if (job.adapter === 'gemini') return createGeminiClient(config).analyze(bound);
+        if (job.adapter === 'gemma') return createGemmaClient({ ...config, runtime: 'hosted-rest' }).analyze(bound);
         if (job.adapter === 'fal') return createFalClient(config).analyze(bound);
         return createTregClient(config).analyze(bound);
       });

@@ -3,7 +3,7 @@ import { closed, fail, freeze, id, ids, integer, plainJson, positive, secretLike
 import type { Adapter, ClientConfig, Result } from '../integrations/receipts.ts';
 import type { SponsorJob } from '../integrations/jobs.ts';
 
-export type Provider = Adapter | 'gemma';
+export type Provider = Adapter;
 export type SmokeAllowance = Readonly<{
   adapter: Adapter; model: string; task_version: string; rights_manifest_ids: readonly string[];
   max_call_micro: number; deadline_ms: number;
@@ -17,7 +17,7 @@ export type ProviderStatus = Readonly<{
   credential_status: 'present-unverified' | 'missing' | 'not-applicable';
   endpoint: string | null; model: string | null; max_call_micro: number | null;
   deadline_ms: number | null; rights_manifest_ids: readonly string[];
-  blocker: 'approval-required' | 'credential-required' | 'hard-ceiling-unsupported' | 'adapter-unavailable' | null;
+  blocker: 'approval-required' | 'credential-required' | 'runtime-required' | 'hard-ceiling-unsupported' | 'adapter-unavailable' | null;
 }>;
 export type SetupStatus = Readonly<{
   genuine_calls: 0; max_calls: number; max_total_micro: number; providers: readonly ProviderStatus[];
@@ -33,7 +33,7 @@ export type ProviderSetup = Readonly<{
 }>;
 
 const slots: readonly Provider[] = ['iris', 'gemini', 'fal', 'treg', 'gemma'];
-const credentialNames = { iris: 'IRIS_API_KEY', gemini: 'GEMINI_API_KEY', fal: 'FAL_KEY', treg: 'TREG_TOKEN' } as const;
+const credentialNames = { iris: 'IRIS_API_KEY', gemini: 'GEMINI_API_KEY', fal: 'FAL_KEY', treg: 'TREG_TOKEN', gemma: 'GEMINI_API_KEY' } as const;
 
 function envString(env: unknown, name: string): string | undefined {
   if (env === null || typeof env !== 'object' || types.isProxy(env)) return undefined;
@@ -49,11 +49,11 @@ function validModel(provider: Provider, value: unknown): value is string {
   if (provider === 'gemini') return /^gemini-[a-z0-9.-]{1,80}$/.test(value);
   if (provider === 'fal') return value === 'fal-ai/florence-2-large/caption';
   if (provider === 'treg') return value === 'treg.web.search';
-  return /^gemma-4-[a-z0-9.-]{1,64}$/.test(value);
+  return ['gemma-4-31b-it', 'gemma-4-26b-a4b-it'].includes(value);
 }
 function endpoint(provider: Provider, model: string | null): string | null {
   if (provider === 'iris') return 'https://inference.oumi.ai/v1/systemone';
-  if (provider === 'gemini') return model ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` : null;
+  if (provider === 'gemini' || provider === 'gemma') return model ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` : null;
   if (provider === 'fal') return 'https://fal.run/fal-ai/florence-2-large/caption';
   if (provider === 'treg') return 'https://treg.to/call/treg.web.search';
   return null;
@@ -67,7 +67,7 @@ function parseApproval(input: unknown, now: number): SmokeApproval | null {
   let total = 0;
   for (const allowance of input.adapters) {
     if (!closed(allowance, ['adapter', 'model', 'task_version', 'rights_manifest_ids', 'max_call_micro', 'deadline_ms'])
-      || typeof allowance.adapter !== 'string' || !['iris', 'gemini', 'fal', 'treg'].includes(allowance.adapter)
+      || typeof allowance.adapter !== 'string' || !slots.includes(allowance.adapter as Adapter)
       || seen.has(allowance.adapter as Adapter) || !validModel(allowance.adapter as Adapter, allowance.model)
       || !id(allowance.task_version) || !ids(allowance.rights_manifest_ids) || !positive(allowance.max_call_micro)
       || !positive(allowance.deadline_ms) || allowance.deadline_ms > 10_000) return null;
@@ -83,7 +83,8 @@ function parseApproval(input: unknown, now: number): SmokeApproval | null {
 export function createProviderSetup(env: unknown = {}, inputApproval: unknown = null, now: () => number = Date.now): ProviderSetup {
   const approval = parseApproval(inputApproval, now());
   const credentials = new Map<Adapter, string | undefined>();
-  for (const adapter of ['iris', 'gemini', 'fal', 'treg'] as const) credentials.set(adapter, credential(envString(env, credentialNames[adapter])));
+  for (const adapter of slots) credentials.set(adapter, credential(envString(env, credentialNames[adapter])));
+  const gemmaRuntime = envString(env, 'GEMMA_RUNTIME') === 'hosted-rest';
   const models = new Map<Provider, string | null>();
   for (const provider of slots) {
     const allowance = approval?.adapters.find(entry => entry.adapter === provider);
@@ -99,12 +100,13 @@ export function createProviderSetup(env: unknown = {}, inputApproval: unknown = 
       return freeze({ genuine_calls: 0, max_calls: current?.max_calls ?? 0, max_total_micro: current?.max_total_micro ?? 0,
         providers: slots.map(provider => {
           const allowance = current?.adapters.find(entry => entry.adapter === provider);
-          const present = provider !== 'gemma' && !!credentials.get(provider);
+          const present = !!credentials.get(provider);
           const model = models.get(provider)!;
-          const blocker: ProviderStatus['blocker'] = provider === 'gemma' ? 'adapter-unavailable' : !allowance ? 'approval-required' : !present ? 'credential-required'
+          const blocker: ProviderStatus['blocker'] = !allowance ? 'approval-required' : !present ? 'credential-required'
+            : provider === 'gemma' && !gemmaRuntime ? 'runtime-required'
             : provider !== 'treg' ? 'hard-ceiling-unsupported' : null;
           return { provider, status: blocker === null ? 'configured' : blocker === 'hard-ceiling-unsupported' ? 'unsupported' : 'disabled',
-            credential_status: provider === 'gemma' ? 'not-applicable' : present ? 'present-unverified' : 'missing', endpoint: endpoint(provider, model), model,
+            credential_status: present ? 'present-unverified' : 'missing', endpoint: endpoint(provider, model), model,
             max_call_micro: allowance?.max_call_micro ?? null, deadline_ms: allowance?.deadline_ms ?? null,
             rights_manifest_ids: allowance?.rights_manifest_ids ?? [], blocker } satisfies ProviderStatus;
         }), context: { firecrawl: { credential_status: firecrawlPresent ? 'present-unverified' : 'missing', product_adapter: 'unsupported', route: 'direct-Firecrawl-not-Treg' },
@@ -112,7 +114,7 @@ export function createProviderSetup(env: unknown = {}, inputApproval: unknown = 
     },
     authorize: (job, fixture) => {
       if (!plainJson(job) || !closed(job, ['job_id', 'adapter', 'task_version', 'model', 'snapshot', 'deadline_at_ms', 'max_call_micro', 'task_input'])
-        || !id(job.job_id) || !id(job.task_version) || typeof job.adapter !== 'string' || !['iris', 'gemini', 'fal', 'treg'].includes(job.adapter)
+        || !id(job.job_id) || !id(job.task_version) || typeof job.adapter !== 'string' || !slots.includes(job.adapter)
         || typeof job.model !== 'string' || !positive(job.max_call_micro) || !positive(job.deadline_at_ms)
         || !validSnapshot(job.snapshot, now())) return fail('INVALID_INPUT');
       const current = currentApproval();
@@ -120,6 +122,7 @@ export function createProviderSetup(env: unknown = {}, inputApproval: unknown = 
       const allowance = current.adapters.find(entry => entry.adapter === job.adapter);
       if (!allowance) return fail('DISABLED');
       if (job.model !== allowance.model || job.task_version !== allowance.task_version) return fail('UNSUPPORTED');
+      if (job.adapter === 'gemma' && !gemmaRuntime) return fail('UNSUPPORTED');
       if (job.max_call_micro !== allowance.max_call_micro) return fail('BUDGET');
       if (job.deadline_at_ms <= now() || job.deadline_at_ms > now() + allowance.deadline_ms
         || job.deadline_at_ms > current.expires_at_ms) return fail('DEADLINE');

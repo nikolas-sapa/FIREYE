@@ -6,7 +6,7 @@ import type { Adapter, ClientConfig, Reservation, Result, Snapshot } from './rec
 export type SponsorJob = Readonly<{
   job_id: string; adapter: Adapter; task_version: string; model: string;
   snapshot: Snapshot; deadline_at_ms: number; max_call_micro: number;
-  task_input: Readonly<{ candidate_ids: readonly string[] }> | Readonly<{ evidence_id: string; png_base64: string }> | Readonly<{ query: string }>;
+  task_input: Readonly<{ candidate_ids: readonly string[] }> | Readonly<{ evidence_id: string; png_base64: string }> | Readonly<{ evidence_id: string; text: string }> | Readonly<{ query: string }>;
 }>;
 export type BoundSponsorInput = SponsorJob['task_input'] & Readonly<{ snapshot: Snapshot }>;
 export type SponsorRun = (signal: AbortSignal, reservation: Reservation, input: BoundSponsorInput) => Promise<Result<unknown>>;
@@ -30,12 +30,15 @@ export class SponsorJobs {
     const now = (config.now ?? Date.now)();
     if (!plainJson(input) || !closed(input, ['job_id', 'adapter', 'task_version', 'model', 'snapshot', 'deadline_at_ms', 'max_call_micro', 'task_input'])
       || !id(input.job_id) || !id(input.task_version) || typeof input.model !== 'string' || input.model.length > 200
-      || typeof input.adapter !== 'string' || !['iris', 'gemini', 'fal', 'treg'].includes(input.adapter) || !validSnapshot(input.snapshot, now)
+      || typeof input.adapter !== 'string' || !['iris', 'gemini', 'gemma', 'fal', 'treg'].includes(input.adapter) || !validSnapshot(input.snapshot, now)
+      || input.adapter === 'gemma' && !['gemma-4-31b-it', 'gemma-4-26b-a4b-it'].includes(input.model)
       || !positive(input.max_call_micro) || !positive(input.deadline_at_ms) || input.deadline_at_ms <= now || input.deadline_at_ms - now > 10_000
       || !validTask(input.adapter as Adapter, input.task_input, input.snapshot)) return Promise.resolve(fail('INVALID_INPUT'));
     const job = freeze(structuredClone(input)) as SponsorJob;
     if (!this.#current(job)) return Promise.resolve(fail('STALE'));
-    const bound = freeze({ snapshot: job.snapshot, ...job.task_input });
+    const bound = freeze(job.adapter === 'gemma' && 'text' in job.task_input
+      ? { snapshot: job.snapshot, evidence_id: job.task_input.evidence_id, text: job.task_input.text }
+      : { snapshot: job.snapshot, ...job.task_input });
     const inputHash = createHash('sha256').update(JSON.stringify(bound)).digest('hex');
     const identity = createHash('sha256').update(JSON.stringify([job.adapter, job.task_version, job.model, inputHash])).digest('hex');
     const previous = this.#jobIds.get(job.job_id);
@@ -60,7 +63,8 @@ export class SponsorJobs {
     try { return validSnapshot(job.snapshot, (this.#config.now ?? Date.now)()) && this.#config.is_current!(job.snapshot); } catch { return false; }
   }
   #atRead(job: SponsorJob, result: Promise<Result<unknown>>): Promise<Result<unknown>> {
-    return result.then(value => this.#current(job) ? value : fail('STALE'));
+    return result.then(value => !this.#current(job) ? fail('STALE')
+      : (this.#config.now ?? Date.now)() >= job.deadline_at_ms ? fail('DEADLINE') : value);
   }
   #drain(): void {
     while (this.#active < 2 && this.#queue.length) {
@@ -113,6 +117,14 @@ export class SponsorJobs {
 function validTask(adapter: Adapter, input: unknown, snapshot: Snapshot): boolean {
   if (adapter === 'iris') return closed(input, ['candidate_ids']) && ids(input.candidate_ids);
   if (adapter === 'treg') return closed(input, ['query']) && typeof input.query === 'string' && input.query.trim().length > 0 && input.query.length <= 256 && !secretLike(input.query) && !/[\r\n]/.test(input.query);
+  if (adapter === 'gemma') {
+    if (!closed(input, ['evidence_id', 'text']) || !id(input.evidence_id) || typeof input.text !== 'string' || !input.text.trim() || input.text.length > 16_384) return false;
+    const evidence = snapshot.evidence[0];
+    const bytes = Buffer.from(input.text, 'utf8');
+    return snapshot.evidence.length === 1 && evidence.evidence_id === input.evidence_id && evidence.modality === 'text'
+      && evidence.width_px === null && evidence.height_px === null && bytes.length <= 16_384 && bytes.length === evidence.byte_length
+      && bytes.toString('utf8') === input.text && createHash('sha256').update(bytes).digest('hex') === evidence.content_hash;
+  }
   if (!closed(input, ['evidence_id', 'png_base64']) || !id(input.evidence_id)) return false;
   const evidence = snapshot.evidence.find(e => e.evidence_id === input.evidence_id);
   return !!evidence && evidence.modality === 'eo' && validPng(input.png_base64, evidence);

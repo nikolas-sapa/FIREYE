@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { ClientConfig, Snapshot } from '../integrations/receipts.ts';
 import type { SponsorJob } from '../integrations/jobs.ts';
 import { createIrisClient } from '../integrations/iris/client.ts';
+import { createGemmaClient } from '../integrations/gemma/client.ts';
 import type { Reservation } from '../integrations/receipts.ts';
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
@@ -19,6 +20,207 @@ function snapshot(): Snapshot {
 function job(n = 1): SponsorJob { return { job_id: `j${n}`, adapter: 'gemini', task_version: 'v1', model: 'gemini-2.5-flash', snapshot: { ...snapshot(), snapshot_id: `s${n}` }, deadline_at_ms: Date.now() + 500, max_call_micro: 100, task_input: { evidence_id: 'e1', png_base64: png } }; }
 function config(extra: Partial<ClientConfig> = {}): ClientConfig { return { enabled: true, authorization_id: 'auth1', budget: new SponsorBudget(100, 100_000), is_current: () => true, ...extra }; }
 const positive = { ok: true as const, value: { kind: 'evidence-analysis', verification_status: 'unverified', evidence_ids: ['e1'], hypotheses: ['fire'], synthesis: 'review-required' } };
+
+function gemmaJob(n = 1, text = 'Received exercise smoke report', evidence_id = 'e1'): SponsorJob {
+  const base = job(n);
+  return { ...base, adapter: 'gemma', model: 'gemma-4-31b-it', task_input: { evidence_id, text },
+    snapshot: { ...base.snapshot, evidence: [{ ...base.snapshot.evidence[0], evidence_id, modality: 'text',
+      content_hash: createHash('sha256').update(text).digest('hex'), byte_length: Buffer.byteLength(text), width_px: null, height_px: null }] } };
+}
+const gemmaReply = () => Response.json({ candidates: [{ finishReason: 'STOP', content: { role: 'model',
+  parts: [{ text: JSON.stringify({ hypotheses: ['fire'], synthesis: 'review-required' }) }] } }] });
+
+test('G4Q01 20 duplicate actual Gemma jobs bind 1 immutable receipt/transport/reservation', async () => {
+  const budget = new SponsorBudget(1, 100);
+  const jobs = new SponsorJobs(config({ budget }));
+  const input = gemmaJob();
+  let calls = 0;
+  const results = await Promise.all(Array.from({ length: 20 }, () => jobs.submit(input, async (_signal, reservation, bound) => {
+    assert.ok(Object.isFrozen(bound));
+    return createGemmaClient({ ...config({ budget }), runtime: 'hosted-rest', model: input.model, max_call_micro: 100,
+      deadline_ms: 500, reservation, transport_mode: 'fixture', transport: async request => {
+        calls++;
+        const body = JSON.parse(request.body);
+        assert.deepEqual(Object.keys(body), ['contents', 'generationConfig']);
+        assert.deepEqual(Object.keys(body.contents[0].parts[0]), ['text']);
+        return gemmaReply();
+      } }).analyze(bound);
+  })));
+  for (const result of results) {
+    assert.equal(result.ok, true);
+    assert.equal(result.receipt?.adapter, 'gemma');
+    assert.equal(result.receipt?.model, input.model);
+    assert.equal(result.receipt?.fresh_provider_call, false);
+    assert.equal(result.receipt?.input_hash, createHash('sha256').update(JSON.stringify({ snapshot: input.snapshot, ...input.task_input })).digest('hex'));
+  }
+  assert.equal(calls, 1);
+  assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  assert.equal(jobs.counts().retained, 1);
+});
+
+test('G4Q02 3 changed text/evidence/hash inputs retain 3 distinct Gemma identities', async () => {
+  const budget = new SponsorBudget(3, 300);
+  const jobs = new SponsorJobs(config({ budget }));
+  const base = gemmaJob();
+  let calls = 0;
+  const hashes = new Set<string>();
+  for (const input of [base, { ...gemmaJob(2, 'Different received report'), snapshot: { ...gemmaJob(2, 'Different received report').snapshot, snapshot_id: base.snapshot.snapshot_id } },
+    { ...gemmaJob(3, 'Received exercise smoke report', 'e2'), snapshot: { ...gemmaJob(3, 'Received exercise smoke report', 'e2').snapshot, snapshot_id: base.snapshot.snapshot_id } }]) {
+    const result = await jobs.submit(input, async (_signal, reservation, bound) => createGemmaClient({ ...config({ budget }), runtime: 'hosted-rest',
+      model: input.model, max_call_micro: 100, deadline_ms: 500, reservation, transport_mode: 'fixture',
+      transport: async () => { calls++; return gemmaReply(); } }).analyze(bound));
+    assert.equal(result.ok, true);
+    hashes.add(result.receipt!.input_hash);
+  }
+  assert.equal(calls, 3);
+  assert.equal(hashes.size, 3);
+  assert.equal(jobs.counts().retained, 3);
+});
+
+test('G4Q02 20 unsupported Gemma IDs and 20 malformed text/media inputs reserve/invoke 0', async () => {
+  const budget = new SponsorBudget(100, 10_000);
+  const jobs = new SponsorJobs(config({ budget }));
+  let calls = 0;
+  const run = async () => { calls++; return positive; };
+  const unsupported = ['gemma-4-e2b-it', 'gemma-4-local', 'gemini-2.5-flash', 'gemma-4-31b-it/other'];
+  for (let n = 0; n < 20; n++) assert.equal((await jobs.submit({ ...gemmaJob(n), model: unsupported[n % 4] }, run)).ok, false);
+  const input = gemmaJob();
+  const cases = [null, { evidence_id: 'e1', text: '' }, { evidence_id: 'e1', text: 'mismatch' },
+    { evidence_id: 'e1', text: 'x'.repeat(16_385) }, { evidence_id: 'e1', png_base64: png },
+    { evidence_id: 'e2', text: 'Received exercise smoke report' }, { ...input.task_input, hidden: true }];
+  for (let n = 0; n < 20; n++) assert.equal((await jobs.submit({ ...input, task_input: cases[n % cases.length] }, run)).ok, false);
+  assert.equal(calls, 0);
+  assert.deepEqual(budget.usage(), { calls: 0, reserved_micro: 0 });
+});
+
+test('G4Q03 20 stale Gemma cache reads and 20 superseded actual replies produce 0 actionable values', async () => {
+  for (let n = 0; n < 20; n++) {
+    let current = true;
+    const budget = new SponsorBudget(2, 200);
+    const jobs = new SponsorJobs(config({ budget, is_current: () => current }));
+    const input = gemmaJob(n);
+    let calls = 0;
+    const run = (supersede = false) => async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => createGemmaClient({
+      ...config({ budget, is_current: () => current }), runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500,
+      reservation, transport_mode: 'fixture', transport: async () => { calls++; if (supersede) current = false; return gemmaReply(); } }).analyze(bound);
+    assert.equal((await jobs.submit(input, run())).ok, true);
+    const cached = jobs.submit(input, run());
+    current = false;
+    const stale = await cached;
+    assert.equal(stale.ok, false);
+    if (!stale.ok) assert.equal(stale.code, 'STALE');
+    current = true;
+    assert.equal((await jobs.submit(gemmaJob(n + 20), run(true))).ok, false);
+    assert.equal(calls, 2);
+  }
+});
+
+test('G4Q04 10 Gemma jobs stay at 2 physical/8 queued, eleventh rejected', async () => {
+  const jobs = new SponsorJobs(config());
+  const releases: (() => void)[] = [];
+  let calls = 0;
+  const run = async () => { calls++; await new Promise<void>(resolve => releases.push(resolve)); return positive; };
+  const pending = Array.from({ length: 10 }, (_, n) => jobs.submit(gemmaJob(n), run));
+  await delay(1);
+  assert.equal(jobs.counts().in_flight, 2);
+  assert.equal(jobs.counts().queued, 8);
+  assert.equal((await jobs.submit(gemmaJob(11), run)).ok, false);
+  while (calls < 10) { for (const release of releases.splice(0)) release(); await delay(1); }
+  for (const release of releases.splice(0)) release();
+  assert.equal((await Promise.all(pending)).filter(result => result.ok).length, 10);
+  assert.equal(calls, 10);
+});
+
+test('G4Q01 actual Gemma issued receipt rejects changed text hash despite same evidence ID', async () => {
+  const budget = new SponsorBudget(1, 100);
+  const jobs = new SponsorJobs(config({ budget }));
+  const input = gemmaJob();
+  const changed = gemmaJob(1, 'Different received text');
+  const result = await jobs.submit(input, async (_signal, reservation) => createGemmaClient({ ...config({ budget }),
+    runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500, reservation,
+    transport_mode: 'fixture', transport: async () => gemmaReply() }).analyze({ snapshot: changed.snapshot, ...changed.task_input }));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'INVALID_REPLY');
+});
+
+test('G4Q05 20 default Gemma jobs invoke/reserve 0', async () => {
+  const jobs = new SponsorJobs();
+  let calls = 0;
+  for (let n = 0; n < 20; n++) assert.equal((await jobs.submit(gemmaJob(n), async () => { calls++; return positive; })).ok, false);
+  assert.equal(calls, 0);
+  assert.deepEqual(jobs.counts(), { in_flight: 0, queued: 0, retained: 0 });
+});
+
+test('G4Q07a 20 actual Gemma cached deadline aliases reject at read, 1 call/reservation each', async () => {
+  for (let n = 0; n < 20; n++) {
+    const input = gemmaJob(n);
+    let wall = input.snapshot.received_cutoff_ms;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall }));
+    const run = async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => createGemmaClient({ ...config({ budget, now: () => wall }),
+      runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500, reservation,
+      transport_mode: 'fixture', transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+    assert.equal((await jobs.submit(input, run)).ok, true);
+    const cached = jobs.submit({ ...input, job_id: `alias${n}`, deadline_at_ms: wall + 1 }, run);
+    wall += n % 2 ? 2 : 1;
+    const result = await cached;
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'DEADLINE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
+
+test('G4Q07b 20 actual Gemma fresh-result microtask expiries reject before read, 1 call/reservation each', async () => {
+  for (let n = 0; n < 20; n++) {
+    const base = gemmaJob(n);
+    let wall = base.snapshot.received_cutoff_ms;
+    const input = { ...base, deadline_at_ms: wall + 100 };
+    let returned = false;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall, is_current: () => {
+      if (returned) queueMicrotask(() => { wall = input.deadline_at_ms + n % 2; });
+      return true;
+    } }));
+    const result = await jobs.submit(input, async (_signal, reservation, bound) => {
+      const value = await createGemmaClient({ ...config({ budget, now: () => wall }), runtime: 'hosted-rest', model: input.model,
+        max_call_micro: 100, deadline_ms: 500, reservation, transport_mode: 'fixture',
+        transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+      assert.equal(value.ok, true);
+      returned = true;
+      return value;
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'DEADLINE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
+
+test('G4Q07c 20 stale-and-expired actual Gemma cache reads preserve STALE priority, 0 extra calls', async () => {
+  for (let n = 0; n < 20; n++) {
+    const input = gemmaJob(n);
+    let wall = input.snapshot.received_cutoff_ms;
+    let current = true;
+    let calls = 0;
+    const budget = new SponsorBudget(1, 100);
+    const jobs = new SponsorJobs(config({ budget, now: () => wall, is_current: () => current }));
+    const run = async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => createGemmaClient({ ...config({ budget, now: () => wall }),
+      runtime: 'hosted-rest', model: input.model, max_call_micro: 100, deadline_ms: 500, reservation,
+      transport_mode: 'fixture', transport: async () => { calls++; return gemmaReply(); } }).analyze(bound);
+    assert.equal((await jobs.submit(input, run)).ok, true);
+    const cached = jobs.submit({ ...input, deadline_at_ms: wall + 1 }, run);
+    wall += 2;
+    current = false;
+    const result = await cached;
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'STALE');
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: 100 });
+  }
+});
 
 test('SP03 default budget and scheduler grant 0 unapproved calls', async () => {
   assert.equal(new SponsorBudget().reserve(1), false);
