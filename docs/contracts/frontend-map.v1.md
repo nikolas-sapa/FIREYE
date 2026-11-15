@@ -15,7 +15,7 @@ Issue #17, 2026-11-15. Mapping only, no frontend implementation/launch/acceptanc
 | `authority_active` | False means freeze, last-known display only, zero auto-dispatch/revival. Reads still available while frozen. |
 | `as_of_received_at` | Requested receipt cutoff, not source acquisition time, provider execution time or server-health heartbeat. |
 
-Opaque IDs preserve exact strings: asset/feed/frame/evidence/source snapshot/source revision/mission/version/route/candidate/proposal/approval/command. No trimming, numeric conversion or inferred equivalence. Launcher declares `d1..d3`, thermal feeds `t1..t3`, current fixture candidates `c1..c3`, missions `m1..m3`, no rendered media/trajectory. Those are disposable synthetic declarations, not generated planner courses or execution proof.
+Opaque IDs preserve exact strings: asset/feed/frame/evidence/source snapshot/source revision/mission/version/route/candidate/proposal/approval/command. No trimming, numeric conversion or inferred equivalence. Launcher's default bridge-only seed declares `d1..d3`, thermal feeds `t1..t3`, current fixture candidates `c1..c3`, missions `m1..m3`, no rendered media/trajectory. Those are disposable synthetic declarations, not generated planner courses or execution proof. Optional `--demo` uses only `d1/t1` and replaces generic candidates with one registered planner-generated single-drone course; see [producer handoff distinction](producer-handoff.v1.md#three-asset-declaration-not-three-drone-execution). Neither seed establishes Marco's asset/feed/route mapping or three-drone execution.
 
 ## Coordinates, clocks and media
 
