@@ -1,5 +1,21 @@
 # Fire Command Center shared taskboard
 
+BATCH-20261115-17 independent final review: dedicated reader task01a1ddf4-3c70-7191-a051-f3803abdb75d APPROVE exact two-document hashes,0blockers; independent native260+compiled260,typecheck/fullsourcecompiler0failure/skip,focused26/26,20actualexport probes0transport,7links+1anchor0missing. Root inspected actual four-line diff, independently repeated full checker/sourcehash/diff/scope. Coordinator authorizes docs-only branch delivery. Existing workflow path filters exclude docs-only PR, no fresh hosted CI claimed. Actual Marco mapping/CRS/clocks/cadence/600s and full issue remain unresolved;0frontend/providers.
+
+
+BATCH-20261115-17 coordinator fresh verification: Root full actual checker exit0, native260/260 and compiled260/260, noEmit/fullsourcecompiler exit0,0failures/skips. Builder focused21/21,local7/7links+1anchor0missing. Source hashes localbackend309654a562b2de20d69e0a172983a058948fb2a8dcaebf6f4f63be174334e47d/mape678c357d7cc2d7ac1a3e0102108cdb8e8c6cf0f472564f1f063cf15adaf1d75. Two docs only, unknown mapping/CRS/clocks unchanged,0genuinecalls. Independent reader final pending; doc-only hosted workflows filtered out, not claimed as new CI proof.
+
+
+## BATCH-20261115-17, current issue continuation
+
+Root coordinator assigned /root/issue17_builder, issue #17, branch `task/fcc-20261115-issue17`, clean base `b1e5572b3c2be25ad46630805ae713fa2d6abca9`. Exact source/document ownership: `docs/demo/local-backend.md`, `docs/contracts/frontend-map.v1.md` only. Prior interrupted workers' worktrees remain read-only and preserved; this new isolated branch owns continuation. Coordinator exclusively owns this board and Git delivery. Independent reviewers read only.
+
+Test plan before implementation: DOC17-01: 2 documents distinguish default bridge from --demo and exactly 1 registered single-drone fixture; 0 false three-drone/runtime/provider claims. DOC17-02: every changed local link resolves with 0 missing targets, minimum 7 inspected. DOC17-03: existing actual native/compiled launcher controls and typecheck exit 0 with 0 failures; reviewer checks unknown CRS/clock/thermal mappings remain unknown.
+
+Implementation: reconcile preserved WIP with actual current exports, apply only approved exact-path delta, complete numeric checks, freeze hashes, obtain independent review and coordinator re-verification, then coordinator commit/push and open branch PR. No worker Git mutation.
+
+Non-goals: frontend/proposal edits or launch, new architecture/dependencies/schema/lock/CI, providers or credential creation, media/Convex/cloud/dynamic activation, paid calls, VM/deploy/merge, operational claims. Partial issue delivery never claims full acceptance or closes remaining gates.
+
 BATCH-20261115-10 independent final review: TypeScript /root/issue10_typescript and dedicated security task01a1ddf4-3cab-74e3-9acd-e4f600204b5d APPROVE frozen two-source hashes,0blockers. Root inspected full diff, re-ran deciding native289+compiled289/typecheck/compiler PASS, verified source scope/hashes. Additional reviewer1024exactcaps/0over-under and20duplicates→1localhostcall. Coordinator authorized exact-path branch delivery; no issue closure/provider enforcement or paid smoke claimed.
 
 
