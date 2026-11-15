@@ -2,7 +2,7 @@
 
 **A wildfire command console that puts drones, cameras, sensors and field reports on one screen, and keeps a human in charge of every consequential decision.**
 
-Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation. It is not an emergency service.
+Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation, scrubbable from 14:00 to 22:00 local time. It is not an emergency service.
 
 ## For judges: the short version
 
@@ -10,11 +10,13 @@ Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Ma
 
 **What FIREYE does.**
 
-- Shows the fire, six simulated drones (each with a separate visible-light and thermal camera), eight fixed cameras and 24 ground sensors on a 3D map of Attica.
-- An orchestrator sends drones to scout high-risk areas that fixed cameras cannot see, brings them back to recharge, and explains why it chose each task.
-- Raises an alert only when something materially changes: a new fire, a faster spread, or a town newly in reach within the hour.
-- Labels every piece of evidence with its source, its capture time and whether it is simulated. Old evidence never looks fresh.
-- A backend core enforces the rules that matter in a real deployment: only the current human Chief can approve a task, approvals expire, stale or duplicate inputs are rejected, and the whole incident can be replayed exactly as it was known at any moment.
+- Shows the fire on a 3D satellite globe of East Attica with 14 simulated camera sources: six drones (each with its own visible-light and thermal channel) and eight fixed cameras, 20 channels in all, plus 24 ground sensors.
+- Dive into any feed: drone and camera views render a procedural 3D landscape of Mati with the reconstructed fire at that moment in time.
+- The FIREYE orchestrator sends drones from two outskirts stations to scout high-risk sectors that fixed cameras cannot see, flies circle, square, line or hover patterns, and brings them back to land and recharge. Every task shows its reason and its source history.
+- Raises an alert only when something materially changes: a new fire, spread speeding up by at least 20%, a predicted arrival moving at least five minutes earlier, or a place newly threatened within the hour.
+- Labels every piece of evidence with its source, its capture time and whether it is simulated. Old evidence never looks fresh, and an unresolved critical alert never fades away on its own.
+- Consequential actions need a human. The Ops view requires a human approval click, and the backend core enforces it properly: only the current human Chief can approve, approvals expire, stale or duplicate inputs are rejected, and the whole incident can be replayed exactly as it was known at any moment.
+- A Crew view reads only what the backend has actually received, so a crew never sees simulator "truth" they could not know.
 
 **Who it is for.** Fire chiefs and incident commanders, and the crews who need the same picture they do.
 
@@ -26,7 +28,7 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-Open `http://localhost:5173/console.html?mode=fireye`. Press `Space` to play, click a drone to dive into its feed, press `T` for thermal, `/` to open the chat. Other views: Ops (`/console.html`), Crew (`?mode=crew`), Monitoring (`?mode=monitoring`), Replay (`?mode=replay`).
+Open `http://localhost:5173/console.html?mode=fireye` (add `&tokens=0` to run fully offline). Watch the boot sequence, then press `Space` to play, click a drone or camera in the Fleet rail to dive into its feed, press `T` for thermal, `/` or click the eye to open the orchestrator chat. Add `&boot=0` to skip the intro or `&t=16:00` to start at a given time. Other views: Ops with human approvals (`/console.html`), Crew (`?mode=crew`), Monitoring (`?mode=monitoring`), legacy Replay (`?mode=replay`).
 
 Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
 
@@ -34,10 +36,12 @@ Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
 
 | Real | Simulated or not yet connected |
 |---|---|
-| 3D console, drone tasking, battery and recharge logic, alerting rules, thermal and visible feeds as rendered views | All drones, sensors, radio traffic and thermal images are simulated |
+| 3D console, boot sequence, drone tasking, battery and recharge logic, alerting rules | All drones, sensors, radio traffic, landscape and thermal images are simulated |
+| 20 rendered feed channels; local browser checks exported 20 distinct 960×540 thermal PNGs with matching hashes and ran all 20 channels fullscreen at 30 fps sampled | Thermal is false-color display, not measured temperature |
 | Historical Mati reconstruction and attributed public sources (EFFIS, ERA5, EEA/CATDAT) | The fire spread is a reconstruction fitted to historical records, not a forecast |
 | Backend approval, receipts and replay, covered by 320 tests (hosted CI green on Node 24 and 26) | Chief/Scout chat replies are scripted, not live model calls |
-| Received-only Crew view reading backend state | A backend-approved command does not yet move a frontend drone |
+| Received-only Crew view reading backend state | A backend-approved command does not yet move a frontend drone; FIREYE recon tasking is local simulation, not backend approvals |
+| Sponsor adapters (Gemini, Gemma, Oumi Iris, fal, Firecrawl, Treg, Boxd) coded server-side | All disabled or fixture-only by default; no genuine provider calls made |
 | | No public deployment, no real drone control, no real warnings |
 
 Everything below is the detailed engineering reference.
@@ -79,18 +83,18 @@ The visual exercise uses the Mati historical reconstruction, with Caldor availab
 
 ## Implementation status
 
-Source inventory snapshot: 2026-11-15, main `c98415b`. Later [bounded desktop recording checks](SUBMISSION_EVIDENCE.md#bounded-desktop-recording-checks) identify their own source baselines. **Local** means implemented exercise code, **Fixture/dormant** means bounded synthetic or disabled integration, **Pending** means not connected or accepted. None means operational readiness. Older [backend receipts](TASKBOARD.md#current-main-backend-summary), isolated builds and draft PR #2 descriptions are historical, not the current application inventory.
+Source inventory snapshot: 2026-11-15, main `b87a5a2` (after PR #62: FIREYE reconnaissance, presentation boot and World3D feeds). Later [bounded desktop recording checks](SUBMISSION_EVIDENCE.md#bounded-desktop-recording-checks) identify their own source baselines. **Local** means implemented exercise code, **Fixture/dormant** means bounded synthetic or disabled integration, **Pending** means not connected or accepted. None means operational readiness. Older [backend receipts](TASKBOARD.md#current-main-backend-summary), isolated builds and draft PR #2 descriptions are historical, not the current application inventory.
 
 | Area | Status | What exists / what does not |
 |---|---|---|
-| Visual console/simulator | Local | Ops/FIREYE, six drones with distinct EO+thermal channels, local planner/task movement, monitoring and replay. Views are simulated/local renders or archive context. |
+| Visual console/simulator | Local | Ops/FIREYE, six drones with distinct EO+thermal channels plus eight fixed cameras (20 channels, 14 sources), FIREYE reconnaissance tasking with station landing/recharge, presentation boot, World3D procedural feed landscape, local planner/task movement, monitoring and replay. Views are simulated/local renders or archive context. FIREYE recon has no approval buttons; Ops and legacy replay keep mandatory human approval. |
 | Received-only Crew | Local/fixture | [Crew entry](proposal/fcc/src/console/crew/CrewApp.tsx) reads backend received state, no simulator fallback. Coordinate/feed/clock mapping and full producer acceptance remain pending. |
 | Historical graph and chat | Local | Frozen EEA/CATDAT Greece series and shared Chief/Scout chat. Replies are scripted, not verified LLM inference; mascot Chief is not human approval authority. |
 | Protocol, received state and bridge | Local/fixture | Closed validators, immutable reducer, loopback HTTP, revision/currentness/authority guards and producer-loss freeze. No production identity, Convex or cloud persistence. |
 | Approval, receipts and replay | Local/fixture | Human-context gates, reservation, immutable command and supplied receipt progression, canonical replay. Frontend execution/completion bridge remains unconnected. |
 | Planner and orchestration demo | Local/fixture | Finite toy planner supports up to three-drone courses; `--demo` registers exactly one single-drone fixture course. Neither is the six-drone frontend fleet. Changed/unregistered courses stay review-only. |
 | Provider/source/compute adapters | Fixture/dormant | Bounded server-side Iris/Gemini/Gemma/fal/Treg/Firecrawl/Boxd seams and explicit source/weather packets, disabled or fixture-only by default. No genuine inference/retrieval/remote execution established. |
-| Verification | Source-bound local/unit evidence | [Frontend checks](proposal/fcc/package.json) cover local simulation, channel registration, capture metadata and spread regression. Later local recording checks accepted 14 distinct camera paths and 20 actual AETOS-2 IR frame downloads. Further per-drone export coverage, ten-minute browser and complete mobile acceptance remain open. |
+| Verification | Source-bound local/unit evidence | [Frontend checks](proposal/fcc/package.json) cover local simulation, channel registration, capture metadata and spread regression. Later local recording checks accepted 14 distinct camera paths and 20 actual AETOS-2 IR frame downloads; PR #62's local browser checks exported 20 distinct 960×540 thermal PNGs with matching hashes/provenance and ran all 20 World3D channels fullscreen (30 batch fps sampled, max 142 draws / 938,740 triangles). Ten-minute browser, soak and complete mobile acceptance remain open. |
 | Cloud, media and deployment | Pending | Real auth, Convex/persistence, media rights/ingestion and public deployment remain deferred. No operational or final submission acceptance. |
 
 The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md) and [four-task plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) authorized the historical first slice. Later exact-file claims authorized bounded additions, not full V1 or public launch. All 15 issue cards remain open at this snapshot. Administrative work and passing local tests are not full-product acceptance.
@@ -172,7 +176,7 @@ Before new media ingestion: record source/publisher/version or commit, exact rig
 
 ### Camera and thermal rules
 
-The local simulator has **six drones, each with distinct EO and thermal channels**. [Channel/capture tests](proposal/fcc/tests/thermal.ts) exercise registration and metadata; [rendering code](proposal/fcc/src/console/stage3d/thermal.ts) supplies local thermal presentation. These are simulated/local renders or archive context, not verified real CCTV/live sensors. Passing unit checks is not proof of 20 actual rendered exports or ten-minute browser acceptance; both remain **NOT PROVED** pending exact receipt review.
+The local simulator has **six drones, each with distinct EO and thermal channels**. [Channel/capture tests](proposal/fcc/tests/thermal.ts) exercise registration and metadata; [rendering code](proposal/fcc/src/console/stage3d/thermal.ts) supplies local thermal presentation. These are simulated/local renders or archive context, not verified real CCTV/live sensors. Unit checks alone are not rendered-export proof. Bounded local browser checks in [PR #62](https://github.com/nikolas-sapa/FIREYE/pull/62) exported 20 distinct actual 960×540 thermal PNGs with matching hashes and provenance; ten-minute browser acceptance remains **NOT PROVED**.
 
 Simulated feeds require `source_kind='simulated'`, `synthetic=true`, `radiometric=false`, `calibration=null`. False-color is display, not calibrated thermal sensing or Celsius. Current protocol has no temperature fields. Real radiometric use would need source-linked calibration, permitted measurements and capability validation. Thermal does not see through walls; smoke/occlusion performance is source-specific.
 
@@ -397,9 +401,9 @@ Backend tests call actual native/compiled exports with fixtures, including loopb
 | [Approval](backend/tests/approval.test.ts) | 18 | Current human-context/revision binding, local serialized races, reservation/TTL/lease and command acceptance. |
 | [Replay](backend/tests/replay.test.ts) | 11 | Canonical reconstruction/cutoffs, receipt progression, corruption rejection and preserved critical hypotheses. |
 
-Frontend checks (`npm test`, `npm run test:spread-precision`, `npm run typecheck`, `npm run build`) cover local simulation, channel registration, capture metadata and spread regression. Fake-canvas unit captures are not rendered camera exports. **20 actual rendered exports and ten-minute browser acceptance remain NOT PROVED** for this source snapshot.
+Frontend checks (`npm test`, `npm run test:spread-precision`, `npm run typecheck`, `npm run build`) cover local simulation, channel registration, capture metadata and spread regression. Fake-canvas unit captures are not rendered camera exports; the 20 actual thermal exports come from separate local browser checks (`npm run test:thermal-browser`, PR #62). **Ten-minute browser acceptance remains NOT PROVED** for this source snapshot.
 
-Historical CI note: PR #48's Node 24 `BODY01` failure was a client-lease versus server-close timing assertion mismatch, not current CI status. Consult [current PR #48 checks](https://github.com/nikolas-sapa/fire-command-center/pull/48/checks) for later-source results. This README remains pinned to `c98415b`.
+Historical CI note: PR #48's Node 24 `BODY01` failure was a client-lease versus server-close timing assertion mismatch, not current CI status. Consult [current PR #48 checks](https://github.com/nikolas-sapa/FIREYE/pull/48/checks) for later-source results. This README is pinned to `b87a5a2`.
 
 Still unproved: backend-to-frontend execution/completion mapping, full loss/retry/rejoin, Convex races, production identity, real thermal measurement/detection, browser accessibility/performance, calibrated route/energy physics, genuine provider calls and deployment.
 
@@ -417,7 +421,7 @@ Still unproved: backend-to-frontend execution/completion mapping, full loss/retr
 
 1. Review current-source receipts and outstanding issue cards. Keep the end-user/interface direction pending owner decision.
 2. Approve explicit producer/coordinate/feed/clock/command mapping, then connect backend-approved commands to frontend execution and factual receipts. Do not replace the received-only reader with simulator fallback.
-3. Review 20 actual rendered exports and ten-minute browser acceptance, including source labels, uncertainty, human approval, loss/rejoin and replay. Existing channels alone do not close these gates.
+3. Review ten-minute browser acceptance beyond the bounded 20-export check, including source labels, uncertainty, human approval, loss/rejoin and replay. Existing channels alone do not close these gates.
 4. Resolve provider model/runtime/configuration, rights and budget gates before any genuine inference/retrieval. Cloud/auth/persistence and media integration need separate approval.
 5. Freeze reviewed evidence and attribution before separately authorizing any public deployment or submission.
 
