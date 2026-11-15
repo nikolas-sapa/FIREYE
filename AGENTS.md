@@ -3,10 +3,12 @@
 ## Planning gate
 
 - Read [README](README.md) and [TASKBOARD](TASKBOARD.md) before work.
-- Keep this repository planning-only until the owner approves product scope, numeric test plan, non-goals, simulator fidelity, runtime and source/reuse permissions.
+- Full V1 remains gated until owner approves its scope/tests/non-goals/fidelity/runtime/source permissions. Historical USER-GO-2026-11-14 approved ONLY Convex eventual canonical authority, one teammate simulator producer and the protocol-only first coding PR described in [bounded spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md). Later exact-file backend claims do not constitute full V1 approval.
 - Put named tests with numeric pass criteria before the implementation plan. Return architectural changes to the spec for approval.
 - Do not infer application approval from repository, collaboration or scoped authentication setup.
-- Do not add application source, package manifests, dependencies, database/schema migrations or CI configuration during this planning lane.
+- Historical protocol exception: claimed pure `backend/protocol/**`, `backend/state/**`, `backend/tests/**` plus isolated backend package/lock/tsconfig/.gitignore; Node >=24, native Node tests, dev-only TypeScript 5.9.3 and @types/node 24.10.1. The [four-task RED/GREEN plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) governed that first slice, not the later bounded backend additions.
+- Current bounded backend scope consists of coordinator-authorized exact-file claims recorded on [TASKBOARD](TASKBOARD.md#current-main-backend-summary): received-state loopback bridge, deterministic toy planner, dormant sponsor/Gemma jobs and provider setup/preflight, source/weather context, dormant Boxd jobs, local orchestration/demo CLI and backend verification/CI. New work still requires exact claims, tests and review; these existing seams grant no wildcard application/dependency/provider approval.
+- Root never edits teammate `proposal/fcc/**`; Marco's separately authorized frontend work (#8/#9) is unchanged. Frontend launch/adoption requires explicit owner confirmation. Convex/shared production auth and media integration remain deferred. No genuine provider inference/retrieval, remote execution, provisioning or deployment authorized by this documentation. Separate trusted ActorContext from body actor fields; local fixture capabilities are not real identity, local CAS tests are not Convex transaction proof. Producer loss freezes until explicit reconciled takeover; planner geometry is not calibrated flight physics. Preserve `proposal/**` ownership and all safety guards below.
 
 ## Ownership and integration
 
