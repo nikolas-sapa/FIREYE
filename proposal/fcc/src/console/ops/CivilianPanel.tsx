@@ -7,6 +7,7 @@ import {
   STAGE_RANK, alertFeed, counters, leaveBy, placeAlerts, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
 import type { AlertStage } from './geo/evac';
+import { Character } from './characters/Character';
 
 export const HOME_OPTIONS = ['neos-voutzas', 'mati', 'kokkino-limanaki', 'argyra-akti', 'nea-makri'] as const;
 const STAGE_COPY: Record<AlertStage, { title: string; body: string; cls: string }> = {
@@ -34,7 +35,7 @@ export function setHome(id: string) {
 function BigCounter({ k, v }: { k: string; v: number }) {
   return (
     <div className="flex-1 border-l border-line px-3 py-2 first:border-l-0">
-      <div className="fcc-num text-2xl font-semibold text-bone">{v.toLocaleString('en-US')}</div>
+      <div className="fcc-num text-[32px] font-semibold text-bone">{v.toLocaleString('en-US')}</div>
       <div className="mt-0.5 font-mono text-micro uppercase tracking-[0.12em] text-bone-mute">{k}</div>
     </div>
   );
@@ -69,7 +70,16 @@ export function CivilianPanel({ home }: { home: { id: string; name: string; pos:
         </select>
       </div>
       <div className={cn('shrink-0 border-b-2 px-4 py-4', STAGE_RANK[stage] >= 2 ? 'border-ember' : stage === 'prepare' ? 'border-amber' : 'border-line')}>
-        <div className={cn('font-sans text-3xl font-bold tracking-tight', copy.cls)}>{copy.title}</div>
+        <div className="flex items-start gap-3">
+          <Character id="rescue" state={STAGE_RANK[stage] >= 2 ? 'alert' : 'idle'} size={64} title="Rescue" />
+          <div className="relative mt-1 border border-line bg-ink-900 px-3 py-2">
+            <span aria-hidden className="absolute -left-1.5 top-3 h-3 w-3 rotate-45 border-b border-l border-line bg-ink-900" />
+            <p className="text-sm leading-5 text-bone">
+              {STAGE_RANK[stage] >= 2 && best ? `Leave now. Take the route to ${best.exit.label}.` : copy.body}
+            </p>
+          </div>
+        </div>
+        <div className={cn('mt-3 font-sans text-[40px] font-bold leading-none tracking-tight', copy.cls)}>{copy.title}</div>
         <p className="mt-2 text-sm leading-5 text-bone-dim">{copy.body}</p>
         <div className="mt-3 flex gap-6 font-mono">
           <div>

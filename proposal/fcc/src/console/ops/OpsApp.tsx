@@ -30,6 +30,8 @@ import { OpsOverlay } from './OpsOverlay';
 import { PresenterCaption, PresenterHud, noteRoute, presenter, startPresenter, stopPresenter, usePresenter } from './Presenter';
 import { opsView, useOpsView, useOverlayOpts } from './view';
 import { useHideCallout } from './useHideCallout';
+import './ops.css';
+import './characters/characters.css';
 
 enableWorld3dFeeds();
 
@@ -230,8 +232,8 @@ function Shell() {
 
   const civilian = view === 'civilian';
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone">
-      {booted ? <OpsTopBar presenting={presenting} onPresent={togglePresent} /> : <div className="h-9 shrink-0 border-b border-line bg-ink-950" />}
+    <div className="ops-root flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone" data-view={view}>
+      {booted ? <OpsTopBar presenting={presenting} onPresent={togglePresent} /> : <div className="h-10 shrink-0 border-b border-line bg-ink-950" />}
       <div className="flex min-h-0 flex-1">
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className="relative min-w-0 flex-1">

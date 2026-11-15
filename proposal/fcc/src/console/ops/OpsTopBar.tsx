@@ -1,6 +1,6 @@
 import { Icon, OrchestratorAvatar, cn, getAppearance, setAppearance, useAppearance } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
-import { localDay, localTime, packZone, zuluTime } from '../ui/format';
+import { localTime, packZone, zuluTime } from '../ui/format';
 import { useDecisions } from '../fireye/shell/OrchestratorCallout';
 import { Seg } from '../fireye/shell/TopBar';
 import { opsView, useOpsView } from './view';
@@ -12,9 +12,9 @@ function Clock() {
   const pack = useConsoleSelector((s) => s.pack);
   const z = packZone(pack);
   return (
-    <div className="flex items-baseline gap-3 font-mono uppercase">
-      <span className="fcc-num text-sm leading-none text-bone">{zuluTime(t)}</span>
-      <span className="text-micro text-bone-mute">{localDay(t, z.label)} {localTime(t, z.label, true)} {z.label}</span>
+    <div className="flex items-center gap-2 whitespace-nowrap font-mono leading-none">
+      <span className="fcc-num text-[13px] text-bone">{zuluTime(t)}</span>
+      <span className="text-[11px] text-bone-mute">{localTime(t, z.label)} {z.label}</span>
     </div>
   );
 }
@@ -40,9 +40,9 @@ export function OpsTopBar({ presenting, onPresent }: { presenting: boolean; onPr
   const thinking = useConsoleSelector((s) => s.messages.some((m) => m.thinking));
   const { open } = useDecisions();
   return (
-    <header className="relative z-hud flex h-9 shrink-0 items-center gap-4 border-b border-line bg-ink-950 px-3">
+    <header className="relative z-hud flex h-10 shrink-0 items-center gap-4 border-b border-line bg-ink-900 px-3">
       <div className="flex items-baseline gap-2">
-        <span className="font-mono text-sm font-semibold uppercase tracking-[0.22em] text-bone">OPS</span>
+        <span className="text-sm font-semibold uppercase tracking-[0.22em] text-bone">OPS</span>
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Mati 2018</span>
       </div>
       <span className="h-5 w-px bg-line" aria-hidden />
