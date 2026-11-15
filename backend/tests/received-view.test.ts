@@ -71,3 +71,15 @@ test('B06 corrupt future suffix rejects even an earlier receipt cutoff', () => {
   assert.equal(createReceivedView(corrupt, '2026-11-14T00:00:00Z').ok, false);
   assert.equal(createReceivedView(state, '2026-02-30T00:00:00Z').ok, false);
 });
+
+test('B04 current tick121 exposes 0 expired options, historical tick1 retains 1', () => {
+  const state = unwrap(commitEvent(createIncidentState(seed()), proposal(), context('analyst')));
+  const live = unwrap(createReceivedView(state, context().received_at, 121));
+  assert.equal(live.proposals.length, 0); assert.equal(live.candidates.length, 0);
+  const historical = unwrap(createReceivedView(state, context().received_at));
+  assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 1);
+  for (const tick of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(createReceivedView(state, context().received_at, tick).ok, false);
+  }
+  assert.equal(createReceivedView(state, context().received_at, 0).ok, false);
+});

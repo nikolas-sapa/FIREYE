@@ -224,3 +224,30 @@ test('B03 oversized chunked request rejects at 64KiB without authority writes', 
     assert.equal(status, 413); assert.equal(authority.read().incident_revision, 0);
   } finally { await bridge.close(); }
 });
+
+test('B04 HTTP live tick121 exposes 0 expired options, explicit receipt replay retains1', async () => {
+  const wall = new Date().toISOString();
+  let tick = 1;
+  const created = createBridgeAuthority(seed(), () => ({ received_at: wall, sim_tick: tick }));
+  if (!created.ok) throw new Error(created.reason);
+  const sessions = new Map<string, FixtureSession>(['analyst', 'human', 'simulator'].map(kind => [kind,
+    { actor: context(kind as 'analyst').actor, expires_at: new Date(Date.parse(wall) + 600_000).toISOString() }]));
+  const bridge = await startLocalBridge(created.value, { port: 0, allowed_origin: origin, fixture_sessions: sessions });
+  const call = async (path: string, token: string, input?: unknown) => {
+    const response = await fetch(`${bridge.url}/incidents/i1/${path}`, { method: input === undefined ? 'GET' : 'POST',
+      headers: { Origin: origin, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      ...(input === undefined ? {} : { body: input === '' ? '' : JSON.stringify(input) }) });
+    assert.equal(response.status, 200);
+    return (await response.json() as { data: BridgeView }).data;
+  };
+  try {
+    await call('events', 'analyst', proposal());
+    tick = 121;
+    await call('producer-heartbeats', 'simulator', '');
+    const live = await call('snapshot', 'human');
+    assert.equal(live.proposals.length, 0); assert.equal(live.candidates.length, 0);
+    const historical = await call(`snapshot?received_at=${encodeURIComponent(wall)}`, 'human');
+    assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 1);
+    assert.equal(created.value.read().incident_revision, 1);
+  } finally { await bridge.close(); }
+});

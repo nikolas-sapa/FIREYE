@@ -37,14 +37,18 @@ function rows<T extends { readonly incident_revision: number; readonly received_
   return Object.freeze(result);
 }
 
-export function createReceivedView(state: IncidentState, cutoff: string): Result<BridgeView> {
+export function createReceivedView(state: IncidentState, cutoff: string, current_sim_tick?: number): Result<BridgeView> {
   const snapshot = selectReceivedSnapshot(state, cutoff);
   if (!snapshot.ok) return snapshot;
   const prefix = state.log.filter(event => event.incident_revision <= snapshot.value.incident_revision);
   const replayed = replayLog(state.seed, prefix);
   if (!replayed.ok) return replayed;
   const current = replayed.value;
-  const tick = current.log.at(-1)?.sim_tick ?? 0;
+  const recordedTick = current.log.at(-1)?.sim_tick ?? 0;
+  if (current_sim_tick !== undefined && (!Number.isSafeInteger(current_sim_tick) || current_sim_tick < recordedTick)) {
+    return Object.freeze({ ok: false, code: 'INVALID_SCHEMA', reason: 'Current exercise tick must be a nonnegative safe integer at or after recorded time' });
+  }
+  const tick = current_sim_tick ?? recordedTick;
   const candidates = current.seed.candidates.filter(candidate => current.authority_active && candidate.feasible
     && candidate.plan_revision === current.plan_revision && candidate.expires_at_sim_tick > tick);
   const proposals = Object.values(current.proposals).filter(event => current.authority_active
