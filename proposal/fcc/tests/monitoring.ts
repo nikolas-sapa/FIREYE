@@ -79,14 +79,77 @@ assert.ok(imageUrl('danger', 'current', '2026-11-15').includes('ecmwf.fwi'));
 await assert.rejects(limitedResponse(new Response(new Uint8Array(11)), 10), /size limit/);
 await assert.rejects(limitedResponse(new Response('failure', { status: 503 })), /HTTP 503/);
 
-function request(middleware: ReturnType<typeof createMonitoringMiddleware>, path: string, options: { host?: string; origin?: string; method?: string; remote?: string } = {}) {
+function request(middleware: ReturnType<typeof createMonitoringMiddleware>, path: string, options: { host?: string; origin?: string | string[]; method?: string; remote?: string; site?: string | string[]; mode?: string; dest?: string; rawHeaders?: string[] } = {}) {
   return new Promise<{ status: number; body: string; headers: Record<string, string> }>((resolve, reject) => {
     let status = 0, headers: Record<string, string>;
-    const req = { url: path, method: options.method ?? 'GET', headers: { host: options.host ?? 'localhost:4177', origin: options.origin }, socket: { remoteAddress: options.remote ?? '127.0.0.1' } } as IncomingMessage;
+    const req = { url: path, method: options.method ?? 'GET', headers: { host: options.host ?? 'localhost:4177', origin: options.origin,
+      'sec-fetch-site': options.site, 'sec-fetch-mode': options.mode, 'sec-fetch-dest': options.dest }, rawHeaders: options.rawHeaders,
+      socket: { remoteAddress: options.remote ?? '127.0.0.1' } } as IncomingMessage;
     const res = { writeHead(s: number, h: Record<string, string>) { status = s; headers = h; }, end(bytes: Uint8Array) { resolve({ status, headers, body: new TextDecoder().decode(bytes) }); } } as unknown as ServerResponse;
     void middleware(req, res, () => reject(new Error('Unexpected next'))).catch(reject);
   });
 }
+// Regressions exercise the production boundary with fake provider responses, never paid traffic.
+const privateKey = 'private-example-key', echo = 'ECHO_CHECK_123';
+let malformedCalls = 0, leakedReplies = 0, malformedFailures = 0;
+const malformed = createMonitoringMiddleware(() => ({ windyKey: privateKey, contact: 'https://example.org/project' }), (async () => {
+  const body = [echo, `{"key":"${privateKey}","echo":"${echo}"`, `https://provider.example/?key=${privateKey}&echo=${echo}`][malformedCalls++ % 3];
+  return new Response(body);
+}) as typeof fetch);
+for (let i = 0; i < 20; i++) {
+  const reply = await request(malformed, `/api/monitor/${['cameras', 'forecast', 'metar', 'case2024'][i % 4]}`);
+  if (reply.status === 503) malformedFailures++;
+  if (reply.body.includes(echo) || reply.body.includes(privateKey) || reply.body.includes('provider.example')) leakedReplies++;
+}
+let crossSiteCalls = 0, crossSiteRejected = 0;
+const crossSite = createMonitoringMiddleware(() => ({ windyKey: privateKey }), (async () => { crossSiteCalls++; return Response.json({ webcams: [] }); }) as typeof fetch);
+for (let i = 0; i < 20; i++) {
+  const reply = await request(crossSite, '/api/monitor/cameras', { site: 'cross-site', mode: 'navigate', dest: 'document' });
+  if (reply.status === 403) crossSiteRejected++;
+}
+assert.deepEqual({ malformedFailures, leakedReplies, crossSiteRejected, crossSiteCalls },
+  { malformedFailures: 20, leakedReplies: 0, crossSiteRejected: 20, crossSiteCalls: 0 });
+assert.ok(malformedCalls >= 20, '20 malformed provider responses exercised');
+for (const prefix of ['Unexpected ', 'Add ', 'Missing ', 'Invalid ', 'Provider returned HTTP 503 ']) {
+  const untrusted = createMonitoringMiddleware(() => ({ windyKey: privateKey }), (async () => { throw new Error(`${prefix}${echo} ${privateKey}`); }) as typeof fetch);
+  const reply = await request(untrusted, '/api/monitor/cameras');
+  assert.equal(reply.status, 503); assert.ok(!reply.body.includes(echo) && !reply.body.includes(privateKey), 'prefixes cannot confer error ownership');
+}
+for (const options of [{ site: 'same-site' }, { site: 'cross-site', origin: 'http://localhost:4177' },
+  { site: ['same-origin', 'cross-site'] }, { site: 'same-origin, cross-site' }, { origin: ['http://localhost:4177'] },
+  { site: 'same-origin', rawHeaders: ['Host', 'localhost:4177', 'Sec-Fetch-Site', 'same-origin', 'Sec-Fetch-Site', 'cross-site'] },
+  { rawHeaders: ['Host', 'localhost:4177', 'Host', 'localhost:4177'] },
+  { rawHeaders: ['Origin', 'http://localhost:4177', 'Origin', 'https://evil.example'] }]) {
+  assert.equal((await request(crossSite, '/api/monitor/cameras', options)).status, 403, 'ambiguous or cross-site contexts fail closed');
+}
+assert.equal(crossSiteCalls, 0);
+for (const options of [{}, { site: 'none', mode: 'navigate', dest: 'document' },
+  { site: 'same-origin', origin: 'http://localhost:4177', mode: 'cors', dest: 'empty' }]) {
+  assert.equal((await request(crossSite, '/api/monitor/cameras', options)).status, 200, 'originless CLI and legitimate same-origin contexts stay available');
+}
+const originalNow = Date.now;
+let quotaNow = originalNow(), quotaCalls = 0;
+Date.now = () => quotaNow;
+try {
+  const quota = createMonitoringMiddleware(() => ({ windyKey: privateKey }), (async () => { quotaCalls++; return Response.json({ webcams: [] }); }) as typeof fetch);
+  for (let i = 0; i < 20; i++) {
+    if (i === 10) quotaNow += 10000;
+    assert.equal((await request(quota, '/api/monitor/cameras')).status, 200);
+  }
+  assert.equal(quotaCalls, 20);
+  assert.equal((await request(quota, '/api/monitor/cameras')).status, 429); assert.equal(quotaCalls, 20, '21st discovery never reaches provider');
+  quotaNow += 49999;
+  assert.equal((await request(quota, '/api/monitor/cameras')).status, 429); assert.equal(quotaCalls, 20, 'window is rolling, not per clock minute');
+  quotaNow++;
+  for (let i = 0; i < 10; i++) assert.equal((await request(quota, '/api/monitor/cameras')).status, 200);
+  assert.equal((await request(quota, '/api/monitor/cameras')).status, 429); assert.equal(quotaCalls, 30, 'only expired discoveries restore capacity');
+  let failureCalls = 0;
+  const failedQuota = createMonitoringMiddleware(() => ({ windyKey: privateKey }), (async () => { failureCalls++; throw new Error(`${echo} ${privateKey}`); }) as typeof fetch);
+  for (let i = 0; i < 20; i++) assert.equal((await request(failedQuota, '/api/monitor/cameras')).status, 503);
+  assert.equal((await request(failedQuota, '/api/monitor/cameras')).status, 429); assert.equal(failureCalls, 20, 'failed discoveries consume quota without refunds');
+  quotaNow += 60000;
+  assert.equal((await request(failedQuota, '/api/monitor/cameras')).status, 503); assert.equal(failureCalls, 21, 'rolling capacity recovers after one minute');
+} finally { Date.now = originalNow; }
 let calls = 0;
 const config: MonitoringConfig = {};
 const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
@@ -136,6 +199,18 @@ let release: (() => void) | undefined, pendingCalls = 0;
 const pending = createMonitoringMiddleware(() => ({}), (async () => { pendingCalls++; await new Promise<void>(r => { release = r; }); return new Response('[]'); }) as typeof fetch);
 const one = request(pending, '/api/monitor/metar'), two = request(pending, '/api/monitor/metar');
 assert.equal(pendingCalls, 1); release!(); await Promise.all([one, two]);
+let cameraRelease: (() => void) | undefined, sharedCameraCalls = 0;
+const sharedCamera = createMonitoringMiddleware(() => config, (async () => {
+  sharedCameraCalls++;
+  if (sharedCameraCalls === 1) await new Promise<void>(r => { cameraRelease = r; });
+  return Response.json({ webcams: [] });
+}) as typeof fetch);
+const cameraOne = request(sharedCamera, '/api/monitor/cameras'), cameraTwo = request(sharedCamera, '/api/monitor/cameras');
+assert.equal(sharedCameraCalls, 1); cameraRelease!();
+assert.deepEqual((await Promise.all([cameraOne, cameraTwo])).map(r => r.status), [200, 200]);
+for (let i = 0; i < 19; i++) assert.equal((await request(sharedCamera, '/api/monitor/cameras')).status, 200);
+assert.equal(sharedCameraCalls, 20, 'shared pending discovery consumes one quota slot and camera URLs remain uncached');
+assert.equal((await request(sharedCamera, '/api/monitor/cameras')).status, 429); assert.equal(sharedCameraCalls, 20);
 await assert.rejects(fetchCase2024((async url => new Response(JSON.stringify(String(url).includes('public-activations') ? { results: [] } : { type: 'FeatureCollection', features: [] }))) as typeof fetch), /schema/);
 
 const value = result('fixture', 'https://example.org', 'Fixture', 'observation', 'Known real-data shape', []);

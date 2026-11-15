@@ -1,5 +1,16 @@
 # Fire Command Center shared taskboard
 
+## PRFIX-2026-11-15, owner-authorized PR38 repair
+
+User explicitly reassigned the two open Marco PR fixes to root workers. Branch `proposal/fcc-review-followup`, source `bb1103ebbbea42344d88f70bc76934fddbea08b3`. Source repairs only, no issue work, paid calls, frontend launch or automatic merge. Preserve Marco source and all unrelated work.
+
+- Solver worker: `proposal/fcc/src/console/agents/spread.ts`, `proposal/fcc/tests/spread-precision.ts`. Twenty downward-rounding late seeds reach zero cells; ten-repeat 20-cell corridor and independent reference remain green.
+- Monitoring server worker: `proposal/fcc/server/monitoring.ts`, `proposal/fcc/tests/monitoring.ts`. Twenty malformed provider responses expose zero sentinel/raw-body strings; twenty explicit cross-site requests cause zero provider calls; documented rolling camera limit rejects excess calls without caching tokenized media.
+- Provenance worker: `proposal/fcc/src/console/monitoring/resources.ts`, `MonitoringApp.tsx`; new `proposal/fcc/tests/monitoring-provenance.ts`; `proposal/fcc/scripts/check-monitoring.mjs`. Missing/loading/error source states never claim zero retrieved detections; retrieved/memory/local/bundled origins remain distinct with zero false persisted labels.
+- Root: this claim, `proposal/fcc/docs/REVIEW_SCOPE.md`, `REVIEW_RECEIPT.md`, PR bodies/coordination, tests/reviews and explicit-path Git delivery. No package/lock/schema/backend/frozen archive changes without separate claim.
+
+Each worker captures failing regression before implementation, reruns focused tests/typecheck, then freezes for independent review. Root runs both-scenario tests, monitoring/image-lab mocked suites, no-key build/PWA and scope checks before updating PR38 and reconciling parent PR2. Non-goals: backend integration, new visual design, live providers, public deployment, calibrated physics or removal of safety guards.
+
 Snapshot: 2026-11-14, Europe/Athens. Preserve 44 planning task IDs plus PROP-01 (45 total on this proposal branch). Separate research/admin receipts, submitted source and verified product milestones. [Brief](README.md) · [Rules](AGENTS.md) · [Parameter DRAFT/numeric cases](docs/specs/simulator-parameter-contract.md).
 
 ## Completion dashboard

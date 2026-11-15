@@ -1,5 +1,19 @@
 # Precision and presentation follow-up receipt
 
+## Owner-authorized PR repair, 2026-11-15
+
+Root workers repaired the reviewed `bb1103e` source in an isolated worktree. Exact claims and RED targets are recorded in TASKBOARD. Original receipts below remain historical evidence, not current repair claims.
+
+- Late-seed RED: twenty original seeds beyond the horizon reached forty cells after downward Float32 rounding. GREEN: zero reached cells, with inside/exact-boundary/duplicate fractional controls. Accepted heap is rebuilt from original eligible seeds before rounding, genuine stale guard and destructive seed consumption preserved. Original pinned corridor still fails `2 !== 20`; fixed corridor remains 20/20 across ten identical arrays, reference error0.000010538332730902766min.
+- Monitoring RED: twenty malformed provider replies leaked sentinels, twenty explicit cross-site requests reached the provider. GREEN: zero leaked markers/calls. Only private application-owned errors leave the boundary; malformed provider JSON uses fixed text. Browser metadata/repeated-header gates precede cache/provider access. Camera discoveries are limited to20 actual attempts per rolling minute, failed attempts charged, pending calls shared, tokenized URLs still uncached.
+- Provenance GREEN: retrieved/memory/local-storage/bundled origins remain distinct. Three no-value states show unknown count; source-backed empty response shows0 without an all-clear. Storage failure claims no persistence. No styles, source clocks, temperatures or model scores invented.
+- Fresh root checks: precision, typecheck, both190s/10Hz console tours, monitoring/provenance, mocked image lab, no-key build216modules, PWA436files/40.4MiB and Mati reconstruction consistency all exit0. PWA content version `d3287c2c9f0788cc`. Worst Node ticks: Mati89.4ms, Caldor33.6ms, not browser FPS. Unfavorable prediction metrics below remain unchanged.
+- Independent TypeScript and security reviews PASS on these narrow repairs; no important regressions found. No actual provider request, browser/frontend launch, issue work, VM or deployment. Package/lock/core/backend/frozen revisions unchanged. Final publication scope109paths, one new regression file.
+
+Existing dependency audit remains unresolved: Vite5.4.21 reported high/moderate development-server advisories, including Windows launch-editor risks, and esbuild reported a moderate development-server CORS advisory. `npm audit` exit1 with2 package findings. No force-upgrade or dependency override was performed. Do not expose dev/preview middleware publicly. Fresh browser/performance and full-product acceptance are still unrun; this repair does not claim dependency/security certification.
+
+Root delivery records the exact repair SHA after committing source. Parent PR reconciliation preserves both branches and does not launch the frontend.
+
 Run: 2026-11-15, macOS 25.2, Apple silicon, 10 CPUs / 16 GB RAM.
 Production/test source: [`c2ff541578a9deceaed2dcfdc6cbd92b3b6f65b2`](https://github.com/nikolas-sapa/fire-command-center/commit/c2ff541578a9deceaed2dcfdc6cbd92b3b6f65b2).
 Later delivery commits change documentation only.

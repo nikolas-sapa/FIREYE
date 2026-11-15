@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { BBox, ScenarioPack } from '../src/console/contracts';
 import { FuelClass } from '../src/console/contracts';
 import { fineFuelMoisture, headRos, runSpread } from '../src/console/agents/spread';
+import * as spread from '../src/console/agents/spread';
 
 const weather = { windKph: 0, windDirDeg: 0, tempC: 30, rh: 20 };
 const moisture = fineFuelMoisture(weather.tempC, weather.rh);
@@ -88,3 +89,34 @@ const edgeHorizon = 0.5000115401;
 const roundedEdge = runSpread(fixture(2, 1, grassRate * 0.50001154), 0, () => weather, edgeHorizon).t;
 assert.ok([...roundedEdge].every(t => t === Infinity || t <= edgeHorizon), 'FP03: Float32 rounding must not store an arrival past the horizon');
 console.log('FP03 PASS: blocked corridor, no seeds and short-horizon controls');
+
+// Reject the original seed time before Float32 rounding can move it inside the horizon.
+const { runTravelTime, SpreadSeeds } = spread;
+const seedHorizon = 0.50001151;
+const seedGrid = { gw: 2, gh: 1, dxM: 1e-9, dyM: 1e-9,
+  fuel: new Uint8Array(2).fill(FuelClass.Grass), elev: new Float32Array(2),
+  horizonMin: seedHorizon, weatherAt: () => weather };
+let lateReached = 0;
+for (let sample = 1; sample <= 20; sample++) {
+  const minutes = seedHorizon + sample * 1e-10;
+  assert.ok(minutes > seedHorizon && Math.fround(minutes) < seedHorizon, 'FP04: all 20 late seeds round inside the horizon');
+  const seeds = new SpreadSeeds();
+  seeds.push(0, minutes);
+  lateReached += [...runTravelTime(seedGrid, seeds)].filter(Number.isFinite).length;
+  assert.equal(seeds.size, 0, 'FP04: explicit seeds retain destructive consumption');
+}
+assert.equal(lateReached, 0, 'FP04: 20 original out-of-horizon seeds must reach zero cells');
+
+const insideSeeds = new SpreadSeeds();
+insideSeeds.push(0, seedHorizon - 3e-9);
+assert.equal([...runTravelTime(seedGrid, insideSeeds)].filter(Number.isFinite).length, 2, 'FP04: an inside-horizon seed still propagates');
+const boundarySeeds = new SpreadSeeds();
+boundarySeeds.push(0, 0.5);
+assert.deepEqual([...runTravelTime({ ...seedGrid, horizonMin: 0.5 }, boundarySeeds)], [0.5, Infinity], 'FP04: exact boundary seed burns only its own cell');
+const fractionalSeeds = new SpreadSeeds();
+fractionalSeeds.push(0, 0.375);
+fractionalSeeds.push(0, 0.25);
+fractionalSeeds.push(0, seedHorizon + 1e-10);
+assert.deepEqual([...runTravelTime({ ...seedGrid, dxM: grassRate * 0.25 }, fractionalSeeds)], [0.25, 0.5], 'FP04: duplicate fractional seeds retain the earliest accepted time');
+assert.equal(fractionalSeeds.size, 0, 'FP04: mixed accepted/rejected seeds are consumed');
+console.log('FP04 PASS: 20 downward-rounding late seeds reach zero cells; inside, boundary and duplicate fractional controls');

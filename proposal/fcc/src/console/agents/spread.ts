@@ -323,12 +323,16 @@ function solveTravelTime(grid: TravelTimeGrid & { heap: Heap }): void {
 /** Runs solveTravelTime from explicit seeds on a caller-supplied grid. Returns minutes after issue per cell. */
 export function runTravelTime(grid: Omit<TravelTimeGrid, 't'>, seeds: SpreadSeeds): Float32Array {
   const t = new Float32Array(grid.gw * grid.gh).fill(Infinity);
-  const heap = seeds.heap;
-  for (let i = 0; i < heap.n; i++) {
-    const time = Math.fround(heap.k[i]);
-    if (heap.k[i] <= grid.horizonMin && time <= grid.horizonMin) t[heap.v[i]] = Math.min(t[heap.v[i]], time);
-    // Monotone rounding preserves the seed heap's ordering and agrees with Float32 storage.
-    heap.k[i] = time;
+  const heap = new Heap();
+  while (seeds.size) {
+    const index = seeds.heap.pop();
+    // Reject the original time before rounding can move a late ignition inside the horizon.
+    if (!(seeds.heap.top <= grid.horizonMin)) continue;
+    const time = Math.fround(seeds.heap.top);
+    if (time <= grid.horizonMin) {
+      t[index] = Math.min(t[index], time);
+      heap.push(time, index);
+    }
   }
   solveTravelTime({ ...grid, t, heap });
   return t;

@@ -7,7 +7,7 @@ import { DEMO_FEEDS } from './feed-motion';
 import { SimulatedFeed, SimulatedFeedsProvider } from './SimulatedFeed';
 import { CAMERAS, HISTORICAL_MEDIA } from './cameras';
 import { MonitoringGlobe, type Focus } from './MonitoringGlobe';
-import { clearSaved, useSource, writeSaved, type Resource } from './resources';
+import { clearSaved, detectionSummary, sourceLabel, useSource, writeSaved, type Resource } from './resources';
 import { ATTICA, VIEWS, contextPack, distanceKm, inside, type Camera, type Detection, type GeometryCollection, type Mapping, type SourceResult, type Station, type ViewId, type Weather } from './model';
 
 const field = 'border border-line-strong bg-ink-900 px-2 py-1 font-mono text-micro text-bone focus-visible:outline-signal';
@@ -36,7 +36,7 @@ function SourceState<T>({ resource }: { resource: Resource<T> }) {
     {resource.loading && <p>Retrieving source…</p>}
     {resource.error && <p className="text-amber">{resource.value ? 'Last known / stale · ' : ''}{resource.error}</p>}
     {resource.value && <>
-      <p className="uppercase">{resource.value.dataClass} · {resource.saved ? 'Saved real data' : 'Retrieved data'}</p>
+      <p className="uppercase">{resource.value.dataClass} · {sourceLabel(resource)}</p>
       {resource.value.observedAt && <p>Source time {stamp(resource.value.observedAt)}</p>}
       <p>Fetched {stamp(resource.value.fetchedAt)}</p>
       <p>{resource.value.note}</p>
@@ -228,7 +228,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
           <input aria-label="Daily satellite imagery date" type="date" value={date} disabled={imageMode === 'detail'} max={new Date().toISOString().slice(0, 10)} min="2000-01-01" className={field} onChange={e => { if (e.target.value) setDate(e.target.value); }} />
         </div>
         <div className="pointer-events-none absolute bottom-14 left-4 z-[2] max-w-lg border border-line bg-ink-950/90 px-3 py-2">
-          <p className="font-mono text-micro uppercase text-bone-dim">{current ? `${scope === 'greece' ? 'Greece' : 'Attica'} · ${detections.length} thermal detections in retrieved data` : 'Mapped burned area · not active fire front'}</p>
+          <p className="font-mono text-micro uppercase text-bone-dim">{current ? `${scope === 'greece' ? 'Greece' : 'Attica'} · ${detectionSummary(firms, detections.length)}` : 'Mapped burned area · not active fire front'}</p>
           <p className="mt-1 text-xs leading-4 text-bone-mute">DEM coverage: Mati local pack only · outside this area, streamed cartographic context, not local terrain measurements.</p>
           {danger && <p className="mt-1 font-mono text-micro text-amber">EFFIS / GWIS · forecast danger, not detected fire</p>}
           {satellite && <p className="mt-1 font-mono text-micro text-ice">{imageTitle} · {imageMode === 'detail' ? 'EOX · historical basemap, not incident-date imagery' : 'Coarse daily overview'}</p>}
@@ -250,7 +250,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
             {current ? <>
               <Section title="Satellite thermal anomalies" aside={<span className="font-mono text-lg fcc-num">{firms.value ? detections.length : '—'}</span>}>
                 <div className="flex gap-2">{(['attica', 'greece'] as const).map(s => <Button key={s} size="sm" variant="ghost" aria-pressed={scope === s} onClick={() => { setScope(s); navigate(s === 'greece' ? { lon: 24, lat: 38.2 } : VIEWS.current.center, s === 'greece' ? 850000 : 48000); }}>{s}</Button>)}</div>
-                {firms.value && !detections.length && <p className="mt-2 text-xs text-bone-dim">No detections in the retrieved selection. This is not an all-clear.</p>}
+                {firms.value && !detections.length && <p className="mt-2 text-xs text-bone-dim">No detections in this source selection. This is not an all-clear.</p>}
                 {detections.slice(0, 12).map(d => <button key={d.id} onClick={() => pick(`real-${d.id}`)} className="mt-2 block w-full border-b border-line pb-2 text-left font-mono text-micro text-bone-dim focus-visible:outline-signal">
                   {d.satellite} · {stamp(d.observedAt)}<br /><span className="text-bone-mute">{d.lat.toFixed(3)}N {d.lon.toFixed(3)}E · {age(d.observedAt)} · {num(d.frp, ' MW')}</span>
                 </button>)}<SourceState resource={firms} />
