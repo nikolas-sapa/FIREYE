@@ -25,6 +25,10 @@ const UAV = new Set<Feed['kind']>(['uav-nadir', 'uav-oblique', 'uav-chase']);
 export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: FeedSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const visibleRef = useRef(variant === 'full');
+  const [reduced, setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
   const [viewport, setViewport] = useState<ReturnType<typeof fitFeedFrame> | null>(null);
   const [frame, setFrame] = useState<FeedFrame | null>(null);
   const [failed, setFailed] = useState(false);
@@ -42,6 +46,7 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
     const timer = window.setInterval(() => setNow(performance.now()), 500);
     return () => window.clearInterval(timer);
   }, [hud]);
+  const offline = !!feed?.offlineReason;
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -53,13 +58,13 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
     return () => observer.disconnect();
   }, []);
 
-  const worldHandle = useRef<{ update: (p: { visible?: boolean; thermal?: 'white' | 'iron'; lead?: boolean }) => void } | null>(null);
+  const worldHandle = useRef<{ update: (p: { visible?: boolean; thermal?: 'white' | 'iron'; lead?: boolean; moving?: boolean }) => void } | null>(null);
   const lead = variant === 'full' || hud !== 'none';
   const thermal = feed ? thermalOf(feed) : undefined;
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !hasFeed) return;
+    if (!canvas || !hasFeed || offline) { metadata.current = null; setFrame(null); return; }
     let dead = false, dispose: (() => void) | undefined;
     setFrame(null);
     metadata.current = null;
@@ -78,7 +83,7 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
         if (dead) return;
         if (!w) { cesium(); return; }
         let failedOnce = false;
-        const reg = w.register({ feed: asDemoFeed(f0), canvas, full: variant === 'full', active: true, visible: true, moving: true, frozen: false,
+        const reg = w.register({ feed: asDemoFeed(f0), canvas, full: variant === 'full', active: true, visible: visibleRef.current, moving: !reducedRef.current, frozen: false,
           lead, thermal: thermalOf(f0), pose: fireyePose(feedId, f0, pack0),
           onReady: () => {},
           onPixels: (renderedThermal) => {
@@ -104,29 +109,41 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
       });
     } else cesium();
     return () => { dead = true; dispose?.(); worldHandle.current = null; };
-  }, [feedId, variant, hasFeed]);
+  }, [feedId, variant, hasFeed, offline]);
 
-  useEffect(() => { worldHandle.current?.update({ thermal, lead }); }, [thermal, lead]);
+  useEffect(() => { worldHandle.current?.update({ thermal, lead, moving: !reduced }); }, [thermal, lead, reduced]);
+
+  useEffect(() => {
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const change = () => setReduced(media.matches);
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const observer = new IntersectionObserver((entries) => worldHandle.current?.update({ visible: entries[0].isIntersecting }), { threshold: 0.05 });
+    const observer = new IntersectionObserver((entries) => {
+      // The observer often fires before the lazy renderer resolves. Retain its answer
+      // for registration instead of treating every horizontally offscreen tile as visible.
+      visibleRef.current = entries[0].isIntersecting && entries[0].intersectionRatio >= 0.05;
+      worldHandle.current?.update({ visible: visibleRef.current });
+    }, { threshold: 0.05 });
     observer.observe(host);
     return () => observer.disconnect();
   }, []);
 
   const full = variant === 'full';
   const showHud = hud !== 'none';
-  const currentFrame = hasFeed && frame?.feedId === feedId ? frame : null;
+  const currentFrame = hasFeed && !offline && frame?.feedId === feedId ? frame : null;
   const eligible = canvasRef.current?.dataset.truthOverlay !== 'true' && metadata.current?.display_transform === feed?.fx;
-  const status = frameStatus(metadata.current, { simTime: t, nowMs: performance.now(), connected: !!feed?.live && !failed && eligible });
+  const status = frameStatus(metadata.current, { simTime: t, nowMs: performance.now(), connected: !!feed?.live && !offline && !failed && eligible });
   const transformed = !!feed?.modality && (feed.modality === 'thermal') !== !!feed?.fx.startsWith('ir');
   const save = async () => {
     const canvas = canvasRef.current, meta = metadata.current;
     const state = stageWorld.get(), source = state.feeds.find(f => f.id === feedId);
     if (!canvas || !meta || !source || saving || meta.feed_id !== feedId || canvas.dataset.truthOverlay === 'true'
-      || meta.display_transform !== source.fx || frameStatus(meta, { simTime: state.t, nowMs: performance.now(), connected: source.live }) !== 'available') return;
+      || meta.display_transform !== source.fx || frameStatus(meta, { simTime: state.t, nowMs: performance.now(), connected: source.live && !source.offlineReason }) !== 'available') return;
     setSaving(true); setCaptureError('');
     try {
       const capture = await captureFrame(canvas, meta);
@@ -155,7 +172,11 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
         aria-label={feed ? `Simulated camera feed ${feed.label}` : 'Camera feed'}
         role="img"
       />
-      {!currentFrame && (pack?.imagery && feed
+      {offline && <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-ink-950 p-3 text-center font-mono uppercase">
+        <span className="text-nano text-bone-dim">Feed offline</span>
+        <span className="text-micro text-bone-mute">{feed?.offlineReason}</span>
+      </div>}
+      {!currentFrame && !offline && (pack?.imagery && feed
         ? <ArchiveCamera image={pack.imagery} label={`${feed.label} · archive fallback`} target={feed.pose?.target ?? feed.pose?.pos}
             seed={feed.id.split('').reduce((n, c) => n + c.charCodeAt(0), 0) % 7} variant={variant} playing={!paused} />
         : <Acquiring failed={failed || !feed} full={full} label={feed?.label} />)}

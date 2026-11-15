@@ -245,6 +245,20 @@ New bus members:
 ```
 
 `SensorSample` measurement fields are optional; consumers ignore unknown fields. `sensor.triggered` may carry the `ChronicleRecord` it produced as `entry`.
+
+### FIREYE reconnaissance profile
+
+Optional `ConsoleState.recon` contains `{ tasks: ReconTask[], events: ReconEvent[], stations?: DroneStation[], drones?: ReconDrone[] }`. Legacy replay omits it.
+
+- `ReconTask`: `id`, `unitId`, `cellId`, `target: Geo`, `label`, `reason`, `assignedAt: Ms`, optional `observedAt: Ms`, optional `pattern` (`circle | square | line | hover`), optional `sourceIds: string[]`, and `status` (`enroute | observing | complete | superseded`).
+- `ReconEvent` extends `ChronicleRecord`, with `kind: fleet | projection | detection` and optional `tasking: boolean`. These are simulated, chronological OPS entries. Movement commands set `tasking: true` and appear as agent messages for four simulated minutes. Routine assignments/completions remain severity `info`; new fires and materially worsening projections are `critical`/`alert`, take display priority, and expire after 15 simulated minutes.
+- `DroneStation`: `id`, `name`, `pos: Geo`. Two simulated outskirts stations anchor home positions.
+- `ReconDrone`: `unitId`, `stationId`, `phase` (`docked | launching | enroute | observing | returning | landing | charging`), `changedAt: Ms`, `sorties: number`.
+- Optional `Feed.offlineReason: string` explicitly disables sensor video and archive/generated fallback. On-pad and low-altitude takeoff feeds use it. Battery drains with powered flight time, charges only on a station pad, and has no clock-based reset.
+- Source-flow views join actual evidence `refs`/`sourceIds`, analysis jobs and recon events at or before the playhead. Aggregate source jobs do not imply per-camera causation. These records describe task allocation, not hidden reasoning or a human approval workflow.
+- The local simulator keeps the latest 60 tasks and 240 recon events. These are snapshot fields, not new bus event types or an external command transport.
+- FIREYE generates no `Action`s, approval decisions or dispatch commands. Existing `ChronicleRecord.decision`, `ConsoleApi` approval methods and legacy bus members remain compatible but unused by FIREYE. Legacy replay's human-approval requirements are unchanged.
+
 ### 4.7 Directive
 
 The Orchestrator rearranges the screen with typed directives. When the user turns on Hold layout, directives become suggestions the user applies with `applyDirective(id)`. Held directives carry `suggested: true`; renderers must not act on them.

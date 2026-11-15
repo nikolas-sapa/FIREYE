@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dot, Icon, cn } from '@ds';
 import type { Feed } from '../../contracts';
 import { FeedSurfaceView } from '../../stage3d/feeds/FeedSurfaceView';
+import { useConsoleSelector } from '../../store';
 import { useStageWorld } from '../../stage3d/world';
 import { SurfaceBoundary } from '../../ui/SurfaceBoundary';
-import { isUav, sensorOf } from './sync';
+import { orderFeedsByRelevance } from '../data/feed-order';
+import { isReconFeed, isUav, sensorOf } from './sync';
 import { fireyeUi, useFireye } from './ui';
 
 const KIND: Record<Feed['kind'], string> = {
@@ -44,8 +46,7 @@ function Tile({ feed, lead, active, onOpen }: { feed: Feed; lead?: boolean; acti
   const name = feed.label.split(' · ')[0] ?? feed.label;
   const uav = isUav(feed);
   return (
-    <div className={cn('group/tile relative shrink-0 overflow-hidden border bg-void transition-[border-color] duration-quick ease-servo',
-      lead ? 'h-full aspect-video' : 'aspect-video h-[calc(50%-3px)]',
+    <div role="listitem" data-feed-id={feed.id} data-relevance={feed.relevance} className={cn('group/tile relative h-full aspect-video shrink-0 overflow-hidden border bg-void transition-[border-color] duration-quick ease-servo',
       active ? 'border-signal/60' : 'border-line hover:border-line-strong')}>
       <button type="button" onClick={() => onOpen(feed.id)} aria-label={`${feed.label}. ${uav ? 'Dive into feed' : 'Open feed'}`}
         className="absolute inset-0 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-2 focus-visible:outline-signal">
@@ -60,7 +61,7 @@ function Tile({ feed, lead, active, onOpen }: { feed: Feed; lead?: boolean; acti
         {lead && <span className="ml-auto shrink-0 font-mono text-micro uppercase text-bone-mute">{KIND[feed.kind]}</span>}
       </span>
       <span className="absolute bottom-1 left-1 flex items-center gap-1">
-        {lead && <Rel v={feed.relevance} />}
+        <Rel v={feed.relevance} />
         {feed.findingIds.length > 0 && <span className="pointer-events-none bg-ink-950/80 px-1 py-px font-mono text-micro leading-3 text-violet fcc-num">{feed.findingIds.length} DET</span>}
       </span>
       {uav && <span className="absolute bottom-1 right-1"><SensorToggle feed={feed} compact={!lead} /></span>}
@@ -73,28 +74,48 @@ function Tile({ feed, lead, active, onOpen }: { feed: Feed; lead?: boolean; acti
   );
 }
 
-/** Relevance-ordered feed wall: an enlarged lead tile and a two-row grid of thumbnails. */
+/** One continuous, relevance-ordered row. Offscreen views remain scrollable, not duplicated. */
 export function FeedDeck({ onOpen }: { onOpen: (feedId: string) => void }) {
   const feeds = useStageWorld((s) => s.feeds);
   const active = useFireye((s) => (s.dive.phase !== 'idle' ? s.dive.feedId : undefined));
-  // Bucket relevance so near-ties do not reshuffle the wall every tick.
-  const ordered = useMemo(() => [...feeds].filter((f) => f.kind !== 'social')
-    .sort((a, b) => Math.round(b.relevance / 8) - Math.round(a.relevance / 8) || Number(isUav(b)) - Number(isUav(a)) || (a.id < b.id ? -1 : 1)), [feeds]);
-  const [lead, ...rest] = ordered;
-  const live = feeds.filter((f) => f.live).length;
+  const recon = useConsoleSelector(s => !!s.recon);
+  const ordered = useMemo(() => orderFeedsByRelevance(recon ? feeds.filter(isReconFeed) : feeds), [feeds, recon]);
+  const live = ordered.filter((f) => f.live).length;
+  const row = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const updateEdges = useCallback(() => {
+    const el = row.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges(old => old.left === left && old.right === right ? old : { left, right });
+  }, []);
+  useEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    const observer = new ResizeObserver(updateEdges);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [updateEdges]);
+  useEffect(updateEdges, [ordered, updateEdges]);
+  const scroll = (direction: number) => {
+    const el = row.current;
+    if (el) el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: 'auto' });
+  };
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-7 shrink-0 items-center gap-2 px-3">
+      <div className="flex h-7 shrink-0 items-center gap-2 pl-3 pr-9">
         <Icon name="camera" size={11} className="text-bone-mute" />
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">Feeds</span>
-        <span className="fcc-num font-mono text-micro uppercase text-bone-mute">{String(live).padStart(2, '0')} live · ordered by orchestrator relevance · click a drone to dive</span>
-      </div>
-      <div className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto overflow-y-hidden px-3 pb-2">
-        {!lead && <div className="fcc-hatch flex h-full w-full items-center justify-center font-mono text-micro uppercase text-bone-mute">No feeds yet</div>}
-        {lead && <Tile key={lead.id} feed={lead} lead active={active === lead.id} onOpen={onOpen} />}
-        <div className="flex h-full flex-col flex-wrap content-start gap-1.5">
-          {rest.map((f) => <Tile key={f.id} feed={f} active={active === f.id} onOpen={onOpen} />)}
+        <span className="fcc-num min-w-0 truncate font-mono text-micro uppercase text-bone-mute">{String(live).padStart(2, '0')} live / {ordered.length} channels · ranked by relevance · scroll for more</span>
+        <div className="ml-auto flex shrink-0 gap-1">
+          <button type="button" aria-label="Scroll feeds left" disabled={!edges.left} onClick={() => scroll(-1)} className="flex h-5 w-6 items-center justify-center border border-line text-bone-dim hover:bg-ink-800 disabled:opacity-30"><Icon name="chevron-left" size={12} /></button>
+          <button type="button" aria-label="Scroll feeds right" disabled={!edges.right} onClick={() => scroll(1)} className="flex h-5 w-6 items-center justify-center border border-line text-bone-dim hover:bg-ink-800 disabled:opacity-30"><Icon name="chevron-right" size={12} /></button>
         </div>
+      </div>
+      <div ref={row} role="list" aria-label="Feeds sorted by relevance" tabIndex={0} onScroll={updateEdges}
+        className="flex min-h-0 flex-1 flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden px-3 pb-2 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-line-strong">
+        {!ordered.length && <div className="fcc-hatch flex h-full w-full items-center justify-center font-mono text-micro uppercase text-bone-mute">No feeds yet</div>}
+        {ordered.map((f, i) => <Tile key={f.id} feed={f} lead={i === 0} active={active === f.id} onOpen={onOpen} />)}
       </div>
     </div>
   );

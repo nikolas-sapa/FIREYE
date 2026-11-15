@@ -8,6 +8,7 @@ import { useFireye } from './ui';
 
 const UAV = new Set<Feed['kind']>(['uav-nadir', 'uav-oblique', 'uav-chase']);
 export const isUav = (f: Feed) => UAV.has(f.kind);
+export const isReconFeed = (f: Feed) => isUav(f) || f.kind === 'ridge-cam';
 
 /** Display palette only. Source modality comes from Feed.modality, never this helper. */
 export const sensorOf = (f: Feed): 'eo' | 'thermal' => (f.fx.startsWith('ir') ? 'thermal' : 'eo');
@@ -39,24 +40,28 @@ export function useFireyeSync() {
   const stage = useConsoleSelector((s) => s.stage);
   const directives = useConsoleSelector((s) => s.directives);
   const fireRev = useConsoleSelector((s) => s.fireRev);
+  const recon = useConsoleSelector(s => !!s.recon);
   const fx = useFireye((s) => s.fx);
-  const feeds = useMemo(() => withFx(rawFeeds, fx), [rawFeeds, fx]);
+  const feeds = useMemo(() => withFx(recon ? rawFeeds.filter(isReconFeed) : rawFeeds, fx), [rawFeeds, fx, recon]);
+  const drones = useMemo(() => recon ? units.filter(u => u.kind === 'drone').map(u => ({ ...u, trail: [], route: undefined })) : units, [units, recon]);
   useLayoutEffect(() => {
-    stageWorld.set({ dataMode: 'replay', pack, t, paused, speed, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev });
-  }, [pack, t, paused, speed, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev]);
+    stageWorld.set({ dataMode: 'replay', pack, t, paused, speed, units: drones, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev });
+  }, [pack, t, paused, speed, drones, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev]);
 }
 
-const windows = new WeakMap<object, Chronicle>();
+const windows = { recon: new WeakMap<object, Chronicle>(), legacy: new WeakMap<object, Chronicle>() };
 /** The deterministic chronicle for the loaded pack (FIREYE window: scenario start to manifest end). */
 export function useChronicle(): Chronicle | null {
   const pack = useConsoleSelector((s) => s.pack);
+  const recon = useConsoleSelector(s => !!s.recon);
   return useMemo(() => {
     if (!pack) return null;
-    const hit = windows.get(pack);
+    const cache = windows[recon ? 'recon' : 'legacy'];
+    const hit = cache.get(pack);
     if (hit) return hit;
     const ctx = contextFor(pack);
-    const ch = buildChronicle(pack, { start: ctx.start, end: ctx.end });
-    windows.set(pack, ch);
+    const ch = buildChronicle(pack, { start: ctx.start, end: ctx.end }, recon ? 'recon' : 'legacy');
+    cache.set(pack, ch);
     return ch;
-  }, [pack]);
+  }, [pack, recon]);
 }

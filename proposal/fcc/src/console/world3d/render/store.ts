@@ -30,6 +30,12 @@ export class TileStore {
   private arrived: TileData[] = [];
   private nextId = 1;
   private frame = 0;
+  private dead = false;
+  private pinned = new Set<string>();
+  private demand = new Set<string>();
+  revision = 0;
+  farBytes = 0;
+  uploadMs = 0;
   ready = false;
   failed = false;
   imagery = false;
@@ -43,17 +49,21 @@ export class TileStore {
     this.group.name = 'tiles'; this.farGroup.name = 'far';
     this.worker = new Worker(new URL('../gen/worker.ts', import.meta.url), { type: 'module' });
     this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => this.receive(e.data);
-    this.worker.onerror = () => { this.failed = true; this.onChange?.(); };
+    this.worker.onerror = this.worker.onmessageerror = () => { this.failed = true; this.onChange?.(); };
     const msg: WorkerRequest = { type: 'init', source, imagery: imagery ? { ...imagery, maxWidth: 2048 } : undefined };
     this.worker.postMessage(msg);
   }
 
   private receive(msg: WorkerResponse) {
+    if (this.dead) return;
     if (msg.type === 'ready') { this.buildFar(msg.far); this.ready = true; this.imagery = msg.imagery; this.initMs = msg.ms; this.onChange?.(); this.dispatch(); return; }
-    if (msg.type === 'error') { if (msg.id === undefined) this.failed = true; else this.inflight.delete(msg.id); this.onChange?.(); this.dispatch(); return; }
+    if (msg.type === 'error') { this.failed = true; this.onChange?.(); return; }
     const req = this.inflight.get(msg.id);
     this.inflight.delete(msg.id);
-    if (req) { this.arrived.push(msg.tile); this.genMs.push(msg.tile.ms); if (this.genMs.length > 64) this.genMs.shift(); }
+    if (req) {
+      if (this.frame - req.frame <= 1) this.arrived.push(msg.tile);
+      this.genMs.push(msg.tile.ms); if (this.genMs.length > 64) this.genMs.shift();
+    }
     this.dispatch();
     this.onChange?.();
   }
@@ -62,13 +72,17 @@ export class TileStore {
   private buildFar(far: FarTerrain) {
     const mat = this.materials.get('far');
     const make = (m: FarTerrain['chunks'][number]['mesh']) => {
+      this.farBytes += meshBytes(m) + m.position.byteLength;
       const mesh = new THREE.Mesh(toGeometry(m), mat);
+      // Distant crown impostors rotate around their centres by up to twelve metres.
+      mesh.geometry.boundingSphere!.radius += 12;
       mesh.receiveShadow = false; mesh.matrixAutoUpdate = false; mesh.renderOrder = -2;
       mesh.userData.tris = triangles(mesh.geometry);
       this.farGroup.add(mesh);
       return mesh;
     };
     for (const c of far.chunks) this.farChunks.push({ fine: make(c.mesh), coarse: make(c.coarse), bounds: c.bounds });
+    for (const m of far.context ?? []) make(m);
   }
 
   /** Per-camera far-terrain LOD: full 40 m chunks nearby, the coarse skirted mesh beyond `fineM`. */
@@ -84,8 +98,12 @@ export class TileStore {
   /** Called by views each selection pass; lower priority value = sooner. */
   want(tx: number, tz: number, detail: Detail, priority: number) {
     const key = `${tx}/${tz}/${detail}`;
+    this.demand.add(key);
     const e = this.entries.get(key);
     if (e) { e.used = this.frame; return; }
+    const running = [...this.inflight.values()].find(i => i.key === key);
+    if (running) { running.frame = this.frame; return; }
+    if (this.arrived.some(t => t.key === key)) return;
     const w = this.wanted.get(key);
     if (w && w.frame === this.frame) w.priority = Math.min(w.priority, priority);
     else if ([...this.inflight.values()].every(i => i.key !== key)) this.wanted.set(key, { key, tx, tz, detail, priority, frame: this.frame });
@@ -95,13 +113,14 @@ export class TileStore {
   get size() { return this.entries.size; }
   get pending() { return this.wanted.size + this.inflight.size + this.arrived.length; }
 
-  beginFrame() { this.frame++; }
+  beginFrame() { this.frame++; this.demand.clear(); }
+  pin(keys: Iterable<string>) { this.pinned = new Set(keys); }
 
   /** Drop stale wishes and keep the generator busy with the closest needed tile. */
   dispatch() {
-    if (!this.ready || this.failed) return;
-    for (const [k, w] of this.wanted) if (this.frame - w.frame > 30 || this.entries.has(k)) this.wanted.delete(k);
-    while (this.inflight.size < 2 && this.wanted.size) {
+    if (!this.ready || this.failed || this.dead) return;
+    for (const [k, w] of this.wanted) if (w.frame !== this.frame || this.entries.has(k)) this.wanted.delete(k);
+    while (this.inflight.size < 2 && this.arrived.length < 4 && this.wanted.size) {
       let best: Request | null = null;
       for (const w of this.wanted.values()) if ([...this.inflight.values()].every(i => i.key !== w.key) && (!best || w.priority < best.priority)) best = w;
       if (!best) break;
@@ -113,10 +132,13 @@ export class TileStore {
     }
   }
 
-  /** Turn at most `budget` arrived tiles into GPU meshes this frame. */
-  upload(budget = 2) {
+  /** Bounded CPU preparation. One indivisible tile may exceed the time slice. */
+  upload(budget = 2, budgetMs = 4) {
+    const start = performance.now();
     let n = 0;
-    while (this.arrived.length && n < budget) {
+    this.arrived = this.arrived.filter(t => this.demand.has(t.key));
+    while (this.arrived.length && n < budget && (n === 0 || performance.now() - start < budgetMs)) {
+      if (this.entries.size >= TILE_CACHE_CAP && !this.evictOne()) break;
       const data = this.arrived.shift()!;
       if (this.entries.has(data.key)) continue;
       const terrain = new THREE.Mesh(toGeometry(data.terrain), this.materials.get('terrain'));
@@ -127,34 +149,42 @@ export class TileStore {
       const add = (a: ArrayBufferView | undefined) => { bytes += a?.byteLength ?? 0; };
       for (const m of [data.terrain, data.roads]) if (m) { add(m.position); add(m.color); add(m.meta); add(m.params); add(m.index); bytes += m.position.byteLength; }
       for (const g of data.groups) { add(g.matrices); add(g.colors); add(g.params); }
+      for (const a of Object.values(data.spawns)) add(a);
       const entry: TileEntry = { key: data.key, data, terrain, roads, terrainTris: triangles(terrain.geometry), roadTris: roads ? triangles(roads.geometry) : 0, bytes, used: this.frame };
       this.entries.set(data.key, entry);
       this.group.add(terrain); if (roads) this.group.add(roads);
       this.onTile?.(entry);
+      this.revision++;
       n++;
     }
-    this.evict();
+    this.uploadMs = performance.now() - start;
     return n;
   }
 
-  private evict() {
-    if (this.entries.size <= TILE_CACHE_CAP) return;
-    const victims = [...this.entries.values()].filter(e => e.used < this.frame - 1).sort((a, b) => a.used - b.used);
-    for (const e of victims) {
-      if (this.entries.size <= TILE_CACHE_CAP) break;
+  private evictOne() {
+    const e = [...this.entries.values()].filter(e => !this.pinned.has(e.key)).sort((a, b) => a.used - b.used)[0];
+    if (e) {
       this.entries.delete(e.key);
       this.group.remove(e.terrain); e.terrain.geometry.dispose();
       if (e.roads) { this.group.remove(e.roads); e.roads.geometry.dispose(); }
       this.onEvict?.(e);
+      this.revision++;
     }
+    return !!e;
   }
 
   bytes() { let b = 0; for (const e of this.entries.values()) b += e.bytes; return b; }
 
   dispose() {
+    this.dead = true;
     this.worker.terminate();
     for (const e of this.entries.values()) { e.terrain.geometry.dispose(); e.roads?.geometry.dispose(); }
     for (const m of this.farGroup.children) (m as THREE.Mesh).geometry.dispose();
     this.entries.clear(); this.wanted.clear(); this.inflight.clear(); this.arrived = [];
+    this.pinned.clear(); this.group.clear(); this.farGroup.clear();
   }
+}
+
+function meshBytes(m: FarTerrain['chunks'][number]['mesh']) {
+  return m.position.byteLength + m.color.byteLength + m.meta.byteLength + m.params.byteLength + (m.index?.byteLength ?? 0);
 }

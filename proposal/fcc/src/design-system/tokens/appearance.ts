@@ -129,12 +129,14 @@ export function setSolarDaylight(value: number | null) {
   resolveSolar();
 }
 
-export function setAppearance(value: Appearance, opts: { persist?: boolean } = {}) {
+export function setAppearance(value: Appearance, opts: { persist?: boolean; immediate?: boolean } = {}) {
   if (!valid(value)) return;
   mode = value;
   if (dom && opts.persist !== false) {
     try { localStorage.setItem(APPEARANCE_STORAGE_KEY, value); } catch { /* optional */ }
   }
+  // Fixed-appearance surfaces must not animate through a saved opposite appearance on mount.
+  if (opts.immediate) initialized = false;
   update();
   listeners.forEach((fn) => fn());
 }

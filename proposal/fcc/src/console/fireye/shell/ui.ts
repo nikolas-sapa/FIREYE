@@ -4,11 +4,11 @@ import { setMapLayers, type MapLayer } from '../../stage3d/map-settings';
 /* ------------------------------------------------------------------ visibility (display only) */
 
 export const VIS_GROUPS = {
-  fleet: 'UAV fleet & aircraft',
+  fleet: 'Drones',
   groundUnits: 'Ground units',
+  flightPaths: 'Flight paths',
   groundCams: 'Ground cameras',
   iot: 'IoT sensors',
-  flightPaths: 'Flight paths',
   footprints: 'Sensor footprints',
   findings: 'Detections',
   fireFront: 'Fire front & perimeter',
@@ -22,34 +22,35 @@ export type Visibility = Record<VisGroup, boolean>;
 export type VisPreset = 'minimal' | 'standard' | 'everything';
 
 export const VIS_PRESETS: Record<VisPreset, Visibility> = {
-  minimal: { fleet: true, groundUnits: false, groundCams: false, iot: false, flightPaths: false, footprints: false, findings: false, fireFront: true, projections: false, risk: false, roadsPlaces: true, labels: false },
-  standard: { fleet: true, groundUnits: true, groundCams: true, iot: true, flightPaths: true, footprints: false, findings: true, fireFront: true, projections: true, risk: false, roadsPlaces: true, labels: true },
-  everything: { fleet: true, groundUnits: true, groundCams: true, iot: true, flightPaths: true, footprints: true, findings: true, fireFront: true, projections: true, risk: true, roadsPlaces: true, labels: true },
+  minimal: { fleet: true, groundUnits: false, flightPaths: false, groundCams: false, iot: false, footprints: false, findings: false, fireFront: true, projections: false, risk: false, roadsPlaces: true, labels: false },
+  standard: { fleet: true, groundUnits: true, flightPaths: true, groundCams: true, iot: true, footprints: false, findings: true, fireFront: true, projections: true, risk: false, roadsPlaces: true, labels: true },
+  everything: { fleet: true, groundUnits: true, flightPaths: true, groundCams: true, iot: true, footprints: true, findings: true, fireFront: true, projections: true, risk: true, roadsPlaces: true, labels: true },
 };
 
 /** Visibility groups mapped onto the shared stage layer switches. Overlay-only groups are handled by FIREYE. */
-export function mapPatch(v: Visibility): Partial<Record<MapLayer, boolean>> {
+export function mapPatch(v: Visibility, recon = true): Partial<Record<MapLayer, boolean>> {
   return {
-    units: v.fleet || v.groundUnits, drones: v.fleet, helicopters: v.fleet, airplanes: v.fleet,
-    engines: v.groundUnits, crews: v.groundUnits, dozers: v.groundUnits, ems: v.groundUnits, law: v.groundUnits,
-    trails: v.flightPaths, sensorFootprints: v.footprints, coverage: v.footprints, altitudeStems: v.fleet,
+    units: v.fleet || (!recon && v.groundUnits), drones: v.fleet, helicopters: !recon && v.fleet, airplanes: !recon && v.fleet,
+    engines: !recon && v.groundUnits, crews: !recon && v.groundUnits, dozers: !recon && v.groundUnits, ems: !recon && v.groundUnits, law: !recon && v.groundUnits,
+    trails: !recon && v.flightPaths, sensorFootprints: v.footprints, coverage: v.footprints, altitudeStems: !recon && v.fleet,
     findings: v.findings, uncertainty: v.findings,
     fire: v.fireFront, perimeter: v.fireFront, projection: v.projections,
     roads: v.roadsPlaces, buildings: v.roadsPlaces, places: v.roadsPlaces, contours: v.roadsPlaces,
-    unitLabels: v.labels, findingLabels: v.labels, actions: v.projections,
+    unitLabels: v.labels, findingLabels: v.labels, actions: !recon && v.projections,
   };
 }
 
 /* ------------------------------------------------------------------ layout */
 
 export interface Layout { left: number; right: number; bottom: number; leftOpen: boolean; rightOpen: boolean; bottomOpen: boolean }
-export const LAYOUT_LIMITS = { left: [240, 440], right: [320, 560], bottom: [128, 380] } as const;
-const DEFAULT_LAYOUT: Layout = { left: 300, right: 380, bottom: 196, leftOpen: true, rightOpen: true, bottomOpen: true };
+export const LAYOUT_LIMITS = { left: [200, 300], right: [320, 560], bottom: [128, 380] } as const;
+const DEFAULT_LAYOUT: Layout = { left: 220, right: 380, bottom: 196, leftOpen: false, rightOpen: true, bottomOpen: true };
 
 /* ------------------------------------------------------------------ state */
 
 export type DivePhase = 'idle' | 'lock' | 'flying' | 'wipe' | 'feed' | 'exiting';
 export interface FireyeUi {
+  reconProfile: boolean;
   tab: 'intake' | 'ops';
   selected: string | null;
   thermal: boolean;
@@ -66,7 +67,9 @@ export interface FireyeUi {
   booted: boolean;
   /** Slow camera orbit around the selection. */
   orbit: boolean;
-  /** Decision keys the user deferred with Later (still counted in the ORCH queue). */
+  /** Important alerts dismissed for this page session; never operational decisions. */
+  dismissedAlerts: string[];
+  /** Ops decision queue presentation, separate from recon alert dismissal. */
   snoozed: string[];
 }
 
@@ -86,10 +89,10 @@ export function clampLayout(l: Layout): Layout {
 
 const dom = typeof window !== 'undefined';
 let state: FireyeUi = {
-  tab: 'intake', selected: null, thermal: false, dive: { phase: 'idle' }, panel: null, chat: false,
-  layout: dom ? clampLayout({ ...DEFAULT_LAYOUT, ...read('fireye.layout', DEFAULT_LAYOUT, isLayout) }) : DEFAULT_LAYOUT,
+  reconProfile: true, tab: 'intake', selected: null, thermal: false, dive: { phase: 'idle' }, panel: null, chat: false,
+  layout: dom ? clampLayout(read('fireye.layout.recon', { ...read('fireye.layout', DEFAULT_LAYOUT, isLayout), left: 220, leftOpen: false }, isLayout)) : DEFAULT_LAYOUT,
   vis: dom ? read('fireye.visibility', VIS_PRESETS.standard, isVis) : VIS_PRESETS.standard,
-  preset: 'standard', fx: {}, source: 'sim', booted: dom && new URLSearchParams(window.location.search).get('boot') === '0', orbit: false, snoozed: [],
+  preset: 'standard', fx: {}, source: 'sim', booted: dom && new URLSearchParams(window.location.search).get('boot') === '0', orbit: false, snoozed: [], dismissedAlerts: [],
 };
 state.preset = (Object.keys(VIS_PRESETS) as VisPreset[]).find((p) => Object.keys(VIS_GROUPS).every((k) => VIS_PRESETS[p][k as VisGroup] === state.vis[k as VisGroup])) ?? 'custom';
 const listeners = new Set<() => void>();
@@ -100,10 +103,10 @@ export const fireyeUi = {
   set(p: Partial<FireyeUi> | ((s: FireyeUi) => Partial<FireyeUi>)) {
     const patch = typeof p === 'function' ? p(state) : p;
     state = { ...state, ...patch };
-    if (patch.layout) { try { localStorage.setItem('fireye.layout', JSON.stringify(state.layout)); } catch { /* optional */ } }
+    if (patch.layout) { try { localStorage.setItem('fireye.layout.recon', JSON.stringify(state.layout)); } catch { /* optional */ } }
     if (patch.vis) {
       try { localStorage.setItem('fireye.visibility', JSON.stringify(state.vis)); } catch { /* optional */ }
-      setMapLayers(mapPatch(state.vis));
+      setMapLayers(mapPatch(state.vis, state.reconProfile));
     }
     listeners.forEach((fn) => fn());
   },

@@ -96,4 +96,4 @@ export interface TileData {
 export interface DumpInfo { x: number; z: number; r: number; kind: DumpKind; curated: boolean; items: number; canisters: number }
 
 /** Whole-area terrain; each chunk has a full 40 m mesh and a 4× coarser skirted mesh for distant views. */
-export interface FarTerrain { chunks: { mesh: MeshArrays; coarse: MeshArrays; minY: number; maxY: number; bounds: [number, number, number, number] }[]; tilesX: number; tilesZ: number; xMin: number; zMin: number }
+export interface FarTerrain { chunks: { mesh: MeshArrays; coarse: MeshArrays; minY: number; maxY: number; bounds: [number, number, number, number] }[]; context?: MeshArrays[]; tilesX: number; tilesZ: number; xMin: number; zMin: number }

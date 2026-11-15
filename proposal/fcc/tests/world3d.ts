@@ -3,12 +3,14 @@ import type { ScenarioPack } from '../src/console/contracts';
 import { clc2018 } from '../src/console/scenario/load';
 import { AGENT_ID_BASE, AgentSim } from '../src/console/world3d/agents/sim';
 import { ARCHETYPE, CATALOG } from '../src/console/world3d/catalog';
-import { computeEnv, type EnvInput } from '../src/console/world3d/env';
+import { computeEnv, environmentTime, type EnvInput } from '../src/console/world3d/env';
+import { cropRows, landscapeAt } from '../src/console/world3d/gen/landscape';
 import { rate } from '../src/console/world3d/flammability';
 import { TILE_M } from '../src/console/world3d/frame';
 import { curatedSites } from '../src/console/world3d/gen/sites';
 import { buildSource } from '../src/console/world3d/gen/source';
-import { coverOf, createContext, generateTile } from '../src/console/world3d/gen/tile';
+import { buildingScale, contextMesh, coverOf, createContext, generateFar, generateTile, plantStyle } from '../src/console/world3d/gen/tile';
+import { Rng } from '../src/console/world3d/rng';
 import { decodeTruth } from '../src/console/world3d/truth/capture';
 import { FLAMMABILITY, TruthClass, type TileData } from '../src/console/world3d/types';
 import { sunPosition } from '../src/console/stage3d/sun';
@@ -26,14 +28,92 @@ export function checkWorld3d(pack: ScenarioPack) {
     return createContext(src);
   };
   const ctx = make(), { frame, hf, src } = ctx;
+  const rows = (bounds: [number, number, number, number]) => {
+    const points: string[] = [];
+    cropRows(bounds, 7, 7, 0.31, (x, z) => points.push(`${x.toFixed(6)},${z.toFixed(6)}`));
+    return points.sort();
+  };
+  assert.deepEqual([...rows([-256, 0, 0, 256]), ...rows([0, 0, 256, 256])].sort(), rows([-256, 0, 256, 256]), 'crop rows continue across tile boundaries without duplicates or direction changes');
+  assert.deepEqual(landscapeAt(256 - 1e-8, 93), landscapeAt(256 - 1e-8, 93));
+  assert.ok(Math.abs(landscapeAt(256 - 1e-5, 93).trees - landscapeAt(256 + 1e-5, 93).trees) < 1e-4, 'stand/clearing field is continuous across tile edges');
+  const clock = { live: false, advance: false, timeMs: 1234 };
+  assert.equal(environmentTime(clock, 60000, 999999), 1234, 'paused FIREYE lighting does not drift');
+  assert.equal(environmentTime({ ...clock, timeMs: 4321 }, 100, 999999), 4321, 'a seek supplies the exact new environment time');
+  assert.equal(environmentTime({ ...clock, advance: true }, 100, 999999), 1334, 'historical monitoring still advances in real time');
+  assert.equal(environmentTime({ ...clock, live: true }, 100, 999999), 999999, 'current monitoring follows wall time');
   assert.ok(src.grid.clc, 'CORINE land cover is available for the Mati pack');
   assert.equal(src.sites.length, 6, 'one curated analysis dump per default feed');
 
   // Determinism: the same tile from two independent contexts is identical.
   const [cx, cz] = frame.tileOf(frame.x(23.955), frame.z(38.047));
+  const solidPixels = new Uint8ClampedArray(8 * 8 * 4);
+  for (let i = 0; i < solidPixels.length; i += 4) solidPixels.set([80, 95, 60, 255], i);
+  const surfaceCtx = createContext({ ...src, roads: [], buildings: [], sites: [], imagery: { width: 8, height: 8, bbox: src.grid.bbox, pixels: solidPixels } });
+  const nearSurface = generateTile(surfaceCtx, cx, cz, 'near').terrain;
+  const farSurface = generateTile(surfaceCtx, cx, cz, 'far').terrain;
+  for (let j = 1; j < 16; j++) for (let i = 1; i < 16; i++) for (let c = 0; c < 3; c++) {
+    assert.ok(Math.abs(nearSurface.color[((j * 3) * 49 + i * 3) * 3 + c] - farSurface.color[((j * 2) * 33 + i * 2) * 3 + c]) < 1e-5,
+      'near/far surfaces use the same imagery/palette mixture at shared vertices');
+  }
   const other = make();
   for (const [dx, dz, detail] of [[0, 0, 'near'], [1, -1, 'near'], [-2, 1, 'far']] as const) {
     assert.deepEqual(strip(generateTile(ctx, cx + dx, cz + dz, detail)), strip(generateTile(other, cx + dx, cz + dz, detail)), 'tile generation is deterministic');
+  }
+  const widths: number[] = [], heights: number[] = [], tints: number[] = [];
+  for (let i = 0; i < 256; i++) {
+    const p = plantStyle(120, 160, new Rng(i, 83));
+    widths.push(p.sx); heights.push(p.sy); tints.push(p.tint[0] / p.tint[1]);
+    assert.ok(p.sx >= 0.9 && p.sx <= 1.5 && p.sy >= 0.72 && p.sy <= 1.32, 'bounded crown and height variation');
+    const b = buildingScale('house-flat', new Rng(i, 17));
+    assert.ok(b.sx > 0.7 && b.sx < 1.4 && b.sz > 0.7 && b.sz < 1.4 && b.sy > 0.5 && b.sy < 1.5, 'bounded building scales');
+  }
+  assert.ok(Math.max(...widths) - Math.min(...widths) > 0.5 && Math.max(...heights) - Math.min(...heights) > 0.5, 'plants vary in crown spread and height independently');
+  assert.ok(Math.max(...tints) - Math.min(...tints) > 0.1, 'foliage varies in hue, not only brightness');
+  const detailed = generateTile(ctx, cx, cz, 'near'), distant = generateTile(ctx, cx, cz, 'far');
+  for (const g of distant.groups) {
+    const near = detailed.groups.find(n => n.archetype === g.archetype)!;
+    assert.deepEqual(g.matrices, near.matrices, 'object positions and sizes agree across terrain detail levels');
+    assert.deepEqual(g.colors, near.colors, 'object colours agree across terrain detail levels');
+  }
+  const [bx, bz] = frame.tileOrigin(cx, cz);
+  const bounds: [number, number, number, number] = [bx, bz, bx + TILE_M, bz + TILE_M];
+  const context = contextMesh(ctx, bounds);
+  assert.deepEqual(context, contextMesh(other, bounds), 'distant silhouettes are deterministic');
+  assert.ok(context.position.length > 0 && context.position.every(Number.isFinite), 'distant silhouettes populate the tile');
+  assert.ok(context.params.every((v, i) => i % 4 !== 2 || v === TruthClass.Tree || v === TruthClass.Structure), 'distant context contains only labelled canopy/buildings');
+  assert.ok(context.params.some((v, i) => i % 4 === 2 && v === TruthClass.Tree), 'vegetated source block includes aggregate crowns');
+  const sourceBuilding = src.buildings.find(p => !hf.isWater(p.x, p.z))!;
+  const bi = src.buildings.indexOf(sourceBuilding), descriptor = ctx.building(bi);
+  assert.equal(ctx.building(bi), descriptor, 'building descriptor is cached across detailed tiles and context generation');
+  const { local: localA, ...descA } = descriptor, { local: localB, ...descB } = other.building(bi);
+  assert.deepEqual(descA, descB, 'descriptor fields are deterministic');
+  assert.deepEqual(localA(4, 5), localB(4, 5));
+  const [btx, btz] = frame.tileOf(sourceBuilding.x, sourceBuilding.z);
+  const btile = generateTile(ctx, btx, btz, 'far');
+  const bg = btile.groups.find(g => g.archetype === descriptor.id)!;
+  let buildingIndex = -1;
+  for (let i = 0; i < bg.count; i++) if (Math.abs(bg.matrices[i * 16 + 12] - sourceBuilding.x) < 0.01 && Math.abs(bg.matrices[i * 16 + 14] - sourceBuilding.z) < 0.01) buildingIndex = i;
+  assert.ok(buildingIndex >= 0);
+  const offset = buildingIndex * 16;
+  assert.ok(Math.abs(bg.matrices[offset] - Math.cos(descriptor.ry) * descriptor.sx) < 1e-5, 'detailed orientation and footprint use the shared descriptor');
+  assert.ok(Math.abs(bg.matrices[offset + 13] - descriptor.y) < 1e-3, 'detailed base uses the shared slope-supported height');
+  const builtContext = contextMesh(ctx, [sourceBuilding.x - 40, sourceBuilding.z - 40, sourceBuilding.x + 40, sourceBuilding.z + 40]);
+  assert.ok(builtContext.params.some((v, i) => i % 4 === 2 && v === TruthClass.Structure), 'source building produces a labelled distant structure');
+  for (let i = 0; i < context.params.length; i += 4) {
+    assert.equal(context.params[i + 3], -1, 'aggregate context is not an individually identified object');
+    if (context.params[i + 2] !== TruthClass.Tree) continue;
+    const x = context.params[i], z = context.params[i + 1];
+    assert.ok(x >= bx && x <= bx + TILE_M && z >= bz && z <= bz + TILE_M, 'crown pivots remain in their source block');
+    assert.ok(!hf.isWater(x, z) && coverOf(hf.clcAt(x, z), hf.fuelAt(x, z)).tree > 0, 'aggregate canopy respects water and land cover');
+  }
+  // Small fixture catches uninitialized skirt vertices that pull every chunk's bounds toward the origin.
+  const small = createContext({ ...src, buildings: [], sites: [], grid: { ...src.grid, fuel: new Uint8Array(src.grid.fuel.length), clc: null } });
+  const far = generateFar(small, 400, 0, 4);
+  for (const c of far.chunks) for (const mesh of [c.mesh, c.coarse]) {
+    for (let i = 0; i < mesh.position.length; i += 3) {
+      assert.ok(mesh.position[i] >= c.bounds[0] - 0.01 && mesh.position[i] <= c.bounds[2] + 0.01
+        && mesh.position[i + 2] >= c.bounds[1] - 0.01 && mesh.position[i + 2] <= c.bounds[3] + 0.01, 'every far/skirt vertex stays inside its chunk culling bounds');
+    }
   }
 
   // Generate a block of tiles around Mati plus every curated site.

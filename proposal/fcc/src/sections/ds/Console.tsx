@@ -312,7 +312,7 @@ export function ConsoleSpec() {
         <div>
           <GroupTitle code="C.10">FireyeMark + FireyeWordmark + OrchestratorAvatar / brand, FCC theme locked</GroupTitle>
           <ThemeDemo />
-          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<FireyeMark size weight draw state title />  ·  <FireyeWordmark size sub />  ·  <OrchestratorAvatar state size framed />  ·  <AppearanceToggle />  ·  Team tokens retained, not selectable'}</code>
+          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<FireyeMark size weight draw state look title />  ·  <FireyeWordmark size sub />  ·  <OrchestratorAvatar state size framed />  ·  <AppearanceToggle />  ·  Team tokens retained, not selectable'}</code>
         </div>
 
         <div>
@@ -361,9 +361,13 @@ function ThemeDemo() {
         <span className="flex items-center gap-2">
           {(['idle', 'listening', 'thinking', 'speaking', 'alert'] as const).map((s) => <OrchestratorAvatar key={s} size={28} framed state={s} />)}
         </span>
+        <span className="flex items-center gap-3">
+          <FireyeMark size={40} state="speaking" look="down-left" title="Command attention, down-left" />
+          <FireyeMark size={40} state="speaking" look="down-right" title="Command attention, down-right" />
+        </span>
         <AppearanceToggle />
         <InstallAppButton />
-        <span className="fcc-micro max-w-48 leading-4">Auto follows map daylight in the console. Install opens a standalone app.</span>
+        <span className="fcc-micro max-w-48 leading-4">Monitoring and replay offer Auto appearance. FIREYE stays dark. Install opens a standalone app.</span>
       </div>
       {(['fcc', 'team'] as const).map((id) => {
         const t = THEMES[id];

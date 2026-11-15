@@ -1,5 +1,11 @@
 /* FIREYE console motion. Every animation here is disabled by the global reduced-motion rule in src/index.css. */
 
+.fireye-header-agent .fireye-avatar .fireye-lids { animation: fireye-blink 8.7s var(--ease-servo) 2s infinite; }
+.fireye-gaze { transition: transform 220ms var(--ease-servo); }
+
+.fireye-hover-card { animation: fireye-hover 140ms var(--ease-servo) both; transform-origin: left center; }
+@keyframes fireye-hover { from { opacity: 0; transform: scaleX(0.92); } to { opacity: 1; transform: scaleX(1); } }
+
 .fireye-enter {
   animation: fireye-enter 520ms var(--ease-settle) both;
   animation-delay: calc(var(--i, 0) * 70ms + var(--fireye-enter-base, 0ms));
@@ -54,17 +60,49 @@
 .fireye-scan {
   position: absolute; left: 0; right: 0; height: 2px; pointer-events: none; background: rgb(var(--bone) / 0.9);
   box-shadow: 0 0 18px 2px rgb(var(--bone) / 0.35);
-  animation: fireye-scan 350ms var(--ease-snap) both;
+  animation: fireye-dive-scan 350ms var(--ease-snap) both;
 }
-@keyframes fireye-scan { from { top: 0; opacity: 1; } 90% { opacity: 1; } to { top: calc(100% - 2px); opacity: 0; } }
+@keyframes fireye-dive-scan { from { top: 0; opacity: 1; } 90% { opacity: 1; } to { top: calc(100% - 2px); opacity: 0; } }
 .fireye-dim { transition: opacity 220ms var(--ease-servo), filter 220ms var(--ease-servo); }
 .fireye-dim[data-dim='true'] { opacity: 0.38; filter: saturate(0.4); }
 
-/* Boot */
-.fireye-boot-icon { animation: fireye-boot-icon 240ms var(--ease-servo) both; }
-@keyframes fireye-boot-icon { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.fireye-boot-out { animation: fireye-boot-out 320ms var(--ease-servo) 300ms both; }
-@keyframes fireye-boot-out { to { opacity: 0; } }
+/* Presentation boot: the final-size dashboard fades in behind a stationary opaque field. */
+.fireye-boot-curtain { will-change: opacity; }
+.fireye-boot-mark {
+  width: min(320px, 70vw, 46vh); aspect-ratio: 1;
+  transform: translate(-50%, -50%); transform-origin: center;
+  will-change: transform, opacity;
+}
+.fireye-boot-optics, .fireye-boot-iris { transform-box: view-box; transform-origin: 16px 16px; }
+.fireye-boot-optics { transform: scaleY(0.006); }
+.fireye-boot-iris { opacity: 0; transform: scaleY(0.02); }
+.fireye-boot-source { opacity: 0; transform: translate(-50%, -50%) scale(0.36); will-change: transform, opacity; }
+[data-fireye-dashboard]:is([data-boot-state='loading'], [data-boot-state='globe']) :is(.fireye-enter, .fireye-row-in, .fireye-pop) { animation: none; }
+[data-fireye-dashboard]:not([data-boot-state='ready']) .fireye-header-agent .fireye-avatar * { animation: none !important; transition: none; }
+
+/* The canvas fills the area below the header; only its controls follow the panel-free window. */
+.fireye-map-stage .fcc-stage-credits {
+  left: calc(var(--fireye-map-left) + 1rem);
+  bottom: calc(var(--fireye-map-bottom) + 0.375rem);
+}
+.fireye-map-stage .fcc-stage-camera-hud {
+  right: calc(var(--fireye-map-right) + 1rem);
+  bottom: calc(var(--fireye-map-bottom) + 0.375rem);
+}
+
+/* Only transform/opacity change. Panels slide over the permanent full-bleed map. */
+[data-fireye-dashboard] .fireye-boot-panel { animation: none; }
+[data-fireye-dashboard]:is([data-boot-state='loading'], [data-boot-state='globe']) :is(.fireye-boot-panel, [data-boot-resizer], .fireye-boot-hud, .fireye-header > div) { opacity: 0; }
+[data-boot-state='globe'] [data-boot-panel='left'] { transform: translateX(calc(-100% - 8px)); }
+[data-boot-state='globe'] [data-boot-panel='right'] { transform: translateX(calc(100% + 8px)); }
+[data-boot-state='globe'] :is([data-boot-panel='bottom'], [data-boot-panel='timeline']) { transform: translateY(calc(100% + 8rem)); }
+[data-boot-state='panels'] [data-boot-panel='left'] { animation: fireye-panel-left 760ms var(--ease-settle) both; }
+[data-boot-state='panels'] [data-boot-panel='right'] { animation: fireye-panel-right 760ms var(--ease-settle) 80ms both; }
+[data-boot-state='panels'] :is([data-boot-panel='bottom'], [data-boot-panel='timeline']) { animation: fireye-panel-up 760ms var(--ease-settle) 160ms both; }
+[data-boot-state='panels'] :is(.fireye-header > div, .fireye-boot-hud, [data-boot-resizer]) { animation: fireye-fade 420ms var(--ease-servo) 120ms both; }
+@keyframes fireye-panel-left { from { opacity: 0; transform: translateX(calc(-100% - 8px)); } to { opacity: 1; transform: none; } }
+@keyframes fireye-panel-right { from { opacity: 0; transform: translateX(calc(100% + 8px)); } to { opacity: 1; transform: none; } }
+@keyframes fireye-panel-up { from { opacity: 0; transform: translateY(calc(100% + 8rem)); } to { opacity: 1; transform: none; } }
 
 .fireye-resize { touch-action: none; }
 .fireye-resize::after { content: ''; position: absolute; background: rgb(var(--bone-dim)); opacity: 0; transition: opacity 140ms var(--ease-servo); }

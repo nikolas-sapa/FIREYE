@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Button, Icon, OrchestratorAvatar, ScoreMeter, TierBadge, cn, tierOf } from '@ds';
+import { createPortal } from 'react-dom';
+import { Button, Icon, cn } from '@ds';
 import type { Action, Geo, GradedItem, Ms } from '../../contracts';
 import { useConsoleApi, useConsoleSelector } from '../../store';
 import { localTime, packZone } from '../../ui/format';
 import { visibleAt } from '../data/chronicle';
 import { actionKey, journal } from '../data/journal';
-import { applyDecision } from '../data/decision';
 import { useChronicle } from './sync';
 import { fireyeUi, useFireye } from './ui';
 import { TamagotchiSprite } from '../../ui/TamagotchiSprite';
@@ -65,71 +65,43 @@ export function useDecisions(): { open: Decision[]; top: Decision | null } {
   }, [ch, t, items, actions, jv]);
 }
 
-/** The single prominent card shown when the orchestrator needs a human. High-risk actions still need this click. */
+export function useImportantAlerts() {
+  const events = useConsoleSelector(s => s.recon?.events);
+  const t = useConsoleSelector(s => s.clock.t);
+  const dismissed = useFireye(s => s.dismissedAlerts);
+  return (events ?? []).filter(e => e.t <= t && t - e.t <= (e.tasking ? 4 : 15) * 60000
+    && (e.tasking || e.severity === 'critical' || e.severity === 'alert') && !dismissed.includes(e.id))
+    .slice().sort((a, b) => Number(!b.tasking) - Number(!a.tasking) || b.t - a.t || b.id.localeCompare(a.id));
+}
+
+/** A message from the single centered agent, never a second agent or an approval queue. */
 export function OrchestratorCallout({ onFocus }: { onFocus: (g: Geo) => void }) {
-  const api = useConsoleApi();
-  const { open } = useDecisions();
-  const t = useConsoleSelector((s) => s.clock.t);
-  const pack = useConsoleSelector((s) => s.pack);
-  const snoozed = useFireye((s) => s.snoozed);
-  const dive = useFireye((s) => s.dive.phase);
-  const d = open.find((x) => !snoozed.includes(x.key)) ?? null;
-  const tz = packZone(pack).label;
-  if (!d || dive !== 'idle') return null;
-  const tier = tierOf(d.score);
-  const decide = (decision: 'approved' | 'rejected') => {
-    applyDecision(d, t, decision, api);
-  };
-  const ask = () => {
-    fireyeUi.set({ chat: true });
-    api.ask(`Why: ${d.title}`);
-  };
-  return (
-    <div key={d.key} role="alertdialog" aria-label="Orchestrator decision" className="fireye-pop pointer-events-auto relative w-[560px] max-w-full border border-line-strong border-t-signal bg-ink-950/95 shadow-lift">
-      <div aria-hidden className="fireye-brackets pointer-events-none absolute -inset-1">
-        {['left-0 top-0 border-l border-t', 'right-0 top-0 border-r border-t', 'bottom-0 right-0 border-b border-r', 'bottom-0 left-0 border-b border-l'].map((c) => (
-          <span key={c} className={cn('absolute h-2.5 w-2.5 border-bone', c)} />
-        ))}
-      </div>
-      <div className="flex h-9 items-center gap-2 border-b border-line px-2">
-        <OrchestratorAvatar size={24} framed state="alert" />
-        <span className="font-mono text-micro uppercase tracking-[0.18em] text-bone">Orchestrator · decision needed</span>
-        <TierBadge tier={tier} />
-        <span className="ml-auto fcc-num font-mono text-micro uppercase text-bone-mute">{localTime(d.t, tz, true)} {tz}</span>
-        {open.length > 1 && <span className="fcc-num font-mono text-micro uppercase text-bone-mute">+{open.length - 1} queued</span>}
-        <button type="button" aria-label="Later" title="Later (stays in the ORCH queue)" onClick={() => fireyeUi.set((s) => ({ snoozed: [...s.snoozed, d.key] }))}
-          className="text-bone-mute hover:text-bone"><Icon name="minus" size={11} /></button>
-      </div>
-      <div className="flex gap-4 px-4 pb-3 pt-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-5 text-bone">{d.title}</p>
-          {d.body && <p className="mt-1 text-xs leading-4 text-bone-dim">{d.body}</p>}
-          {d.reason && <p className="mt-1.5 font-mono text-micro uppercase leading-4 text-bone-mute">{d.reason}</p>}
-        </div>
-        <div className="flex w-24 shrink-0 flex-col items-end gap-1">
-          <span className="fcc-micro">Score</span>
-          <ScoreMeter score={d.score} size="sm" />
-        </div>
-      </div>
-      {d.evidence.length > 0 && (
-        <ul className="mx-4 mb-3 border-l border-line pl-3">
-          {d.evidence.map((e) => (
-            <li key={`${e.t}-${e.title}`} className="flex gap-2 py-0.5 font-mono text-micro uppercase leading-4">
-              <span className="fcc-num shrink-0 text-bone-mute">{localTime(e.t, tz)}</span>
-              <span className="shrink-0 text-bone-dim">{e.source}</span>
-              <span className="truncate normal-case tracking-normal text-bone-mute">{e.title}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex items-center gap-2 border-t border-line px-3 py-2">
-        <Button variant="primary" size="sm" icon="check" onClick={() => decide('approved')}>{d.action ? 'Approve' : 'Acknowledge'}</Button>
-        <Button variant="secondary" size="sm" icon="close" onClick={() => decide('rejected')}>{d.action ? 'Reject' : 'Dismiss'}</Button>
-        <Button variant="ghost" size="sm" icon="orchestrator" onClick={ask}>Ask</Button>
-        {d.pos && <Button variant="ghost" size="sm" icon="locate" onClick={() => onFocus(d.pos!)}>Locate</Button>}
-        <span className="ml-auto font-mono text-micro uppercase text-bone-mute">Simulated · human approval required</span>
-      </div>
-    </div>
+  const alerts = useImportantAlerts();
+  const pack = useConsoleSelector(s => s.pack);
+  const phase = useFireye(s => s.dive.phase);
+  const booted = useFireye(s => s.booted);
+  const alert = alerts[0];
+  if (!booted || !alert || phase !== 'idle') return null;
+  return createPortal(
+    <div data-agent-message className="pointer-events-none fixed left-1/2 top-24 z-hud w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2">
+      <div aria-hidden className={cn('mx-auto h-3 w-px', alert.tasking ? 'bg-line-strong' : 'bg-ember/70')} />
+      <section key={alert.id} role={alert.tasking ? 'status' : 'alert'} aria-label={alert.tasking ? 'Orchestrator drone command' : 'Important fire update'}
+        className={cn('fireye-pop pointer-events-auto border bg-ink-950/95 shadow-panel', alert.tasking ? 'border-line-strong' : 'border-ember/50')}>
+        <header className="flex items-center gap-2 px-3 pt-2">
+          <span className={cn('h-1 w-1 shrink-0', alert.tasking ? 'bg-ice' : 'bg-ember')} aria-hidden />
+          <span className={cn('font-mono text-micro uppercase tracking-[0.14em]', alert.tasking ? 'text-ice' : 'text-ember')}>{alert.tasking ? 'FIREYE · drone command' : 'FIREYE · important fire update'}</span>
+          <span className="fcc-num ml-auto font-mono text-micro text-bone-mute">{localTime(alert.t, packZone(pack).label)}</span>
+          <button type="button" aria-label="Dismiss agent update" onClick={() => fireyeUi.set(s => ({ dismissedAlerts: [...s.dismissedAlerts, alert.id] }))}
+            className="flex h-6 w-6 items-center justify-center text-bone-mute hover:text-bone"><Icon name="close" size={12} /></button>
+        </header>
+        <h2 className="px-3 pt-1 text-sm font-medium leading-5 text-bone">{alert.title}</h2>
+        <p className="px-3 pb-2 pt-1 text-xs leading-4 text-bone-dim">{alert.body}</p>
+        <footer className="flex items-center justify-between border-t border-line px-3 py-1">
+          <span className="font-mono text-micro uppercase text-bone-mute">Simulated · reconnaissance only</span>
+          {alert.pos && <Button size="sm" variant="ghost" icon="locate" onClick={() => onFocus(alert.pos!)}>Locate</Button>}
+        </footer>
+      </section>
+    </div>, document.body
   );
 }
 
@@ -172,7 +144,7 @@ export function OrchestratorChat() {
         <button type="button" aria-label="Close chat" onClick={() => fireyeUi.set({ chat: false })} className="ml-auto text-bone-mute hover:text-bone"><Icon name="close" size={11} /></button>
       </header>
       <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-3 py-2" aria-live="polite">
-        {recent.length === 0 && <p className="py-4 text-center font-mono text-micro uppercase text-bone-mute">Ask about risk, sensors, the fleet or a decision</p>}
+        {recent.length === 0 && <p className="py-4 text-center font-mono text-micro uppercase text-bone-mute">Ask about blind spots, drone tasks or important fire changes</p>}
         {recent.map((m) => (
           <div key={m.id} className={cn('mb-2 flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
             <span className="fcc-num flex items-center gap-1 font-mono text-micro uppercase text-bone-mute">

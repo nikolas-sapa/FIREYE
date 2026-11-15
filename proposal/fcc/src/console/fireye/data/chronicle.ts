@@ -24,7 +24,7 @@ export interface Chronicle {
   light: { t: Ms; daylight: number }[];
 }
 
-const cache = new WeakMap<ScenarioPack, Chronicle>();
+const caches = { recon: new WeakMap<ScenarioPack, Chronicle>(), legacy: new WeakMap<ScenarioPack, Chronicle>() };
 const sevRank: Record<ChronicleSeverity, number> = { info: 0, watch: 1, alert: 2, critical: 3 };
 const statusRank: Record<SensorStatus, number> = { nominal: 0, watch: 1, alarm: 2, offline: 3 };
 const two = (n: number) => String(Math.round(n)).padStart(3, '0');
@@ -46,7 +46,8 @@ export function chronicleWindow(pack: ScenarioPack, start?: Ms): { start: Ms; en
  * The deterministic event track behind both log tabs. Everything is a pure function of the pack and
  * the simulated IoT model, so scrubbing to any time and back always yields the same visible log.
  */
-export function buildChronicle(pack: ScenarioPack, window: { start: Ms; end: Ms }): Chronicle {
+export function buildChronicle(pack: ScenarioPack, window: { start: Ms; end: Ms }, profile: 'recon' | 'legacy' = 'legacy'): Chronicle {
+  const cache = caches[profile];
   const hit = cache.get(pack);
   if (hit && hit.start === window.start && hit.end === window.end) return hit;
   const { start, end } = window;
@@ -124,8 +125,8 @@ export function buildChronicle(pack: ScenarioPack, window: { start: Ms; end: Ms 
         continue;
       }
       // Require the new state to hold for two minutes to suppress single-sample flicker.
-      const next = sensors.readingAt(r.id, t + MIN);
-      if (statusRank[next.status] < statusRank[r.status]) continue;
+      const previous = sensors.readingAt(r.id, t - MIN);
+      if (statusRank[previous.status] < statusRank[r.status]) continue;
       last.set(r.id, r.status);
       if (r.status === 'watch') {
         const lw = lastWatch.get(r.id);
@@ -268,6 +269,16 @@ export function buildChronicle(pack: ScenarioPack, window: { start: Ms; end: Ms 
     cmd('fleet-night', nightAt + 40000, 'd3', 'uav-3', 'm-d3-night', 5, 'Night thermal sweep', 80 * 60, 'Thermal sweep of burned area', 'Mission m-d3-night v5 · white-hot thermal, 120 m AGL. Simulated thermal, no temperatures.');
   }
 
+  // Recon owns actual drone tasking. Keep scripted review/receipt history only for Ops.
+  if (profile === 'recon') {
+    for (let i = out.length - 1; i >= 0; i--) {
+      const e = out[i];
+      if (e.id === 'orch-night') {
+        out[i] = { ...e, kind: 'analysis', severity: 'info', source: 'VISION AGENT',
+          title: 'Low light reduces EO visibility. Thermal reconnaissance remains available.' };
+      } else if (e.command || e.decision || ['command', 'fleet', 'orchestrator', 'projection'].includes(e.kind)) out.splice(i, 1);
+    }
+  }
   out.sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const firstReport = (pack.reports ?? []).filter((r) => r.t >= start).sort((a, b) => a.t - b.t)[0]?.t ?? null;

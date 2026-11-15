@@ -79,12 +79,12 @@ class ConsoleStore {
     this.emit(true);
   }
 
-  attach(): () => void {
+  attach(profile: 'legacy' | 'recon' = 'legacy'): () => void {
     this.users++;
     if (!this.loading) {
       this.loading = loadScenario()
         .then((pack) => {
-          this.runtime = new Runtime(pack, bus, { tokens: envTokens() });
+          this.runtime = new Runtime(pack, bus, { tokens: envTokens(), profile });
           this.emit(true);
         })
         .catch((err) => {
@@ -176,8 +176,8 @@ if (import.meta.env?.DEV && typeof window !== 'undefined') {
 }
 
 /** Loads the scenario, runs the clock (rAF) and owns the console state. */
-export function ConsoleProvider({ children }: { children: ReactNode }) {
-  useEffect(() => consoleStore.attach(), []);
+export function ConsoleProvider({ children, profile = 'legacy' }: { children: ReactNode; profile?: 'legacy' | 'recon' }) {
+  useEffect(() => consoleStore.attach(profile), [profile]);
   return <>{children}</>;
 }
 

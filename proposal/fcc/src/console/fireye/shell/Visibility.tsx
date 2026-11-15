@@ -2,8 +2,8 @@ import { Icon, cn } from '@ds';
 import { fireyeUi, useFireye, VIS_GROUPS, type VisGroup, type VisPreset } from './ui';
 
 const SECTIONS: { title: string; keys: VisGroup[] }[] = [
-  { title: 'Assets', keys: ['fleet', 'groundUnits', 'groundCams', 'iot'] },
-  { title: 'Sensing', keys: ['flightPaths', 'footprints', 'findings'] },
+  { title: 'Sources', keys: ['fleet', 'groundCams', 'iot'] },
+  { title: 'Sensing', keys: ['footprints', 'findings'] },
   { title: 'Incident', keys: ['fireFront', 'projections', 'risk'] },
   { title: 'Map', keys: ['roadsPlaces', 'labels'] },
 ];

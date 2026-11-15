@@ -7,7 +7,7 @@ import { RasterSampler } from '../../stage3d/raster';
 import { DEMO_FEEDS, demoPose, PresentationBudget, PresentationCadence, PresentationClock, sensorWorld, type DemoFeed } from '../../monitoring/feed-motion';
 import { AgentMeshes } from '../agents/render';
 import { AGENT_ID_BASE, AgentSim } from '../agents/sim';
-import { computeEnv, type EnvInput, type EnvOverrides, type WorldEnv } from '../env';
+import { computeEnv, environmentTime, type EnvInput, type EnvOverrides, type WorldEnv } from '../env';
 import { HeightField } from '../frame';
 import { curatedSites } from '../gen/sites';
 import { buildSource } from '../gen/source';
@@ -45,9 +45,11 @@ interface Surface extends SensorSurface { context: CanvasRenderingContext2D; rea
 interface Motion { clock: PresentationClock; filter: CameraFilter }
 
 export interface WorldStats {
-  fps: number; frameMs: number; views: number; draws: number; shadowViews: number; tris: number; trisPerView: number; maxViewTris: number;
+  fps: number; frameMs: number; views: number; draws: number; shadowViews: number; tris: number; trisPerView: number; maxViewTris: number; maxTotalViewTris: number;
   tiles: number; pending: number; genMsAvg: number; genMsMax: number; initMs: number; cacheMB: number; geometries: number; textures: number;
   agents: number; objects: number; longTasks: number; imagery: boolean; mode: 'wall' | 'full';
+  stepP95Ms: number; stepMaxMs: number; uploadMs: number; rebuildMs: number; sharedMB: number; targetMB: number; instanceMB: number;
+  feeds: Record<string, { fps: number; gapP95Ms: number; gapMaxMs: number; ageMs: number }>;
 }
 
 const RAD = 180 / Math.PI;
@@ -97,6 +99,10 @@ export class WorldRenderer {
   private lastStep = NaN;
   private truthQueue: { feedId: string; resolve: (c: TruthCapture | null) => void }[] = [];
   private frames: number[] = [];
+  private feedFrames = new Map<string, number[]>();
+  private stepTimes: number[] = [];
+  private stepMaxMs = 0;
+  private maskView = '';
   private lastStats: WorldStats | null = null;
   private longTasks = 0;
   private shadowsReady = false;
@@ -114,6 +120,7 @@ export class WorldRenderer {
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: true, stencil: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.renderer = new THREE.WebGLRenderer({ canvas, context: gl });
+    this.renderer.debug.onShaderError = () => { throw new Error('World3D shader compilation failed'); };
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(canvas.width, canvas.height, false);
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -173,7 +180,10 @@ export class WorldRenderer {
         if (Object.entries(patch).some(([key, value]) => surface[key as keyof SensorSurface] !== value)) this.motionOf(surface.feed.id).clock.suspend(performance.now());
         Object.assign(surface, patch); this.kick();
       },
-      dispose: () => { this.surfaces.delete(surface); },
+      dispose: () => {
+        this.surfaces.delete(surface);
+        if (!this.surfaces.size) { cancelAnimationFrame(this.raf); this.raf = 0; }
+      },
     };
   }
 
@@ -192,7 +202,16 @@ export class WorldRenderer {
     });
   }
 
-  stats(): WorldStats | null { return this.lastStats; }
+  stats(): WorldStats | null {
+    if (!this.lastStats) return null;
+    const now = performance.now(), feeds: NonNullable<WorldStats['feeds']> = {};
+    for (const [id, frames] of this.feedFrames) {
+      const recent = frames.filter(t => now - t < 3000), gaps = recent.slice(1).map((t, i) => t - recent[i]);
+      feeds[id] = { fps: recent.length > 1 ? (recent.length - 1) * 1000 / (recent[recent.length - 1] - recent[0]) : 0,
+        gapP95Ms: percentile(gaps, 0.95), gapMaxMs: gaps.length ? Math.max(...gaps) : 0, ageMs: now - frames[frames.length - 1] };
+    }
+    return { ...this.lastStats, feeds, stepP95Ms: percentile(this.stepTimes, 0.95), stepMaxMs: this.stepMaxMs, uploadMs: this.store.uploadMs };
+  }
 
   /* ------------------------------------------------ loop */
 
@@ -212,7 +231,7 @@ export class WorldRenderer {
     if (!force && now - this.envAt < 1000) return;
     this.envAt = now;
     const i = this.envInput;
-    const t = i.live ? Date.now() : i.timeMs + (now - this.envAnchor);
+    const t = environmentTime(i, now - this.envAnchor, Date.now());
     this.env = computeEnv({ ...i, timeMs: t }, this.overrides);
     this.onEnv?.(this.env);
   }
@@ -234,11 +253,16 @@ export class WorldRenderer {
     if (!targets.length) { this.lastStep = NaN; return; }
     if (this.full !== !!full) { this.full = !!full; this.cadence.reset(); }
     this.updateEnv(now);
-    this.store.beginFrame();
     const groups = new Map<string, Surface[]>();
     for (const s of targets) groups.set(s.feed.id, [...(groups.get(s.feed.id) ?? []), s]);
+    for (const [id, view] of this.views) if (!groups.has(id) && view.tiles.length) view.dispose();
+    this.store.pin([...this.views.values()].flatMap(v => v.tiles.map(t => t.entry.key)));
+    // Upload before selecting: eviction must not invalidate a staged selection.
+    this.store.upload(full ? 3 : 2, 4);
+    this.store.beginFrame();
     const viewH = full ? FULL[1] : THUMB[1];
-    const quota = full ? 40 : Math.max(8, Math.floor((TILE_CACHE_CAP - 4) / groups.size));
+    // Low-altitude FIREYE recon cameras need headroom for the shared terrain/context as well.
+    const quota = full ? 32 : Math.max(1, Math.min(this.fire ? 4 : TILE_CACHE_CAP, Math.floor((TILE_CACHE_CAP - 4) / groups.size)));
     if (this.fire && Number.isFinite(this.fireT)) this.fire.setTime(this.fireT, now);
     for (const [id, surfaces] of groups) {
       const view = this.view(id), state = this.motionOf(id);
@@ -247,16 +271,18 @@ export class WorldRenderer {
       this.poses.set(id, pose);
       this.applyPose(view, pose);
       view.select(this.store, viewH, !full, quota);
-      if (view.settled && !this.sim.areas.has(id)) {
-        this.sim.populate({ id, x: view.focus.x, z: view.focus.z, r: view.air ? 500 : 220, air: view.air }, view.tiles.map(t => t.entry.data.spawns));
-      }
     }
     this.store.dispatch();
-    this.store.upload(full ? 3 : 2);
     // At most one batch rebuild per frame keeps uploads bounded; never-built views go first.
     const dirty = [...groups.keys()].map(id => this.views.get(id)!).filter(v => v.dirty);
     dirty.sort((a, b) => a.objectCount - b.objectCount);
-    for (const v of dirty) if (v.rebuild(this.materials, now, v.objectCount === 0 && v.tiles.length > 0)) break;
+    for (const v of dirty) if (v.rebuild(this.materials, now, v.objectCount === 0)) break;
+    for (const [id] of groups) {
+      const view = this.views.get(id)!;
+      if (view.settled && !view.dirty && view.tiles.length && !this.sim.areas.has(id)) {
+        this.sim.populate({ id, x: view.focus.x, z: view.focus.z, r: view.air ? 500 : 220, air: view.air }, view.tiles.map(t => t.entry.data.spawns));
+      }
+    }
     const dt = Number.isFinite(this.lastStep) ? (now - this.lastStep) / 1000 : 0;
     this.lastStep = now;
     const anyMoving = targets.some(s => s.moving && !s.frozen);
@@ -264,7 +290,7 @@ export class WorldRenderer {
 
     // Large walls (FIREYE): lead tiles every frame, the others round-robin a few per frame.
     let render = groups;
-    const MAX = 4;
+    const MAX = 8;
     if (!full && groups.size > MAX) {
       const ids = [...groups.keys()];
       const lead = ids.filter(id => groups.get(id)!.some(s => s.lead));
@@ -281,6 +307,8 @@ export class WorldRenderer {
     if (this.truthQueue.length) this.flushTruth();
     const spent = performance.now() - t0;
     if (spent > 50) this.longTasks++;
+    this.stepTimes.push(spent); if (this.stepTimes.length > 300) this.stepTimes.shift();
+    this.stepMaxMs = Math.max(this.stepMaxMs, spent);
     this.kick();
   };
 
@@ -364,9 +392,12 @@ export class WorldRenderer {
     for (const v2 of this.views.values()) v2.show(false);
     view.show(true);
     this.uniforms.uObjFar.value = view.objFar;
-    this.store.farLod(view.camera.position.x, view.camera.position.z, view.air ? 4500 : 2500);
-    this.tileMask.image.data!.set(view.mask);
-    this.tileMask.needsUpdate = true;
+    this.store.farLod(view.camera.position.x, view.camera.position.z, this.full ? (view.air ? 4500 : 2500) : 900);
+    const maskView = `${view.id}/${view.revision}`;
+    if (maskView !== this.maskView) {
+      this.tileMask.image.data!.set(view.mask);
+      this.tileMask.needsUpdate = true; this.maskView = maskView;
+    }
   }
 
   private renderAll(groups: Map<string, Surface[]>, alpha: number, now: number) {
@@ -382,13 +413,14 @@ export class WorldRenderer {
     this.setFrameUniforms(time);
     const info = this.renderer.info;
     info.reset();
-    let shadowViews = 0, maxViewTris = 0;
+    let shadowViews = 0, maxViewTris = 0, maxTotalViewTris = 0;
     const rt = this.target(w, h);
     const rendered: { id: string; x: number; y: number; thermal: 'white' | 'iron' | undefined }[] = [];
     ids.forEach((id, i) => {
       const surfaces = groups.get(id)!, view = this.views.get(id)!;
+      const trianglesBefore = info.render.triangles;
       if (surfaces.every(s => s.ready && (s.frozen || (!s.moving && s.settled)))) return;
-      if (!view.tiles.length || view.objectCount === 0 && view.dirty) return;
+      if (!view.tiles.length) return;
       this.prepareView(view);
       const thermal = surfaces[0].thermal;
       this.uniforms.uThermal.value = thermal ? 1 : 0;
@@ -412,8 +444,12 @@ export class WorldRenderer {
       this.renderer.setViewport(sx, ch - sy - h, w, h);
       this.post.material.uniforms.uTime.value = this.motionOf(id).clock.seconds;
       this.post.render(this.renderer, rt.texture, w, h);
+      maxTotalViewTris = Math.max(maxTotalViewTris, info.render.triangles - trianglesBefore);
       maxViewTris = Math.max(maxViewTris, view.tris);
       rendered.push({ id, x: sx, y: sy, thermal });
+      const frames = this.feedFrames.get(id) ?? [];
+      frames.push(now); while (frames.length > 180) frames.shift();
+      this.feedFrames.set(id, frames);
     });
     for (const r of rendered) {
       const surfaces = groups.get(r.id)!, view = this.views.get(r.id)!, pose = this.poses.get(r.id)!, seconds = this.motionOf(r.id).clock.seconds;
@@ -440,10 +476,19 @@ export class WorldRenderer {
     const gen = this.store.genMs;
     this.lastStats = {
       fps: this.frames.length > 1 ? (this.frames.length - 1) / ((now - this.frames[0]) / 1000) : 0, frameMs: spent,
-      views: rendered.length, draws: info.render.calls, shadowViews, tris: totalTris, trisPerView: rendered.length ? totalTris / rendered.length : 0, maxViewTris,
+      views: rendered.length, draws: info.render.calls, shadowViews, tris: totalTris, trisPerView: rendered.length ? totalTris / rendered.length : 0, maxViewTris, maxTotalViewTris,
       tiles: this.store.size, pending: this.store.pending, genMsAvg: gen.length ? gen.reduce((a, b) => a + b, 0) / gen.length : 0, genMsMax: gen.length ? Math.max(...gen) : 0,
       initMs: this.store.initMs, cacheMB: this.store.bytes() / 1048576, geometries: info.memory.geometries, textures: info.memory.textures,
       agents: this.agentMeshes.visible, objects: [...this.views.values()].reduce((s, v2) => s + v2.objectCount, 0), longTasks: this.longTasks, imagery: this.store.imagery, mode: this.full ? 'full' : 'wall',
+      stepP95Ms: 0, stepMaxMs: this.stepMaxMs, uploadMs: this.store.uploadMs,
+      rebuildMs: Math.max(0, ...[...this.views.values()].map(v => v.rebuildMs)),
+      sharedMB: this.store.farBytes / 1048576,
+      instanceMB: [...this.views.values()].reduce((s, v) => s + v.bytes(), 0) / 1048576,
+      // Half-float RGBA colour + depth, including MSAA storage and resolved colour.
+      targetMB: ([...this.rts.values()].reduce((s, r) => s + r.width * r.height * (8 + (8 + 4) * Math.max(1, r.samples)), 0)
+        + (this.sun.shadow.map ? this.sun.shadow.map.width * this.sun.shadow.map.height * 8 : 0)
+        + (this.truthRT ? this.truthRT.width * this.truthRT.height * 8 : 0)) / 1048576,
+      feeds: {},
     };
   }
 
@@ -467,16 +512,19 @@ export class WorldRenderer {
     const rain = this.rain.visible; this.rain.visible = false;
     const intensity = this.sun.shadow.intensity; this.sun.shadow.intensity = 0;
     const clear = this.renderer.getClearColor(new THREE.Color()), clearA = this.renderer.getClearAlpha();
-    this.renderer.setClearColor(0xffffff, 1);
-    this.renderer.setRenderTarget(this.truthRT);
-    this.renderer.render(this.scene, view.camera);
-    const buf = new Uint8Array(TRUTH_W * TRUTH_H * 4);
-    this.renderer.readRenderTargetPixels(this.truthRT, 0, 0, TRUTH_W, TRUTH_H, buf);
-    this.renderer.setRenderTarget(null);
-    this.renderer.setClearColor(clear, clearA);
-    for (const [mesh, m] of swapped) mesh.material = m;
-    this.sea.material = sea; this.sky.material = sky; this.rain.visible = rain; this.sun.shadow.intensity = intensity;
-    return buf;
+    try {
+      this.renderer.setClearColor(0xffffff, 1);
+      this.renderer.setRenderTarget(this.truthRT);
+      this.renderer.render(this.scene, view.camera);
+      const buf = new Uint8Array(TRUTH_W * TRUTH_H * 4);
+      this.renderer.readRenderTargetPixels(this.truthRT, 0, 0, TRUTH_W, TRUTH_H, buf);
+      return buf;
+    } finally {
+      this.renderer.setRenderTarget(null);
+      this.renderer.setClearColor(clear, clearA);
+      for (const [mesh, m] of swapped) mesh.material = m;
+      this.sea.material = sea; this.sky.material = sky; this.rain.visible = rain; this.sun.shadow.intensity = intensity;
+    }
   }
 
   private decode(feedId: string, buf: Uint8Array): TruthCapture {
@@ -550,4 +598,10 @@ export class WorldRenderer {
     this.renderer.dispose();
     this.renderer.forceContextLoss();
   }
+}
+
+function percentile(values: number[], fraction: number) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
 }

@@ -78,6 +78,14 @@ assert.equal(A.getDaylightBlend(), 0, 'manual Dark ignores daylight');
 A.setAppearance('auto', { persist: false }); pump(5000);
 assert.equal(A.getDaylightBlend(), 1, 'Auto follows the claim again');
 
+// A fixed-dark surface can mount over saved Light without an animated light-to-dark interval.
+A.setAppearance('light', { persist: false, immediate: true });
+assert.equal(A.getDaylightBlend(), 1);
+A.setAppearance('dark', { persist: false, immediate: true });
+assert.equal(A.getDaylightBlend(), 0, 'fixed dark takes effect before the next animation frame');
+assert.equal(queue.length, 0, 'fixed appearance cancels pending transitions');
+A.setAppearance('auto', { persist: false }); pump(5000);
+
 // Reduced motion: no animation frames, the value jumps.
 media.reduce.matches = true;
 media.reduce.listeners.forEach((fn) => fn());

@@ -5,6 +5,7 @@ import type { Rng } from './rng';
 import type { Sim, UnitMeta } from './sim';
 import { MIN, bearingDeg, clamp, destination, distanceM } from './geo';
 import { stepAircraft } from './flight';
+import { stepReconDrone } from './drone-stations';
 
 /** Road-following route (OSM graph via DATA's nearestRoadPath); straight line if no road is near. */
 export function roadRoute(ctx: ScenarioContext, from: Geo, to: Geo): Geo[] {
@@ -84,6 +85,7 @@ function moveAlong(u: Unit, pts: Geo[], i: number, dist: number): number {
 }
 
 function stepUnit(sim: Sim, u: Unit, m: UnitMeta, dt: number): void {
+  if (sim.recon && u.kind === 'drone') { stepReconDrone(sim, u, m, dt); return; }
   if (AIRBORNE.has(u.kind)) { stepAircraft(sim, u, m, dt); return; }
   const plan = m.plan;
   const speed = m.override ?? m.cruise;
@@ -165,7 +167,7 @@ export function tickUnits(sim: Sim, dtS: number): void {
       m.nextTrailT = sim.t + (AIRBORNE.has(u.kind) ? 20_000 : 30_000);
     }
     const minute = sim.t / MIN + m.phase;
-    if (u.battery !== undefined) u.battery = clamp(0.3 + 0.7 * (1 - (minute % 42) / 42), 0, 1);
+    if (u.battery !== undefined && !sim.recon) u.battery = clamp(0.3 + 0.7 * (1 - (minute % 42) / 42), 0, 1);
     if (u.water !== undefined) u.water = u.kind === 'engine' ? clamp(1 - ((minute % 35) / 35) * 0.8, 0, 1) : clamp(1 - (minute % 12) / 12, 0, 1);
   }
 }

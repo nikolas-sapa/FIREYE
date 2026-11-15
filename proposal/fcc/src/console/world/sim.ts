@@ -25,6 +25,7 @@ import type { FindingSpec } from '../agents/catalog';
 import type { PoolDef } from '../agents/pools';
 import type { BriefFacts } from '../orchestrator/brief';
 import type { SpreadField } from '../agents/spread';
+import type { ReconState } from './recon';
 
 export type Plan =
   | { mode: 'hold' }
@@ -120,6 +121,8 @@ export interface Note {
 }
 
 export interface Sim {
+  profile: 'legacy' | 'recon';
+  recon: ReconState | null;
   ctx: ScenarioContext;
   bus: Bus;
   rng: Rng;
