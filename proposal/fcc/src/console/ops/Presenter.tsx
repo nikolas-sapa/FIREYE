@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { cn } from '@ds';
+import type { Ms } from '../contracts';
 import { consoleStore, useConsoleApi } from '../store';
 import { localTime, packZone } from '../ui/format';
-import { placeAlerts, routeRoads, STAGE_RANK, type EscapeRoute } from './alerts';
+import { counters, placeAlerts, routeRoads, STAGE_RANK, useAlertVersion, type EscapeRoute } from './alerts';
 import { opsView } from './view';
 
 export interface Caption { id: number; title: string; sub?: string; t: number }
@@ -120,6 +121,35 @@ export function PresenterCaption() {
           {caption.sub && <div className="mt-1 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim">{caption.sub}</div>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Top-left map HUD: the MAP chip with the presenter counters stacked under it (8px gap) while presenting. */
+export function PresenterHud({ pack, t, selected }: { pack: ReturnType<typeof consoleStore.get>['pack']; t: Ms; selected?: ReactNode }) {
+  const { on } = usePresenter();
+  return (
+    <div className="pointer-events-none absolute left-3 top-3 z-[3] flex flex-col items-start gap-2">
+      <span className="block border border-line-strong bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">
+        Map · Mati{selected ? <> · <span className="text-bone">{selected}</span></> : ''}
+        <span className="mt-0.5 block text-bone-mute">Simulated projection · not a fireline · prototype spread model</span>
+      </span>
+      {on && <PresenterCounters pack={pack} t={t} />}
+    </div>
+  );
+}
+
+function PresenterCounters({ pack, t }: { pack: ReturnType<typeof consoleStore.get>['pack']; t: Ms }) {
+  const v = useAlertVersion();
+  const c = useMemo(() => counters(pack, t), [pack, t, v]);
+  return (
+    <div className="flex border border-line-strong bg-ink-950/90" aria-label="Counters · simulated">
+      {([['Alert zones', c.alertZones], ['Warned', c.warned], ['Moved out', c.moved]] as const).map(([k, val]) => (
+        <div key={k} className="border-l border-line px-3 py-1.5 first:border-l-0">
+          <div className="fcc-num text-xl font-semibold text-bone">{val.toLocaleString('en-US')}</div>
+          <div className="font-mono text-micro uppercase tracking-[0.12em] text-bone-mute">{k}</div>
+        </div>
+      ))}
     </div>
   );
 }

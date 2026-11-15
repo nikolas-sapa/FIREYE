@@ -27,8 +27,9 @@ import { postSystem, wireComms } from './opsStore';
 import { alertFeed, counters, ensureOsm, hazardNow, placeAlerts, routesNow, useAlertVersion, useRoutes, wireAlerts } from './alerts';
 import { CivilianPanel, useHome } from './CivilianPanel';
 import { OpsOverlay } from './OpsOverlay';
-import { PresenterCaption, noteRoute, presenter, startPresenter, stopPresenter, usePresenter } from './Presenter';
+import { PresenterCaption, PresenterHud, noteRoute, presenter, startPresenter, stopPresenter, usePresenter } from './Presenter';
 import { opsView, useOpsView, useOverlayOpts } from './view';
+import { useHideCallout } from './useHideCallout';
 
 enableWorld3dFeeds();
 
@@ -113,6 +114,7 @@ function Shell() {
   const started = useRef(false);
   useFireyeSync();
   useJournalReapply();
+  useHideCallout();
   useKeyboard(engine, composer, useCallback(() => setRightTab('comms'), []), useCallback(() => setPaletteOpen(true), []));
 
   if (pack) { const z = packZone(pack); registerZone(z.label, z.offsetMin); }
@@ -208,6 +210,16 @@ function Shell() {
     engine.homeView(2.6);
   }, [engine, booted, pack]);
 
+  // Civilian view frames the selected home (~6 km range) on switch and on home change.
+  const lastHomeFly = useRef<string | null>(null);
+  useEffect(() => {
+    if (view !== 'civilian' || !engine || !booted || !home) return;
+    const key = home.id;
+    if (lastHomeFly.current === key) return;
+    lastHomeFly.current = key;
+    engine.flyTo(home.pos, { rangeM: 6000, duration: 1.6 });
+  }, [view, engine, booted, home]);
+
   const seek = useCallback((t: Ms) => { api.seek(t); }, [api]);
   const focus = useCallback((g: Geo, rangeM = 2400) => { engine?.flyTo(g, { rangeM, duration: 1.6 }); }, [engine]);
   const openThread = useCallback((agent: string) => { setThread(agent); setRightTab('comms'); }, []);
@@ -229,15 +241,7 @@ function Shell() {
               showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} />
           )}
           {booted && presenting && <PresenterCaption />}
-          {booted && presenting && <PresenterCounters pack={pack} t={t} />}
-          {booted && !presenting && (
-            <div className="pointer-events-none absolute left-3 top-3 z-[3]">
-              <span className="block border border-line-strong bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">
-                Map · Mati{selected ? <> · <span className="text-bone">{selected}</span></> : ''}
-                <span className="mt-0.5 block text-bone-mute">Simulated projection · not a fireline · prototype spread model</span>
-              </span>
-            </div>
-          )}
+          {booted && <PresenterHud pack={pack} t={t} selected={selected} />}
         </main>
         {booted && (civilian ? <CivilianPanel home={home} /> : (
           <aside className="flex w-[380px] shrink-0 flex-col border-l border-line bg-ink-950">
@@ -273,21 +277,6 @@ function Shell() {
       {booted && <Timeline onSeek={seek} />}
       {booted && !civilian && paletteOpen && <OpsPalette engine={engine} onOpenThread={openThread} onClose={() => setPaletteOpen(false)} />}
       {!booted && <Boot probe={probe} onDone={() => fireyeUi.set({ booted: true })} />}
-    </div>
-  );
-}
-
-function PresenterCounters({ pack, t }: { pack: ReturnType<typeof consoleStore.get>['pack']; t: Ms }) {
-  const v = useAlertVersion();
-  const c = useMemo(() => counters(pack, t), [pack, t, v]);
-  return (
-    <div className="pointer-events-none absolute right-3 top-3 z-[3] flex border border-line-strong bg-ink-950/90" aria-label="Counters · simulated">
-      {([['Alert zones', c.alertZones], ['Warned', c.warned], ['Moved out', c.moved]] as const).map(([k, val]) => (
-        <div key={k} className="border-l border-line px-3 py-1.5 first:border-l-0">
-          <div className="fcc-num text-xl font-semibold text-bone">{val.toLocaleString('en-US')}</div>
-          <div className="font-mono text-micro uppercase tracking-[0.12em] text-bone-mute">{k}</div>
-        </div>
-      ))}
     </div>
   );
 }

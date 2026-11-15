@@ -29,8 +29,6 @@ const BAND_STYLE: Record<number, { fill: number; w: number; dash?: number }> = {
   180: { fill: 0.18, w: 3, dash: 14 },
   360: { fill: 0.07, w: 1.5, dash: 8 },
 };
-const STAGE_LABEL: Record<string, string> = { leave: 'LEAVE NOW', shelter: 'SHELTER IN PLACE', prepare: 'PREPARE', monitor: 'MONITOR' };
-
 export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
   engine: StageEngine | null;
   routes: Routes;
@@ -86,37 +84,55 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
           const d = (p.lon - origin.lon) ** 2 + (p.lat - origin.lat) ** 2;
           if (d > farD) { farD = d; far = p; }
         }
-        const at = localTime(t + b.horizonMin * 60000, tz);
-        e.add({
-          position: cart(far, 40),
-          label: {
-            text: `+${b.horizonMin / 60}H · ${at}`,
-            font: FONT_LG, fillColor: red.withAlpha(0.98), style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            outlineColor: cesiumOf(color.void, 0.9), outlineWidth: 4,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(0, -6), disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            backgroundColor: chipBg, showBackground: true, backgroundPadding: chipPad,
-          },
-        });
+        // Only +1H and +3H get band labels.
+        if (b.horizonMin <= 180) {
+          const at = localTime(t + b.horizonMin * 60000, tz);
+          e.add({
+            position: cart(far, 40),
+            label: {
+              text: `+${b.horizonMin / 60}H ${at}`,
+              font: FONT_LG, fillColor: red.withAlpha(0.98), style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              outlineColor: cesiumOf(color.void, 0.9), outlineWidth: 4,
+              horizontalOrigin: Cesium.HorizontalOrigin.CENTER, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset: new Cesium.Cartesian2(0, -6), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              scaleByDistance: new Cesium.NearFarScalar(4e3, 1.0, 8e4, 0.45),
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12e4),
+              backgroundColor: chipBg, showBackground: true, backgroundPadding: chipPad,
+            },
+          });
+        }
       }
     }
 
-    // Place rings + alert labels for places in the path.
+    // Place rings for every place in the path; labels only for the top 3 by
+    // (shelter > leave > prepare, earliest ETA) plus the home place.
+    const alerting = alerts.filter((p) => p.eta != null && STAGE_RANK[p.stage] >= 1);
+    const ranked = [...alerting].sort((a, b) =>
+      STAGE_RANK[b.stage] - STAGE_RANK[a.stage] || (a.eta ?? 0) - (b.eta ?? 0));
+    const labeled = new Set(ranked.slice(0, 3).map((p) => p.name));
+    if (home) {
+      const hp = alerting.find((p) =>
+        Math.abs(p.pos.lon - home.lon) < 0.005 && Math.abs(p.pos.lat - home.lat) < 0.005);
+      if (hp) labeled.add(hp.name);
+    }
     for (const p of alerts) {
       if (p.eta == null || p.stage === 'monitor') continue;
       const col = STAGE_RANK[p.stage] >= 2 ? red : p.stage === 'prepare' ? warnCol() : neutralCol();
       e.add({
         polyline: { positions: line(ring(p.pos, 260)), clampToGround: true, width: 2.5, material: new Cesium.ColorMaterialProperty(col.withAlpha(0.95)) },
       });
+      if (!labeled.has(p.name)) continue;
       e.add({
         position: cart({ lon: p.pos.lon, lat: p.pos.lat + 0.0035 }, 60),
         label: {
-          text: `${p.name} · ETA ${localTime(p.eta, tz)} · ${STAGE_LABEL[p.stage]}`,
+          text: `${p.name} · ${localTime(p.eta, tz)}`,
           font: FONT, fillColor: col, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           outlineColor: cesiumOf(color.void, 0.9), outlineWidth: 3,
           backgroundColor: chipBg, showBackground: true, backgroundPadding: chipPad,
           horizontalOrigin: Cesium.HorizontalOrigin.CENTER, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -4), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          scaleByDistance: new Cesium.NearFarScalar(3e3, 1.0, 5e4, 0.5),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9e4),
         },
       });
     }
@@ -143,15 +159,17 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
               backgroundColor: chipBg, showBackground: true, backgroundPadding: chipPad,
               verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -6),
               disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              scaleByDistance: new Cesium.NearFarScalar(3e3, 1.0, 5e4, 0.5),
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9e4),
             },
           });
         }
       }
     }
 
-    // No-exit zones (Mati coast dead end).
+    // No-exit zones (Mati coast dead end); single label on the first zone.
     if (showZones) {
-      for (const z of NO_EXIT_ZONES) {
+      for (const [zi, z] of NO_EXIT_ZONES.entries()) {
         e.add({
           polyline: { positions: line(ring(z.center, z.radiusM)), clampToGround: true, width: 2, material: new Cesium.PolylineDashMaterialProperty({ color: red.withAlpha(0.9), dashLength: 8 }) },
           polygon: {
@@ -159,15 +177,17 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
             material: red.withAlpha(0.08), classificationType: Cesium.ClassificationType.BOTH,
           },
         });
-        e.add({
+        if (zi === 0) e.add({
           position: cart(z.center, 40),
           label: {
-            text: `${z.label.toUpperCase()} · NO ROAD EXIT`,
+            text: z.label.toUpperCase(),
             font: FONT, fillColor: red, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             outlineColor: cesiumOf(color.void, 0.9), outlineWidth: 3,
             backgroundColor: chipBg, showBackground: true, backgroundPadding: chipPad,
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -4),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            scaleByDistance: new Cesium.NearFarScalar(3e3, 1.0, 6e4, 0.5),
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 10e4),
           },
         });
       }
