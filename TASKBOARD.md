@@ -1,5 +1,18 @@
 # Fire Command Center shared taskboard
 
+BATCH-20261115-18 final scoped review: typescript-reviewer01a1de11-d2d8-70a3-956a-679b2e410feb APPROVE frozen testd543408026b060ebb7380d67282460ec53da308d82b9738bb09547166714fb11,0blockers; native263+compiled263/noEmit/fullcompiler0failure/skip, actuallocalhostexports and streamguardmutationRED1→GREEN4. Root inspected exact1filediff and independentlyreran native263/compiled263/typecheck/hash/scopePASS. Runtimeclient/source/lockunchanged. Coordinatorauthorizes exacttest+board branchdelivery/merge afterlatestmainreconcile andhostedchecks.0providers/full#18activation remainsopen.
+
+
+## BATCH-20261115-18, independent scoped continuation
+
+Root coordinator assigns /root/issue18_builder, issue #18, branch `task/fcc-20261115-issue18`, base `b1e5572`. Exact ownership: `backend/tests/source-context.test.ts` only. Coordinator owns TASKBOARD/Git; separate reviewer reads only. Prior WIP remains untouched.
+
+Test plan before implementation: SO18-01: redirect/declared-length/streamed JSON oversize256KiB+1 cases each return exact REDIRECT/OVERSIZE, untouched source/client dependencies. SO18-02: regression mutation proves removal of streamed256KiB guard causes1failure, restoredguardPASS. SO18-03: actual Treg/Firecrawl dormant exports+native/compiled/typecheck0failures/skips,0providercalls.
+Implementation: reconcile existing actual source or preserved report/delta, apply minimal owned change, demonstrate numeric decidingchecks, freeze hashes, independentreview and root verification, coordinatorcommit/pushbranchPR. No unrelated changes or fullissueclosure.
+
+Non-goals: external source requests or rights expansion, new dependencies/locks/CI/core/config, providers/credentials/cloud/VM/frontend/media activation, recording/deploy/merge, workerGit, operational claims.
+
+
 BATCH-20261115-23 final scoped review: independent rights reader01a1de11-d37d-74c2-a262-7e4784b5e107 APPROVE documentation only,26/26checks/0blockers; root independently recomputed two frozen hashes, parsed15records/eligible0/playbackproof0 and verifiedGC03not_certified preserved. Artifact restoration changes delivery provenance only, no fresh source requests or media activation. Coordinator authorizes explicit two-doc+board branch delivery and merge when latest-main reconciliation/link/hashes remain valid. Docs-only hosted workflows filtered, no runtime/new-provider or full issue closure claimed.
 
 
