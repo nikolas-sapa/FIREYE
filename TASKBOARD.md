@@ -11,6 +11,10 @@ User explicitly reassigned the two open Marco PR fixes to root workers. Branch `
 
 Each worker captures failing regression before implementation, reruns focused tests/typecheck, then freezes for independent review. Root runs both-scenario tests, monitoring/image-lab mocked suites, no-key build/PWA and scope checks before updating PR38 and reconciling parent PR2. Non-goals: backend integration, new visual design, live providers, public deployment, calibrated physics or removal of safety guards.
 
+## PR2-CI-2026-11-15, test-fixture clock repair
+
+Root authorized `/root/fix_parent_pr_ci` to edit only `backend/tests/gemma-client.test.ts` on `proposal/fcc-console`, base `b99a495`. Inherited Node26 CI failed because expiry test sampled its injected clock before independently constructing a later-dated snapshot. RED deterministic advancing clock reproduces INVALID_INPUT before transport. Test-only fix uses one fixture cutoff clock, retains DEADLINE/receipt assertions and adds one-transport proof. No runtime/dependency/frontend/issue change. Root verifies focused/native/compiled tests and delivers exact paths.
+
 Historical proposal snapshot: 2026-11-14, Europe/Athens. Preserve 44 planning task IDs plus PROP-01 (45 total on this proposal branch). Separate research/admin receipts, submitted source and verified product milestones. [Brief](README.md) · [Rules](AGENTS.md) · [Parameter DRAFT/numeric cases](docs/specs/simulator-parameter-contract.md).
 
 ## ORCH-01 · scoped-active · local orchestration walking skeleton
