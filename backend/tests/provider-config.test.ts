@@ -24,6 +24,87 @@ function job(): SponsorJob {
     snapshot: snapshot(), task_input: { candidate_ids: ['candidate1'] }, deadline_at_ms: now + 1000, max_call_micro: 100 };
 }
 const env = { IRIS_API_KEY: 'private-fixture', IRIS_MODEL: 'projects/exercise/models/iris-latest' };
+function gemmaApproval() {
+  return { ...approval(), adapters: [{ ...approval().adapters[0], adapter: 'gemma', model: 'gemma-4-31b-it' }] };
+}
+function gemmaJob(): SponsorJob {
+  return { ...job(), adapter: 'gemma', model: 'gemma-4-31b-it', task_input: { evidence_id: 'e1', text: 'fixture' } };
+}
+const gemmaEnv = { GEMINI_API_KEY: 'private-google-fixture', GEMMA_MODEL: 'gemma-4-31b-it', GEMMA_RUNTIME: 'hosted-rest' };
+
+test('G4Q05 actual Gemma setup/jobs/client 20 duplicates make 1 loopback call/reservation', async () => {
+  let calls = 0;
+  const server = createServer((request, response) => {
+    calls++;
+    let raw = '';
+    request.on('data', chunk => { raw += chunk; });
+    request.on('end', () => {
+      const body = JSON.parse(raw);
+      assert.deepEqual(Object.keys(body.contents[0].parts[0]), ['text']);
+      assert.ok(body.contents[0].parts[0].text.includes('fixture'));
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ hypotheses: ['fire'], synthesis: 'review-required' }) }] } }] }));
+    });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const setup = createProviderSetup(gemmaEnv, gemmaApproval(), () => now);
+    assert.ok(setup.approval());
+    assert.equal(setup.status().providers[4].status, 'unsupported');
+    assert.equal(setup.status().providers[4].blocker, 'hard-ceiling-unsupported');
+    assert.equal(setup.status().providers[4].credential_status, 'present-unverified');
+    const session = createSmokeSession(setup, { now: () => now, is_current: () => true, transport_mode: 'local-http',
+      transport: request => fetch(`http://127.0.0.1:${address.port}`, { method: request.method, body: request.body, signal: request.signal }) });
+    for (let n = 0; n < 20; n++) assert.equal((await session.submit({ ...gemmaJob(), task_input: { evidence_id: 'e1', text: 'wrong hash' } })).ok, false);
+    assert.deepEqual(session.usage(), { calls: 0, reserved_micro: 0 });
+    for (const result of await Promise.all(Array.from({ length: 20 }, (_, n) => session.submit(n % 2 ? gemmaJob()
+      : { ...gemmaJob(), task_input: { text: 'fixture', evidence_id: 'e1' } })))) {
+      assert.equal(result.ok, true);
+      assert.equal(result.receipt?.adapter, 'gemma');
+      assert.equal(result.receipt?.model, 'gemma-4-31b-it');
+      assert.equal(result.receipt?.provenance, 'local-http');
+      assert.equal(result.receipt?.fresh_provider_call, false);
+    }
+    assert.equal(calls, 1);
+    assert.deepEqual(session.usage(), { calls: 1, reserved_micro: 100 });
+  } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+});
+
+test('G4Q05 20 dormant/missing runtime/key/approval Gemma gates invoke/reserve 0', async () => {
+  let calls = 0;
+  for (let n = 0; n < 20; n++) {
+    const setup = n % 4 === 0 ? createProviderSetup(gemmaEnv, null, () => now)
+      : n % 4 === 1 ? createProviderSetup({ ...gemmaEnv, GEMMA_RUNTIME: '' }, gemmaApproval(), () => now)
+        : n % 4 === 2 ? createProviderSetup({ ...gemmaEnv, GEMINI_API_KEY: '' }, gemmaApproval(), () => now)
+          : createProviderSetup(gemmaEnv, gemmaApproval(), () => now);
+    const session = createSmokeSession(setup, { now: () => now, is_current: () => true,
+      ...(n % 4 === 3 ? {} : { transport_mode: 'fixture' as const, transport: async () => { calls++; return Response.json({}); } }) });
+    assert.equal((await session.submit(gemmaJob())).ok, false);
+    assert.deepEqual(session.usage(), { calls: 0, reserved_micro: 0 });
+  }
+  assert.equal(calls, 0);
+  const dormant = createProviderSetup(gemmaEnv, null, () => now).status().providers[4];
+  assert.equal(dormant.status, 'disabled');
+  assert.equal(dormant.blocker, 'approval-required');
+});
+
+test('G4Q05 exact 2 Gemma models, max 4 approvals, fifth never inferred', () => {
+  for (const model of ['gemma-4-31b-it', 'gemma-4-26b-a4b-it']) {
+    assert.ok(createProviderSetup(gemmaEnv, { ...gemmaApproval(), adapters: [{ ...gemmaApproval().adapters[0], model }] }, () => now).approval());
+  }
+  for (let n = 0; n < 20; n++) {
+    const model = ['gemma-4-small-it', 'gemma-4-local', 'gemini-2.5-flash', 'gemma-4-31b-it-extra'][n % 4];
+    assert.equal(createProviderSetup(gemmaEnv, { ...gemmaApproval(), adapters: [{ ...gemmaApproval().adapters[0], model }] }, () => now).approval(), null);
+  }
+  const four = { ...approval(), max_calls: 4, max_total_micro: 400, adapters: [approval().adapters[0],
+    { ...approval().adapters[0], adapter: 'gemini', model: 'gemini-2.5-flash' },
+    { ...approval().adapters[0], adapter: 'fal', model: 'fal-ai/florence-2-large/caption' }, gemmaApproval().adapters[0]] };
+  assert.ok(createProviderSetup(gemmaEnv, four, () => now).approval());
+  assert.equal(createProviderSetup(gemmaEnv, { ...four, max_calls: 5, max_total_micro: 500,
+    adapters: [...four.adapters, { ...approval().adapters[0], adapter: 'treg', model: 'treg.web.search' }] }, () => now).approval(), null);
+});
 
 test('SS01 5 slots disabled by default, public routes/caps/rights explicit', () => {
   const setup = createProviderSetup({});
@@ -132,7 +213,7 @@ test('SS01 four authorized slots retain 3 hard-cap blocks, Treg explicit configu
     adapters: (['iris', 'gemini', 'fal', 'treg'] as const).map(adapter => ({ ...approval().adapters[0], adapter, model: models[adapter] })) };
   const setup = createProviderSetup({ ...env, GEMINI_API_KEY: 'fixture-g', FAL_KEY: 'fixture-f', TREG_TOKEN: 'fixture-t' }, grants, () => now);
   assert.deepEqual(setup.status().providers.map(provider => provider.status), ['unsupported', 'unsupported', 'unsupported', 'configured', 'disabled']);
-  assert.equal(setup.status().providers[4].blocker, 'adapter-unavailable');
+  assert.equal(setup.status().providers[4].blocker, 'approval-required');
   assert.equal(createProviderSetup(env, { ...grants, max_calls: 5 }, () => now).approval(), null);
 });
 
