@@ -29,7 +29,7 @@ export function createGeminiClient(options: GeminiConfig = {}): GeminiClient {
       try { decoded = JSON.parse(candidate.content.parts[0].text); } catch { return null; }
       if (!plainJson(decoded) || !closed(decoded, ['hypotheses', 'synthesis']) || !Array.isArray(decoded.hypotheses) || decoded.hypotheses.length > 5
         || !decoded.hypotheses.every(kind => ['human', 'animal', 'fire', 'gas_canister', 'other'].includes(kind))
-        || new Set(decoded.hypotheses).size !== decoded.hypotheses.length || !['review-required', 'insufficient-evidence'].includes(String(decoded.synthesis))) return null;
+        || new Set(decoded.hypotheses).size !== decoded.hypotheses.length || typeof decoded.synthesis !== 'string' || !['review-required', 'insufficient-evidence'].includes(decoded.synthesis)) return null;
       return { kind: 'evidence-analysis', verification_status: 'unverified', evidence_ids: [evidence.evidence_id],
         hypotheses: decoded.hypotheses as HypothesisKind[], synthesis: decoded.synthesis as EvidenceAnalysis['synthesis'] } satisfies EvidenceAnalysis;
     });
