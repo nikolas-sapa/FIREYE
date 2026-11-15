@@ -8,10 +8,25 @@ BATCH-20261115-18 final scoped review: typescript-reviewer01a1de11-d2d8-70a3-956
 Root coordinator assigns /root/issue18_builder, issue #18, branch `task/fcc-20261115-issue18`, base `b1e5572`. Exact ownership: `backend/tests/source-context.test.ts` only. Coordinator owns TASKBOARD/Git; separate reviewer reads only. Prior WIP remains untouched.
 
 Test plan before implementation: SO18-01: redirect/declared-length/streamed JSON oversize256KiB+1 cases each return exact REDIRECT/OVERSIZE, untouched source/client dependencies. SO18-02: regression mutation proves removal of streamed256KiB guard causes1failure, restoredguardPASS. SO18-03: actual Treg/Firecrawl dormant exports+native/compiled/typecheck0failures/skips,0providercalls.
+Implementation: reconcile existing actual source or preserved report/delta, apply minimal owned change, demonstrate numeric decidingchecks, freeze hashes, independentreview and root verification, coordinatorcommit/pushbranchPR. No unrelated changes or fullissueclosure.
+
+Non-goals: external source requests or rights expansion, new dependencies/locks/CI/core/config, providers/credentials/cloud/VM/frontend/media activation, recording/deploy/merge, workerGit, operational claims.
+
+
+BATCH-20261115-23 final scoped review: independent rights reader01a1de11-d37d-74c2-a262-7e4784b5e107 APPROVE documentation only,26/26checks/0blockers; root independently recomputed two frozen hashes, parsed15records/eligible0/playbackproof0 and verifiedGC03not_certified preserved. Artifact restoration changes delivery provenance only, no fresh source requests or media activation. Coordinator authorizes explicit two-doc+board branch delivery and merge when latest-main reconciliation/link/hashes remain valid. Docs-only hosted workflows filtered, no runtime/new-provider or full issue closure claimed.
+
+
+## BATCH-20261115-23, independent scoped continuation
+
+Root coordinator assigns /root/issue23_builder, issue #23, branch `task/fcc-20261115-issue23`, base `b1e5572`. Exact ownership: `docs/data/greece-public-cameras.md`, `docs/data/greece-camera-catalog.json` only. Coordinator owns TASKBOARD/Git; separate reviewer reads only. Prior WIP remains untouched.
+
+Test plan before implementation: GC23-01: exactly15existing sourced candidate records, schema/IDs/links0missing/inconsistent. GC23-02: ingestioneligible0/playbackproof0,no fabricated permissions, timestamps and rights unknowns preserved. GC23-03: independentsource/rightsreader approves only documentation, explicitoperator automation-terms caveat preserved;0mediadownload/requests/ingestion/providercalls.
 
 Implementation: reconcile existing actual source or preserved report/delta, apply minimal owned change, demonstrate numeric decidingchecks, freeze hashes, independentreview and root verification, coordinatorcommit/pushbranchPR. No unrelated changes or fullissueclosure.
 
 Non-goals: external source requests or rights expansion, new dependencies/locks/CI/core/config, providers/credentials/cloud/VM/frontend/media activation, recording/deploy/merge, workerGit, operational claims.
+
+
 BATCH-20261115-17 independent final review: dedicated reader task01a1ddf4-3c70-7191-a051-f3803abdb75d APPROVE exact two-document hashes,0blockers; independent native260+compiled260,typecheck/fullsourcecompiler0failure/skip,focused26/26,20actualexport probes0transport,7links+1anchor0missing. Root inspected actual four-line diff, independently repeated full checker/sourcehash/diff/scope. Coordinator authorizes docs-only branch delivery. Existing workflow path filters exclude docs-only PR, no fresh hosted CI claimed. Actual Marco mapping/CRS/clocks/cadence/600s and full issue remain unresolved;0frontend/providers.
 
 
