@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Button, FireyeMark, Icon, OrchestratorAvatar, ScoreMeter, TierBadge, cn, tierOf } from '@ds';
+import { Button, Icon, OrchestratorAvatar, ScoreMeter, TierBadge, cn, tierOf } from '@ds';
 import type { Action, Geo, GradedItem, Ms } from '../../contracts';
 import { useConsoleApi, useConsoleSelector } from '../../store';
 import { localTime, packZone } from '../../ui/format';
 import { visibleAt } from '../data/chronicle';
 import { actionKey, journal } from '../data/journal';
+import { applyDecision } from '../data/decision';
 import { useChronicle } from './sync';
 import { fireyeUi, useFireye } from './ui';
+import { TamagotchiSprite } from '../../ui/TamagotchiSprite';
 
 const MIN = 60000;
 /** A recommendation stays in the callout this long before it lapses (it remains in the log). */
@@ -76,9 +78,7 @@ export function OrchestratorCallout({ onFocus }: { onFocus: (g: Geo) => void }) 
   if (!d || dive !== 'idle') return null;
   const tier = tierOf(d.score);
   const decide = (decision: 'approved' | 'rejected') => {
-    journal.record({ key: d.key, t, decision, title: d.title, actionKind: d.action?.kind });
-    if (d.action) (decision === 'approved' ? api.approve : api.reject)(d.action.id);
-    else if (d.item) api.acknowledge(d.item.id);
+    applyDecision(d, t, decision, api);
   };
   const ask = () => {
     fireyeUi.set({ chat: true });
@@ -123,8 +123,8 @@ export function OrchestratorCallout({ onFocus }: { onFocus: (g: Geo) => void }) 
         </ul>
       )}
       <div className="flex items-center gap-2 border-t border-line px-3 py-2">
-        <Button variant="primary" size="sm" icon="check" onClick={() => decide('approved')}>{d.action || d.origin === 'chronicle' ? 'Approve' : 'Acknowledge'}</Button>
-        <Button variant="secondary" size="sm" icon="close" onClick={() => decide('rejected')}>Reject</Button>
+        <Button variant="primary" size="sm" icon="check" onClick={() => decide('approved')}>{d.action ? 'Approve' : 'Acknowledge'}</Button>
+        <Button variant="secondary" size="sm" icon="close" onClick={() => decide('rejected')}>{d.action ? 'Reject' : 'Dismiss'}</Button>
         <Button variant="ghost" size="sm" icon="orchestrator" onClick={ask}>Ask</Button>
         {d.pos && <Button variant="ghost" size="sm" icon="locate" onClick={() => onFocus(d.pos!)}>Locate</Button>}
         <span className="ml-auto font-mono text-micro uppercase text-bone-mute">Simulated · human approval required</span>
@@ -138,26 +138,35 @@ export function OrchestratorChat() {
   const api = useConsoleApi();
   const open = useFireye((s) => s.chat);
   const messages = useConsoleSelector((s) => s.messages);
+  const { open: openDecisions } = useDecisions();
+  const paused = useConsoleSelector((s) => s.clock.paused);
   const suggestions = useConsoleSelector((s) => s.suggestions);
   const pack = useConsoleSelector((s) => s.pack);
   const tz = packZone(pack).label;
   const [text, setText] = useState('');
   const list = useRef<HTMLDivElement>(null);
   const recent = messages.slice(-30);
+  const mascotState = messages.some((m) => m.thinking) ? 'thinking' : openDecisions.length > 0 ? 'alert' : 'idle';
   useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; }, [recent.length, open]);
   const send = (q: string) => { if (!q.trim()) return; api.ask(q.trim()); setText(''); };
   if (!open) {
     return (
-      <button type="button" onClick={() => fireyeUi.set({ chat: true })}
-        className="pointer-events-auto flex h-8 items-center gap-2 border border-line-strong bg-ink-950/90 px-3 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim hover:text-bone">
-        <OrchestratorAvatar size={14} state="idle" className="text-bone" />Ask orchestrator<span className="text-bone-mute">/</span>
+      <button type="button" aria-label="Chat with Chief" aria-expanded={false} onClick={() => fireyeUi.set({ chat: true })}
+        className="pointer-events-auto flex items-center gap-3 border border-line-strong bg-ink-950/90 px-3 py-2 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim hover:text-bone max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
+        <TamagotchiSprite size={64} state={mascotState} paused={paused} />
+        <TamagotchiSprite character="scout" size={32} state={mascotState} paused={paused} />
+        <span className="flex flex-col items-start gap-1">
+          <span className="text-bone">Chief</span>
+          <span className="text-bone-mute">Simulated assistant</span>
+        </span>
       </button>
     );
   }
   return (
-    <section aria-label="Orchestrator chat" className="fireye-pop pointer-events-auto flex h-[340px] max-h-[28vh] w-[360px] flex-col border border-line-strong bg-ink-950/95 shadow-panel">
+    <section aria-label="Orchestrator chat" className="fireye-pop pointer-events-auto flex h-[340px] max-h-[28vh] w-[360px] max-w-[calc(100vw-24px)] flex-col border border-line-strong bg-ink-950/95 shadow-panel max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3">
-        <OrchestratorAvatar size={16} state={recent.some((m) => m.thinking) ? 'thinking' : 'listening'} className="text-bone" />
+        <TamagotchiSprite size={32} state={mascotState} paused={paused} />
+        <TamagotchiSprite character="scout" size={16} state={mascotState} paused={paused} />
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">Orchestrator</span>
         <span className="font-mono text-micro uppercase text-bone-mute">simulated · no LLM</span>
         <button type="button" aria-label="Close chat" onClick={() => fireyeUi.set({ chat: false })} className="ml-auto text-bone-mute hover:text-bone"><Icon name="close" size={11} /></button>
@@ -167,7 +176,7 @@ export function OrchestratorChat() {
         {recent.map((m) => (
           <div key={m.id} className={cn('mb-2 flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
             <span className="fcc-num flex items-center gap-1 font-mono text-micro uppercase text-bone-mute">
-              {m.role !== 'user' && <FireyeMark size={10} title="Orchestrator" state={m.thinking ? 'thinking' : undefined} className="text-bone-dim" />}
+              {m.role !== 'user' && <TamagotchiSprite size={16} state={m.thinking ? 'thinking' : mascotState} paused={paused} />}
               {m.role === 'user' ? 'You' : 'Orch'} · {localTime(m.at, tz)}
             </span>
             <p className={cn('mt-0.5 max-w-[90%] border px-2 py-1 text-xs leading-4', m.role === 'user' ? 'border-line-strong bg-ink-800 text-bone' : 'border-line bg-ink-900 text-bone-dim')}>
