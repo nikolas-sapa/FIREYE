@@ -70,6 +70,7 @@ export async function startLocalBackend(config: LocalDemoConfig = readLocalDemoC
 
 async function runCli(): Promise<void> {
   let backend: LocalBackend | undefined;
+  let demoObjective: { readonly objective_id: string; readonly created_at_sim_tick: number } | undefined;
   let privateDirectory: string | undefined;
   let capabilityFile: string | undefined;
   let stopping: Promise<void> | undefined;
@@ -84,8 +85,15 @@ async function runCli(): Promise<void> {
   };
   const signal = () => { void stop().catch(() => { process.exitCode = 1; }); };
   try {
-    if (process.argv.length !== 2) throw new TypeError('Unexpected launcher arguments');
-    backend = await startLocalBackend();
+    const demo = process.argv.length === 3 && process.argv[2] === '--demo';
+    if (process.argv.length !== 2 && !demo) throw new TypeError('Unexpected launcher arguments');
+    if (demo) {
+      const config = readLocalDemoConfig();
+      const { startDemoService } = await import('../demo/service.ts');
+      const service = await startDemoService({ port: config.port, allowed_origin: config.allowed_origin,
+        capability_ttl_ms: config.capability_ttl_ms });
+      backend = service; demoObjective = service.scenario.objective;
+    } else backend = await startLocalBackend();
     const scratch = join(dirname(fileURLToPath(import.meta.url)), '..', '.scratch');
     await mkdir(scratch, { recursive: true, mode: 0o700 });
     privateDirectory = await mkdtemp(join(scratch, 'local-demo-'));
@@ -95,6 +103,8 @@ async function runCli(): Promise<void> {
     process.once('SIGINT', signal); process.once('SIGTERM', signal);
     const entry_sha256 = createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex');
     process.stdout.write(`${JSON.stringify({ ready: true, mode: 'EXERCISE', providers: 'disabled', pid: process.pid,
+      ...(demo ? { service: 'orchestration-demo', orchestration: 'enabled', provenance: 'seeded-fixture',
+        objective_id: demoObjective?.objective_id, created_at_sim_tick: demoObjective?.created_at_sim_tick } : {}),
       entry_sha256, url: backend.url, incident_id: backend.incident_id, run_id: backend.run_id,
       allowed_origin: backend.allowed_origin, expires_at: backend.setup.expires_at, capabilities_file: capabilityFile,
       chief_id: backend.setup.roles.chief.principal_id, producer_id: backend.setup.roles.producer.principal_id })}\n`);
