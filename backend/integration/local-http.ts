@@ -159,7 +159,8 @@ export async function startLocalBridge(authority: BridgeAuthority, options: Loca
 
   function view(response: ServerResponse, cutoff?: string): void {
     const state = authority.read();
-    const result = createReceivedView(state, cutoff ?? state.log.at(-1)?.received_at ?? initialTime);
+    const result = createReceivedView(state, cutoff ?? state.log.at(-1)?.received_at ?? initialTime,
+      cutoff === undefined ? authority.now().sim_tick : undefined);
     if (!result.ok) failure(response, fail(status(result.code), result.code, result.reason));
     else send(response, 200, { data: result.value });
   }
