@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Dot, Icon, cn } from '@ds';
+import { useMemo } from 'react';
+import { Icon, cn } from '@ds';
 import { useConsoleSelector } from '../../store';
 import { useStageWorld } from '../../stage3d/world';
-import { BRIDGE_DEFAULT_URL, BRIDGE_TOKEN_KEY, BridgeFleetSource, COMMAND_FLOW, simFleet, type CommandStatus, type FleetAsset, type FleetSnapshot } from '../data/fleet';
+import { COMMAND_FLOW, simFleet, type CommandStatus, type FleetAsset } from '../data/fleet';
 import { SENSOR_KIND_LABEL } from '../data/sensors';
 import type { SensorStatus } from '../data/types';
 import { localTime, packZone } from '../../ui/format';
@@ -69,10 +69,10 @@ function AssetRow({ a, onSelect, onDive, selected }: { a: FleetAsset; onSelect: 
             <button key={c} type="button" disabled={!feed}
               aria-pressed={sensor === c}
               onClick={() => feed && sensor !== c && fireyeUi.toggleFx(feed.id, sensor ?? 'eo')}
-              title={c === 'thermal' ? 'Simulated thermal (white-hot), not radiometric' : 'Electro-optical'}
+              title={`Display palette only; source channel remains ${feed?.modality ?? 'unknown'}. Not radiometric.`}
               className={cn('border px-1 font-mono text-micro uppercase leading-4 transition-colors duration-quick ease-servo',
                 sensor === c ? 'border-bone-dim text-bone' : 'border-line text-bone-mute hover:text-bone-dim')}>
-              {c === 'thermal' ? 'THRM' : 'EO'}
+              {c === 'thermal' ? 'IR FX' : 'EO FX'}
             </button>
           ))}
         </span>
@@ -101,17 +101,6 @@ function AssetRow({ a, onSelect, onDive, selected }: { a: FleetAsset; onSelect: 
 
 const SENSOR_DOT: Record<SensorStatus, string> = { nominal: 'bg-bone-mute', watch: 'bg-amber', alarm: 'bg-ember', offline: 'bg-ink-500' };
 
-function useBridge(on: boolean): FleetSnapshot | null {
-  const src = useMemo(() => new BridgeFleetSource({ url: BRIDGE_DEFAULT_URL, incident: 'i1', token: () => sessionStorage.getItem(BRIDGE_TOKEN_KEY) }), []);
-  const snap = useSyncExternalStore(src.subscribe, src.get, src.get);
-  useEffect(() => {
-    if (!on) return;
-    src.start();
-    return () => src.stop();
-  }, [on, src]);
-  return on ? snap : null;
-}
-
 export function FleetColumn({ onDive, onFocusUnit, onFocusSensor }: { onDive: (feedId: string) => void; onFocusUnit: (unitId: string) => void; onFocusSensor: (id: string) => void }) {
   const ch = useChronicle();
   const t = useConsoleSelector((s) => s.clock.t);
@@ -121,14 +110,11 @@ export function FleetColumn({ onDive, onFocusUnit, onFocusSensor }: { onDive: (f
   const actions = useConsoleSelector((s) => s.actions);
   const pack = useConsoleSelector((s) => s.pack);
   const feeds = useStageWorld((s) => s.feeds);
-  const source = useFireye((s) => s.source);
   const selected = useFireye((s) => s.selected);
-  const bridge = useBridge(source === 'bridge');
-  const [token, setToken] = useState('');
   const fleetLog = useMemo(() => ch?.entries.filter((e) => e.command) ?? [], [ch]);
   const tick = Math.floor(t / 5000);
   const sim = useMemo(() => simFleet({ clock: { t, speed: 0, paused: false }, units, feeds, projection, predictions, actions }, fleetLog), [tick, units, feeds, projection, predictions, actions, fleetLog]);
-  const snap = bridge ?? sim;
+  const snap = sim;
   const readings = ch ? ch.sensors.all(t) : [];
   const counts = readings.reduce<Record<SensorStatus, number>>((m, r) => { m[r.status]++; return m; }, { nominal: 0, watch: 0, alarm: 0, offline: 0 });
   const tripped = readings.filter((r) => r.status === 'alarm' || r.status === 'offline');
@@ -141,32 +127,11 @@ export function FleetColumn({ onDive, onFocusUnit, onFocusSensor }: { onDive: (f
         <span className="font-mono text-nano uppercase tracking-[0.2em] text-bone">Fleet</span>
         <span className="font-mono text-micro uppercase text-bone-mute">{snap.mode}</span>
         <div className="ml-auto flex h-6 items-stretch border border-line-strong">
-          {(['sim', 'bridge'] as const).map((s, i) => (
-            <button key={s} type="button" aria-pressed={source === s} onClick={() => fireyeUi.set({ source: s })}
-              className={cn('px-2 font-mono text-micro uppercase', i > 0 && 'border-l border-line', source === s ? 'bg-ink-700 text-bone' : 'text-bone-mute hover:text-bone-dim')}>
-              {s === 'sim' ? 'Sim' : 'Bridge'}
-            </button>
-          ))}
+          <span className="bg-ink-700 px-2 font-mono text-micro uppercase leading-6 text-bone">Sim</span>
+          <a href="/console.html?mode=crew" className="border-l border-line px-2 font-mono text-micro uppercase leading-6 text-bone-mute hover:text-bone-dim">Crew reader</a>
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {source === 'bridge' && (
-          <div className="border-b border-line px-3 py-2">
-            <div className="flex items-center gap-2 font-mono text-micro uppercase text-bone-mute">
-              <Dot className={snap.state === 'live' ? 'bg-phosphor' : snap.state === 'error' ? 'bg-ember' : 'bg-amber'} size={5} live={snap.state === 'connecting'} />
-              {snap.state === 'live' ? `Bridge rev ${snap.revision}` : snap.state === 'error' ? snap.error ?? 'Bridge error' : 'Connecting'}
-              <span className="ml-auto">{BRIDGE_DEFAULT_URL.replace('http://', '')}</span>
-            </div>
-            {!sessionStorage.getItem(BRIDGE_TOKEN_KEY) && (
-              <form className="mt-2 flex gap-1" onSubmit={(e) => { e.preventDefault(); if (token.trim()) { sessionStorage.setItem(BRIDGE_TOKEN_KEY, token.trim()); setToken(''); fireyeUi.set({ source: 'sim' }); setTimeout(() => fireyeUi.set({ source: 'bridge' }), 0); } }}>
-                <input type="password" value={token} onChange={(e) => setToken(e.target.value)} aria-label="Reader capability" placeholder="Reader capability"
-                  className="h-6 min-w-0 flex-1 border border-line-strong bg-ink-900 px-2 font-mono text-micro text-bone placeholder:text-bone-mute focus-visible:outline-signal" />
-                <button type="submit" className="border border-line-strong px-2 font-mono text-micro uppercase text-bone-dim hover:text-bone">Use</button>
-              </form>
-            )}
-            <p className="mt-1.5 font-mono text-micro uppercase leading-4 text-bone-mute">Read only. Session storage. No map frame from the bridge: positions unmapped.</p>
-          </div>
-        )}
         <Section i={2} title="UAV assets" meta={<span className="fcc-num">{live}/{snap.assets.length} live</span>}>
           {snap.assets.length === 0 && <p className="px-3 pb-3 font-mono text-micro uppercase text-bone-mute">No assets received</p>}
           {snap.assets.map((a) => (

@@ -33,6 +33,8 @@ export interface SensorSurface {
   onReady: () => void;
   onError: () => void;
   onTelemetry: (pose: FeedPose, seconds: number) => void;
+  /** Successful pixel copy, separate from throttled HUD telemetry. Truth overlays are never eligible. */
+  onPixels?: (thermal: 'white' | 'iron' | undefined) => void;
   /** Custom camera (FIREYE units); defaults to the monitoring demo pose. */
   pose?: (seconds: number, filter: CameraFilter) => FeedPose;
   thermal?: 'white' | 'iron';
@@ -382,7 +384,7 @@ export class WorldRenderer {
     info.reset();
     let shadowViews = 0, maxViewTris = 0;
     const rt = this.target(w, h);
-    const rendered: { id: string; x: number; y: number }[] = [];
+    const rendered: { id: string; x: number; y: number; thermal: 'white' | 'iron' | undefined }[] = [];
     ids.forEach((id, i) => {
       const surfaces = groups.get(id)!, view = this.views.get(id)!;
       if (surfaces.every(s => s.ready && (s.frozen || (!s.moving && s.settled)))) return;
@@ -411,7 +413,7 @@ export class WorldRenderer {
       this.post.material.uniforms.uTime.value = this.motionOf(id).clock.seconds;
       this.post.render(this.renderer, rt.texture, w, h);
       maxViewTris = Math.max(maxViewTris, view.tris);
-      rendered.push({ id, x: sx, y: sy });
+      rendered.push({ id, x: sx, y: sy, thermal });
     });
     for (const r of rendered) {
       const surfaces = groups.get(r.id)!, view = this.views.get(r.id)!, pose = this.poses.get(r.id)!, seconds = this.motionOf(r.id).clock.seconds;
@@ -422,6 +424,8 @@ export class WorldRenderer {
         s.canvas.dataset.simulationSeconds = String(seconds);
         s.canvas.dataset.world = 'world3d';
         s.canvas.dataset.ready = 'true';
+        s.canvas.dataset.truthOverlay = String(!!this.truthOverlay);
+        if (!this.truthOverlay) s.onPixels?.(r.thermal);
         s.settled = view.settled && !view.dirty && !this.store.pending;
         if (!s.ready) { s.ready = true; s.onReady(); }
         if (performance.now() - s.hudAt > 250) { s.hudAt = performance.now(); s.onTelemetry(pose, seconds); }

@@ -9,17 +9,17 @@ import { useFireye } from './ui';
 const UAV = new Set<Feed['kind']>(['uav-nadir', 'uav-oblique', 'uav-chase']);
 export const isUav = (f: Feed) => UAV.has(f.kind);
 
-/** Display sensor of a drone feed: thermal for any IR fx, EO otherwise. */
+/** Display palette only. Source modality comes from Feed.modality, never this helper. */
 export const sensorOf = (f: Feed): 'eo' | 'thermal' => (f.fx.startsWith('ir') ? 'thermal' : 'eo');
 
-/** Applies per-drone EO/THRM choices purely as feed data (fx and label); renderers are unchanged. */
+/** Applies display-only palettes without changing source channel identity or its label. */
 export function withFx(feeds: Feed[], fx: Record<string, 'eo' | 'thermal'>): Feed[] {
   if (!Object.keys(fx).length) return feeds;
   return feeds.map((f) => {
     const want = fx[f.id];
     if (!want || !isUav(f) || sensorOf(f) === want) return f;
     const next: Feed['fx'] = want === 'thermal' ? 'ir-whitehot' : 'eo';
-    return { ...f, fx: next, label: f.label.replace(/· (EO|IR) /, `· ${want === 'thermal' ? 'IR' : 'EO'} `) };
+    return { ...f, fx: next };
   });
 }
 

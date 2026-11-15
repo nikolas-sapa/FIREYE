@@ -118,7 +118,7 @@ export function DiveLayer({ engine }: { engine: StageEngine | null }) {
       {(d.phase === 'lock' || d.phase === 'flying') && engine && d.unitId && <TargetLock engine={engine} unitId={d.unitId} label={name} />}
       {d.phase === 'flying' && (
         <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-          <span className="fireye-fade bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">Transferring to {name} sensor · {sensorOf(feed) === 'thermal' ? 'THRM' : 'EO'}</span>
+          <span className="fireye-fade bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">Transferring to {name} · {feed.modality ?? 'unknown'} source</span>
         </div>
       )}
       {showFeed && (
@@ -140,11 +140,11 @@ export function DiveLayer({ engine }: { engine: StageEngine | null }) {
               {feed.label}
             </span>
             {uav && (
-              <div role="group" aria-label="Sensor" className="flex h-8 border border-line-strong bg-ink-950/90">
+              <div role="group" aria-label="Display palette, not source modality" className="flex h-8 border border-line-strong bg-ink-950/90">
                 {(['eo', 'thermal'] as const).map((m) => (
                   <button key={m} type="button" aria-pressed={sensorOf(feed) === m} onClick={() => sensorOf(feed) !== m && fireyeUi.toggleFx(feed.id, sensorOf(feed))}
                     className={cn('px-3 font-mono text-micro uppercase tracking-[0.14em]', m === 'thermal' && 'border-l border-line', sensorOf(feed) === m ? 'bg-ink-700 text-bone' : 'text-bone-mute hover:text-bone-dim')}>
-                    {m === 'eo' ? 'EO' : 'THRM'}
+                    {m === 'eo' ? 'EO FX' : 'IR FX'}
                   </button>
                 ))}
               </div>
