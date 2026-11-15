@@ -35,7 +35,7 @@ The visual exercise uses the Mati historical reconstruction, with Caldor availab
 
 ## Implementation status
 
-Source snapshot: 2026-11-15, main `c98415b`. **Local** means implemented exercise code, **Fixture/dormant** means bounded synthetic or disabled integration, **Pending** means not connected or accepted. None means operational readiness. Older [backend receipts](TASKBOARD.md#current-main-backend-summary), isolated builds and draft PR #2 descriptions are historical, not the current application inventory.
+Source inventory snapshot: 2026-11-15, main `c98415b`. Later [bounded desktop recording checks](SUBMISSION_EVIDENCE.md#bounded-desktop-recording-checks) identify their own source baselines. **Local** means implemented exercise code, **Fixture/dormant** means bounded synthetic or disabled integration, **Pending** means not connected or accepted. None means operational readiness. Older [backend receipts](TASKBOARD.md#current-main-backend-summary), isolated builds and draft PR #2 descriptions are historical, not the current application inventory.
 
 | Area | Status | What exists / what does not |
 |---|---|---|
@@ -46,7 +46,7 @@ Source snapshot: 2026-11-15, main `c98415b`. **Local** means implemented exercis
 | Approval, receipts and replay | Local/fixture | Human-context gates, reservation, immutable command and supplied receipt progression, canonical replay. Frontend execution/completion bridge remains unconnected. |
 | Planner and orchestration demo | Local/fixture | Finite toy planner supports up to three-drone courses; `--demo` registers exactly one single-drone fixture course. Neither is the six-drone frontend fleet. Changed/unregistered courses stay review-only. |
 | Provider/source/compute adapters | Fixture/dormant | Bounded server-side Iris/Gemini/Gemma/fal/Treg/Firecrawl/Boxd seams and explicit source/weather packets, disabled or fixture-only by default. No genuine inference/retrieval/remote execution established. |
-| Verification | Source-bound local/unit evidence | [Frontend checks](proposal/fcc/package.json) cover local simulation, channel registration, capture metadata and spread regression. 20 actual rendered exports and ten-minute browser acceptance remain **NOT PROVED** for this snapshot. |
+| Verification | Source-bound local/unit evidence | [Frontend checks](proposal/fcc/package.json) cover local simulation, channel registration, capture metadata and spread regression. Later local recording checks accepted 14 distinct camera paths and 20 actual AETOS-2 IR frame downloads. Further per-drone export coverage, ten-minute browser and complete mobile acceptance remain open. |
 | Cloud, media and deployment | Pending | Real auth, Convex/persistence, media rights/ingestion and public deployment remain deferred. No operational or final submission acceptance. |
 
 The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md) and [four-task plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) authorized the historical first slice. Later exact-file claims authorized bounded additions, not full V1 or public launch. All 15 issue cards remain open at this snapshot. Administrative work and passing local tests are not full-product acceptance.
