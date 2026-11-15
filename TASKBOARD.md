@@ -1,5 +1,9 @@
 # Fire Command Center shared taskboard
 
+## PR38-CI-2026-11-15, headless frontend verification
+
+Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.
+
 ## PRFIX-2026-11-15, owner-authorized PR38 repair
 
 User explicitly reassigned the two open Marco PR fixes to root workers. Branch `proposal/fcc-review-followup`, source `bb1103ebbbea42344d88f70bc76934fddbea08b3`. Source repairs only, no issue work, paid calls, frontend launch or automatic merge. Preserve Marco source and all unrelated work.

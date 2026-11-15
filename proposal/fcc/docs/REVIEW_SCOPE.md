@@ -20,13 +20,14 @@ Deliver the precision regression/fix and the owner's recent local presentation w
 
 Issues #8 and #9 remain open. The reviewed producer/coordinate/media mapping and backend acceptance are separate prerequisites. This follow-up does not adopt a backend schema, create a crew Runtime, manufacture thermal/receipt metadata, launch the backend/frontend integration, merge PR #2, deploy, provision machines or spend on providers.
 
-The 249 local experiment outputs and six associated study CLIs are excluded, along with credentials, dependency directories, generated builds and browser/auth/scratch artifacts. The six CLIs were initially claimed for audit but are released from publication: they depend on excluded local research inputs and their paid-ledger concurrency needs a separate fix/review. Existing local working changes remain untouched; implementation occurs in an isolated worktree from a frozen explicit file snapshot. The original scope was 108 paths, including 101 of the original 107 snapshot paths. Owner-authorized PR repair adds one provenance regression file, for 109 paths total. Root repair ownership is recorded in TASKBOARD; other Marco files remain unchanged.
+The 249 local experiment outputs and six associated study CLIs are excluded, along with credentials, dependency directories, generated builds and browser/auth/scratch artifacts. The six CLIs were initially claimed for audit but are released from publication: they depend on excluded local research inputs and their paid-ledger concurrency needs a separate fix/review. Existing local working changes remain untouched; implementation occurs in an isolated worktree from a frozen explicit file snapshot. The original scope was 108 paths, including 101 of the original 107 snapshot paths. Owner-authorized PR repair adds one provenance regression file and headless frontend workflow, for 110 paths total. Root repair ownership is recorded in TASKBOARD; other Marco files remain unchanged.
 
 ## Exact claimed paths
 
 The following list is the complete proposed publication/review scope, not a wildcard claim. Outside it, no edits are authorized by this claim.
 
 - `TASKBOARD.md`
+- `.github/workflows/frontend.yml`
 - `proposal/HANDOFF.md`
 - `proposal/fcc/.env.example`
 - `proposal/fcc/.gitignore`
