@@ -151,6 +151,7 @@ uniform sampler2D image;
 uniform float time;
 uniform float flicker;
 uniform float strength;
+uniform float tactical;
 uniform vec2 texel;
 
 float fcc_h21(vec2 p) {
@@ -169,6 +170,20 @@ vec4 fcc_tap(vec2 st) { return texture(image, st); }
 
 czm_material czm_getMaterial(czm_materialInput materialInput) {
   czm_material m = czm_getDefaultMaterial(materialInput);
+  if (tactical > 0.5) {
+    // Main Outline only: unwarped source mask, restrained scar and a screen-space active edge.
+    // No cinematic noise, domain warp, flicker or sixteen-tap halo behind cartographic detail.
+    vec4 field = fcc_tap(materialInput.st);
+    float burned = smoothstep(0.35, 0.65, field.r);
+    float edge = clamp(fwidth(field.r) * czm_pixelRatio * 1.5, 0.0, 1.0);
+    float activity = smoothstep(0.1, 0.65, field.g);
+    vec3 scar = ${glsl3(ds.ink[900])};
+    vec3 front = ${glsl3(FIRE.ember)};
+    m.diffuse = vec3(0.0);
+    m.emission = mix(scar, front, max(activity * 0.30, edge * activity));
+    m.alpha = max(burned * mix(0.20, 0.15, activity), edge * activity * 0.95);
+    return m;
+  }
   // Wrapped so hash inputs stay small enough for float precision (seams every ~20 km are invisible).
   vec2 cell = mod(materialInput.st / texel, 509.0);
   // Domain warp (~4 cells) hides the blocky source rasters (VIIRS pixels / perimeter steps).
@@ -264,6 +279,7 @@ export class FireOverlay {
           time: 0,
           flicker: opts.flicker === false ? 0 : 1,
           strength: opts.strength ?? 1,
+          tactical: 0,
           texel: new Cesium.Cartesian2(1 / field.w, 1 / field.h),
         },
         source: FIRE_GLSL,
@@ -293,6 +309,10 @@ export class FireOverlay {
 
   set show(v: boolean) {
     this.primitive.show = v;
+  }
+
+  setTactical(value: boolean) {
+    this.material.uniforms.tactical = value ? 1 : 0;
   }
 
   destroy() {

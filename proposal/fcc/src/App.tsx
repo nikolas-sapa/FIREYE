@@ -5,6 +5,7 @@ import Stack from '@/sections/Stack';
 import DashboardSection from '@/sections/DashboardSection';
 import DesignSystemSection from '@/sections/DesignSystemSection';
 import Footer from '@/sections/Footer';
+import ImageLabSection from '@/sections/ImageLabSection';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Architecture />
         <Stack />
         <DashboardSection />
+        <ImageLabSection />
         <DesignSystemSection />
       </main>
       <Footer />

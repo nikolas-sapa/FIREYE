@@ -11,6 +11,7 @@ const LINKS = [
   { id: 'architecture', index: '02', label: 'Architecture' },
   { id: 'stack', index: '03', label: 'Stack' },
   { id: 'dashboard', index: '04', label: 'Live Ops' },
+  { id: 'image-lab', index: '04B', label: 'Image Lab' },
   { id: 'system', index: '05', label: 'Design System' },
 ] as const;
 

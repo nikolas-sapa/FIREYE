@@ -291,7 +291,7 @@ export function StageArea() {
   const ui = useUi();
   const disclaimer = useConsoleSelector((s) => s.pack?.manifest.disclaimer) ?? 'Scenario built from public data; units, people and events are simulated.';
   return (
-    <div className="relative min-h-0 flex-1 overflow-hidden bg-void">
+    <div className="fcc-console-stage relative min-h-0 flex-1 overflow-hidden bg-void">
       <SurfaceBoundary label="3D stage">
         <Stage className="absolute inset-0" />
       </SurfaceBoundary>

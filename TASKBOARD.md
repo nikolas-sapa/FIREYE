@@ -1,5 +1,20 @@
 # Fire Command Center shared taskboard
 
+## PR38-CI-2026-11-15, headless frontend verification
+
+Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.
+
+## PRFIX-2026-11-15, owner-authorized PR38 repair
+
+User explicitly reassigned the two open Marco PR fixes to root workers. Branch `proposal/fcc-review-followup`, source `bb1103ebbbea42344d88f70bc76934fddbea08b3`. Source repairs only, no issue work, paid calls, frontend launch or automatic merge. Preserve Marco source and all unrelated work.
+
+- Solver worker: `proposal/fcc/src/console/agents/spread.ts`, `proposal/fcc/tests/spread-precision.ts`. Twenty downward-rounding late seeds reach zero cells; ten-repeat 20-cell corridor and independent reference remain green.
+- Monitoring server worker: `proposal/fcc/server/monitoring.ts`, `proposal/fcc/tests/monitoring.ts`. Twenty malformed provider responses expose zero sentinel/raw-body strings; twenty explicit cross-site requests cause zero provider calls; documented rolling camera limit rejects excess calls without caching tokenized media.
+- Provenance worker: `proposal/fcc/src/console/monitoring/resources.ts`, `MonitoringApp.tsx`; new `proposal/fcc/tests/monitoring-provenance.ts`; `proposal/fcc/scripts/check-monitoring.mjs`. Missing/loading/error source states never claim zero retrieved detections; retrieved/memory/local/bundled origins remain distinct with zero false persisted labels.
+- Root: this claim, `proposal/fcc/docs/REVIEW_SCOPE.md`, `REVIEW_RECEIPT.md`, PR bodies/coordination, tests/reviews and explicit-path Git delivery. No package/lock/schema/backend/frozen archive changes without separate claim.
+
+Each worker captures failing regression before implementation, reruns focused tests/typecheck, then freezes for independent review. Root runs both-scenario tests, monitoring/image-lab mocked suites, no-key build/PWA and scope checks before updating PR38 and reconciling parent PR2. Non-goals: backend integration, new visual design, live providers, public deployment, calibrated physics or removal of safety guards.
+
 ## PR2-CI-2026-11-15, test-fixture clock repair
 
 Root authorized `/root/fix_parent_pr_ci` to edit only `backend/tests/gemma-client.test.ts` on `proposal/fcc-console`, base `b99a495`. Inherited Node26 CI failed because expiry test sampled its injected clock before independently constructing a later-dated snapshot. RED deterministic advancing clock reproduces INVALID_INPUT before transport. Test-only fix uses one fixture cutoff clock, retains DEADLINE/receipt assertions and adds one-transport proof. No runtime/dependency/frontend/issue change. Root verifies focused/native/compiled tests and delivers exact paths.
@@ -104,6 +119,7 @@ USER-GO-2026-11-14: approved Convex eventual shared authority + single teammate 
 | Git delivery | Authorized Git specialist/coordinator | Explicit approved reviewed planning/protocol paths only, root Go before delivery; no blanket staging |
 | Local setup | Supervised backend setup agent | Boxd/Treg auth outside repo; no application/provider inference implied |
 | FCC console proposal (PROP-01) | marcseli (Droid agent) | `proposal/fcc-console`: `proposal/**` only, plus this claim row/card and conflict reconciliation. Submitted for owner review; no main merge |
+| FCC precision/presentation follow-up, owner-authorized 2026-11-15 | marcseli (Droid; implementation and authorized Git delivery), prepared for draft review | `proposal/fcc-review-followup`, stacked on PR #2: 108 final exact paths and test-first targets in `proposal/fcc/docs/REVIEW_SCOPE.md`; six study CLI claims released/excluded, current receipt in `proposal/fcc/docs/REVIEW_RECEIPT.md`; this claim row only outside `proposal/**`. No backend/schema/CI ownership, merge, deployment, provider call or frontend/backend launch permission. |
 
 **Functional ownership confirmed; exact protocol Tasks 1–4 claims approved above, all other app claims gated.** Frontend/simulator teammate (PR #2 author marcseli, identity confirmation pending) owns design + ALL proposal/fcc/**, including world/runtime/store/adapters/camera render/assets/frontend lock. Coordinator/root owns architecture/data/backend/agents/integration: future backend/** plus docs/contracts/**, docs/data/**, docs/architecture/**. Root never edits teammate app files; teammate consumes versioned root contracts. Frontend lock: teammate; backend protocol schema/lock: Task 1 worker; shared CI/integration: coordinator, exactly one active owner per file. Other future backend/document paths remain candidates, not stack approval; claim exact files/branch before edits. Teammate identity confirmation does not undo assigned functional ownership.
 

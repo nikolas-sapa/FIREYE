@@ -4,6 +4,7 @@ import { FuelClass, type ScenarioPack } from '../contracts';
 import { FIRE } from './palette';
 import { getProfile } from './profile';
 import { RasterSampler } from './raster';
+import { terrainRefinementError } from './cartography';
 
 const DEG = Math.PI / 180;
 const TILE = 33;
@@ -12,9 +13,12 @@ const TILE = 33;
  * Token-less terrain: a CustomHeightmapTerrainProvider fed from pack.elevation. Outside the scenario
  * bbox the surface settles onto the smoothed edge profile (coasts stay at sea level).
  */
-export function createHeightmapTerrain(s: RasterSampler, sceneDatum = false): Cesium.CustomHeightmapTerrainProvider {
+export function createHeightmapTerrain(
+  s: RasterSampler, sceneDatum = false,
+  options: { maximumLevel?: number; localCoverage?: boolean } = {},
+): Cesium.CustomHeightmapTerrainProvider {
   const ts = new Cesium.GeographicTilingScheme();
-  return new Cesium.CustomHeightmapTerrainProvider({
+  const provider = new Cesium.CustomHeightmapTerrainProvider({
     width: TILE,
     height: TILE,
     tilingScheme: ts,
@@ -22,16 +26,41 @@ export function createHeightmapTerrain(s: RasterSampler, sceneDatum = false): Ce
       const r = ts.tileXYToRectangle(x, y, level);
       const west = r.west / DEG, east = r.east / DEG, south = r.south / DEG, north = r.north / DEG;
       const out = new Float32Array(TILE * TILE);
+      if (options.localCoverage) {
+        const b = s.bbox;
+        const padLat = 3000 / 110540;
+        const padLon = 3000 / (111320 * Math.cos((b[1] + b[3]) * DEG / 2));
+        // Context-only tiles need no DEM work. Preserve the transition collar at the real pack edge.
+        if (east < b[0] - padLon || west > b[2] + padLon || north < b[1] - padLat || south > b[3] + padLat) return out;
+      }
       for (let j = 0; j < TILE; j++) {
         const lat = north - (j / (TILE - 1)) * (north - south);
         for (let i = 0; i < TILE; i++) {
           const lon = west + (i / (TILE - 1)) * (east - west);
-          out[j * TILE + i] = s.demElevation(lon, lat) + (sceneDatum ? s.datumOffset : 0);
+          let elevation = s.demElevation(lon, lat);
+          if (options.localCoverage && !s.inside(lon, lat)) {
+            const b = s.bbox;
+            const dx = (lon - Math.max(b[0], Math.min(b[2], lon))) * 111320 * Math.cos(lat * DEG);
+            const dy = (lat - Math.max(b[1], Math.min(b[3], lat))) * 110540;
+            const fade = Math.min(1, Math.hypot(dx, dy) / 3000);
+            elevation *= 1 - fade * fade * (3 - 2 * fade);
+          }
+          out[j * TILE + i] = elevation + (sceneDatum ? s.datumOffset : 0);
         }
       }
       return out;
     },
   });
+  if (options.maximumLevel !== undefined) {
+    const max = options.maximumLevel;
+    const error = provider.getLevelMaximumGeometricError.bind(provider);
+    // A tiny positive SSE sentinel stops terrain refinement without breaking imagery LOD:
+    // Cesium converts log2(texelSpacing / error) to int32, so zero erroneously selects world z0.
+    // This is a renderer bound, not a millimetre-accuracy claim about the DEM.
+    provider.getLevelMaximumGeometricError = (level) => terrainRefinementError(level, max, error(level));
+    provider.getTileDataAvailable = (_x, _y, level) => level <= max;
+  }
+  return provider;
 }
 
 /* ------------------------------------------------------------------ offline relief composite */

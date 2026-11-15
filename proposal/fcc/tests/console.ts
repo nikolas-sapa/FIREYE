@@ -6,9 +6,43 @@ import { createBus } from '../src/console/bus';
 import { isBusEvent } from '../src/console/bus/adapters';
 import { Runtime } from '../src/console/world/runtime';
 import { ops } from '../src/console/world/engine';
-import { runSpread } from '../src/console/agents/spread';
+import { runSpread, runTravelTime, SpreadSeeds, headRos, fineFuelMoisture } from '../src/console/agents/spread';
+import { FuelClass } from '../src/console/contracts';
 import { emitDirective } from '../src/console/orchestrator/directives';
 
+// Solver regression: on uniform flat shrub the head must advance at exactly the head rate downwind
+// (a float32/float64 stale-entry bug once stalled the front), and stronger wind must burn more.
+{
+  const N = 256, fuel = new Uint8Array(N * N).fill(FuelClass.Shrub), elev = new Float32Array(N * N);
+  const solve = (windKph: number, horizonMin = 360) => {
+    const seeds = new SpreadSeeds(); seeds.push(128 * N + 32, 0);
+    return runTravelTime({ gw: N, gh: N, dxM: 40, dyM: 40, fuel, elev, horizonMin, weatherAt: () => ({ windKph, windDirDeg: 270, tempC: 32, rh: 20 }) }, seeds);
+  };
+  for (const kph of [10, 30, 60]) {
+    const [ros] = headRos(FuelClass.Shrub, kph, fineFuelMoisture(32, 20));
+    const t = solve(kph);
+    for (const d of [1, 7, 20, 50]) assert.ok(Math.abs(t[128 * N + 32 + d] - (d * 40) / ros) < 1e-3 * d + 1e-3, `head at ${d} cells, ${kph} km/h`);
+  }
+  // Area grows with wind only while the 16-neighbour stencil can resolve the ellipse (LB below about 3);
+  // above roughly 30 km/h it under-represents narrow fires (PROJECTION.md, known limitations).
+  const area = (t: Float32Array) => t.reduce((n, v) => n + (v <= 60 ? 1 : 0), 0);
+  assert.ok(area(solve(30, 60)) > area(solve(10, 60)) && area(solve(10, 60)) > area(solve(5, 60)), 'stronger wind burns more');
+  console.log('Spread solver head rate and wind monotonicity PASS');
+
+  const fractionalSeeds = new SpreadSeeds();
+  fractionalSeeds.push(0, 0.50001151);
+  fractionalSeeds.push(0, 3);
+  const fractional = runTravelTime({ gw: 3, gh: 1, dxM: 1, dyM: 1,
+    fuel: new Uint8Array(3).fill(FuelClass.Grass), elev: new Float32Array(3), horizonMin: 10,
+    weatherAt: () => ({ windKph: 0, windDirDeg: 0, tempC: 30, rh: 20 }) }, fractionalSeeds);
+  assert.equal(fractional[0], Math.fround(0.50001151));
+  assert.ok([...fractional].every(Number.isFinite), 'Fractional seeds must expand despite Float32 rounding');
+  const lateSeed = new SpreadSeeds();
+  lateSeed.push(0, 11);
+  assert.ok([...runTravelTime({ gw: 1, gh: 1, dxM: 1, dyM: 1, fuel: new Uint8Array([3]),
+    elev: new Float32Array(1), horizonMin: 10, weatherAt: () => ({ windKph: 0, windDirDeg: 0, tempC: 30, rh: 20 }) }, lateSeed)]
+    .every(t => t === Infinity), 'A seed beyond the horizon is not a finite arrival');
+}
 assert.equal(isBusEvent({ type: 'prediction.scored', at: 0 }), true);
 assert.equal(isBusEvent({ type: 'prediction.scored', at: Infinity }), false);
 assert.equal(isBusEvent({ type: 'prediction.scored', at: NaN }), false);

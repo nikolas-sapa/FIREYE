@@ -1,0 +1,15 @@
+{
+  "source": "Sentinel-2 cloudless 2020 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2020)",
+  "url": "https://tiles.maps.eox.at/wms?service=WMS&version=1.1.1&request=GetMap&layers=s2cloudless-2020&styles=&srs=EPSG%3A4326&bbox=23.55%2C37.85%2C24.15%2C38.35&width=3840&height=4035&format=image%2Fjpeg",
+  "bbox": [
+    23.55,
+    37.85,
+    24.15,
+    38.35
+  ],
+  "width": 3840,
+  "height": 4035,
+  "fetchedAt": "2026-11-15T02:18:28.140Z",
+  "license": "CC BY-NC-SA 4.0 · https://s2maps.eu · non-commercial use only",
+  "note": "Historical composite. Approximately 10 m source imagery, resampled to approximately 14 m output. Not a 2024 or current observation."
+}

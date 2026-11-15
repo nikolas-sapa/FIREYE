@@ -235,6 +235,109 @@ class Heap {
   }
 }
 
+/** Inputs for the generic minimum-travel-time solver, independent of any scenario pack. */
+export interface TravelTimeGrid {
+  gw: number;
+  gh: number;
+  dxM: number;
+  dyM: number;
+  /** FuelClass per cell; classes with zero head ROS never burn. */
+  fuel: Uint8Array;
+  elev: Float32Array;
+  /** Minutes after issue; seeded cells already hold their start time, every other cell Infinity. Filled in place. */
+  t: Float32Array;
+  horizonMin: number;
+  /** Weather for model hour `hour` (0 = first hour after issue). */
+  weatherAt: (hour: number) => SpreadWeather;
+}
+
+/** Ignition cells for solveTravelTime: indices pushed with their start times. */
+export class SpreadSeeds {
+  readonly heap = new Heap();
+  push(index: number, minutes = 0): void {
+    this.heap.push(minutes, index);
+  }
+  get size(): number {
+    return this.heap.n;
+  }
+}
+
+/**
+ * Dijkstra over the 16-neighbour stencil with elliptical wind spread and an upslope factor.
+ * `heap` holds the active seeds; `t` must already contain their start times.
+ */
+function solveTravelTime(grid: TravelTimeGrid & { heap: Heap }): void {
+  const { gw, gh, fuel, elev, t: T, heap, horizonMin, weatherAt } = grid;
+  const dist = NX.map((dx, k) => Math.hypot(dx * grid.dxM, NY[k] * grid.dyM));
+  const bear = NX.map((dx, k) => Math.atan2(dx * grid.dxM, -NY[k] * grid.dyM));
+  const tables = new Map<number, Float32Array>();
+  const rates = (hb: number): Float32Array => {
+    let tb = tables.get(hb);
+    if (tb) return tb;
+    const w = weatherAt(hb);
+    const m = fineFuelMoisture(w.tempC, w.rh);
+    const down = (((w.windDirDeg + 180) % 360) * Math.PI) / 180;
+    tb = new Float32Array(FUELS * NK);
+    for (let f = 0; f < FUELS; f++) {
+      const [rh, lb0] = headRos(f, w.windKph, m);
+      if (rh <= 0) continue;
+      const lb = Math.min(8, Math.max(1, lb0));
+      const e = Math.sqrt(1 - 1 / (lb * lb));
+      for (let k = 0; k < NK; k++) tb[f * NK + k] = (rh * (1 - e)) / (1 - e * Math.cos(bear[k] - down));
+    }
+    tables.set(hb, tb);
+    return tb;
+  };
+
+  while (heap.n) {
+    const i = heap.pop();
+    const tc = heap.top;
+    if (tc > T[i]) continue;
+    if (tc > horizonMin) break;
+    const x = i % gw;
+    const y = (i / gw) | 0;
+    const tb = rates(Math.floor(tc / 60));
+    const ei = elev[i];
+    for (let k = 0; k < NK; k++) {
+      const nx = x + NX[k];
+      const ny = y + NY[k];
+      if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+      const j = ny * gw + nx;
+      if (T[j] <= tc) continue;
+      const fj = fuel[j];
+      const r = fj < FUELS ? tb[fj * NK + k] : 0;
+      if (r <= 0) continue;
+      const dz = elev[j] - ei;
+      const d = dist[k];
+      const nt = tc + d / (dz > 0 ? r * slopeFactor(dz / d) : r);
+      const stored = Math.fround(nt);
+      if (stored < T[j] && nt <= horizonMin && stored <= horizonMin) {
+        T[j] = stored;
+        // Queue exactly the stored precision, without weakening the genuine stale-entry guard.
+        heap.push(T[j], j);
+      }
+    }
+  }
+}
+
+/** Runs solveTravelTime from explicit seeds on a caller-supplied grid. Returns minutes after issue per cell. */
+export function runTravelTime(grid: Omit<TravelTimeGrid, 't'>, seeds: SpreadSeeds): Float32Array {
+  const t = new Float32Array(grid.gw * grid.gh).fill(Infinity);
+  const heap = new Heap();
+  while (seeds.size) {
+    const index = seeds.heap.pop();
+    // Reject the original time before rounding can move a late ignition inside the horizon.
+    if (!(seeds.heap.top <= grid.horizonMin)) continue;
+    const time = Math.fround(seeds.heap.top);
+    if (time <= grid.horizonMin) {
+      t[index] = Math.min(t[index], time);
+      heap.push(time, index);
+    }
+  }
+  solveTravelTime({ ...grid, t, heap });
+  return t;
+}
+
 /**
  * Runs the model from the fire observed at `issuedAt` for `horizonMin` minutes.
  * `wx(t)` supplies the weather the model assumes at absolute time t (forecast or persistence).
@@ -277,54 +380,8 @@ export function runSpread(pack: ScenarioPack, issuedAt: Ms, wx: (t: Ms) => Sprea
     }
   }
 
-  const dist = NX.map((dx, k) => Math.hypot(dx * g.dxM, NY[k] * g.dyM));
-  const bear = NX.map((dx, k) => Math.atan2(dx * g.dxM, -NY[k] * g.dyM));
-  const tables = new Map<number, Float32Array>();
-  const rates = (hb: number): Float32Array => {
-    let tb = tables.get(hb);
-    if (tb) return tb;
-    const w = wx(issuedAt + (hb + 0.5) * 3_600_000);
-    const m = fineFuelMoisture(w.tempC, w.rh);
-    const down = (((w.windDirDeg + 180) % 360) * Math.PI) / 180;
-    tb = new Float32Array(FUELS * NK);
-    for (let f = 0; f < FUELS; f++) {
-      const [rh, lb0] = headRos(f, w.windKph, m);
-      if (rh <= 0) continue;
-      const lb = Math.min(8, Math.max(1, lb0));
-      const e = Math.sqrt(1 - 1 / (lb * lb));
-      for (let k = 0; k < NK; k++) tb[f * NK + k] = (rh * (1 - e)) / (1 - e * Math.cos(bear[k] - down));
-    }
-    tables.set(hb, tb);
-    return tb;
-  };
-
-  while (heap.n) {
-    const i = heap.pop();
-    const tc = heap.top;
-    if (tc > T[i]) continue;
-    if (tc > horizonMin) break;
-    const x = i % gw;
-    const y = (i / gw) | 0;
-    const tb = rates(Math.floor(tc / 60));
-    const ei = elev[i];
-    for (let k = 0; k < NK; k++) {
-      const nx = x + NX[k];
-      const ny = y + NY[k];
-      if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
-      const j = ny * gw + nx;
-      if (T[j] <= tc) continue;
-      const fj = fuel[j];
-      const r = fj < FUELS ? tb[fj * NK + k] : 0;
-      if (r <= 0) continue;
-      const dz = elev[j] - ei;
-      const d = dist[k];
-      const nt = tc + d / (dz > 0 ? r * slopeFactor(dz / d) : r);
-      if (nt < T[j] && nt <= horizonMin) {
-        T[j] = nt;
-        heap.push(nt, j);
-      }
-    }
-  }
+  solveTravelTime({ gw, gh, dxM: g.dxM, dyM: g.dyM, fuel, elev, t: T, heap, horizonMin,
+    weatherAt: (hour) => wx(issuedAt + (hour + 0.5) * 3_600_000) });
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   return {
     issuedAt,

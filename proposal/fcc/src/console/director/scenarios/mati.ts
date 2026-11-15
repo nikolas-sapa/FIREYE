@@ -425,7 +425,7 @@ function beats(ctx: ScenarioContext): BeatDef[] {
       id: 'ignition',
       at: 20,
       title: 'Ignition at Daou Penteli',
-      caption: `${ctx.fmtTime(ign)}: a fire starts at Daou Penteli. Simulated ridge-camera and social detections raise the only Z0 interrupt. The prototype spread model (reconstructed issue-time seed, DEM, fuel, ${Math.round(w.windKph)} km/h ${Math.round(w.windDirDeg)}° wind, archived future weather as a perfect forecast) puts the head at ${n.marathonos} in ${fmtM(toRoad)} and at the sea in ${fmtM(toSea)}. It substantially underpredicts the historical spread speed.`,
+      caption: `${ctx.fmtTime(ign)}: a fire starts at Daou Penteli. Simulated ridge-camera and social detections raise the only Z0 interrupt. The prototype spread model (reconstructed issue-time seed, DEM, fuel, ${Math.round(w.windKph)} km/h ${Math.round(w.windDirDeg)}° wind, archived future weather as a perfect forecast) puts the head at ${n.marathonos} in ${fmtM(toRoad)} and at the sea in ${fmtM(toSea)}. Its timing against the sourced checkpoints is scored as the replay runs; it has no ember spotting.`,
       speed: 30,
       anchor: ctx.tDetect,
       enter: (h) => ops.setAutonomy(h.sim, 'act'),
