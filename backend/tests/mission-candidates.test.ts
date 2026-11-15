@@ -103,6 +103,28 @@ test('MP02 four delimiter/Unicode identities stay distinct and changed policy ch
   assert.notEqual(before.options[1].assignments[0].candidate_id, after.options[1].assignments[0].candidate_id);
 });
 
+test('MP02 two valid elapsed ticks preserve exact plans and IDs while expiry still revalidates survivors', () => {
+  const fixture = missionFixture(); const context = missionContext();
+  const first = accepted(generateMissionCandidates(fixture, { ...context, current_sim_tick: 101 }));
+  const second = accepted(generateMissionCandidates(fixture, { ...context, current_sim_tick: 102 }));
+  assert.equal(JSON.stringify(first), JSON.stringify(second));
+  rejected(fixture, { ...context, current_sim_tick: 105 }); // intent TTL exclusive
+  rejected({ ...fixture, policy: { ...fixture.policy, intent_ttl_ticks: 10 } },
+    { ...context, current_sim_tick: 106 }); // snapshot max age inclusive
+  const leased = { ...fixture, active_leases: [{ lease_id: 'expires-at-102',
+    drone_id: 'drone-0', sector_id: 'sector-0', expires_at_sim_tick: 102 }] };
+  const beforeExpiry = accepted(generateMissionCandidates(leased, { ...context, current_sim_tick: 101 }));
+  const atExpiry = accepted(generateMissionCandidates(leased, { ...context, current_sim_tick: 102 }));
+  for (const kind of ['coverage_x', 'coverage_y'] as const) {
+    const before = beforeExpiry.options.find(option => option.kind === kind)!;
+    const after = atExpiry.options.find(option => option.kind === kind)!;
+    assert.equal(before.assignments.length, 2); assert.equal(after.assignments.length, 3);
+    const unaffected = before.assignments.find(item => item.drone_id === 'drone-1')!;
+    assert.equal(after.assignments.find(item => item.drone_id === 'drone-1')!.candidate_id, unaffected.candidate_id);
+    assert.equal(after.assignments.some(item => item.drone_id === 'drone-0'), true);
+  }
+});
+
 test('MP03 twenty stale/replay/offline/wrong-revision intents reject without outputs', () => {
   for (let n = 0; n < 20; n++) {
     const fixture = missionFixture(); const context = missionContext();

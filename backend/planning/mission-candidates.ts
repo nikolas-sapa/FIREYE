@@ -334,7 +334,9 @@ export function generateMissionCandidates(input: unknown, current: unknown): Res
     return reject('Snapshot/intent is stale, future or expired', 'EXPIRED');
   }
   const received = normalized(input);
-  const fingerprint = identity('input', [received, { ...current, used_intent_ids: [...current.used_intent_ids].sort(compare) }]);
+  const { incident_id, run_id, input_revision, mode, used_intent_ids } = current;
+  const fingerprint = identity('input', [received, { incident_id, run_id, input_revision, mode,
+    used_intent_ids: [...used_intent_ids].sort(compare) }]);
   const exclusions: MissionExclusion[] = []; const courses: ProposedMissionOption[] = [];
   const routeKeys = new Set<string>();
   for (const template of ['coverage_x', 'coverage_y'] as const) {

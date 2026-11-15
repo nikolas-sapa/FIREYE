@@ -101,6 +101,9 @@ export interface MissionPlanningSnapshot {
 /** Explicit current context, not authentication or human approval. A future trusted
  * adapter must derive these values and atomically consume intent IDs. This pure
  * function neither writes them nor proves cross-request replay protection.
+ * current_sim_tick revalidates freshness/expiry/leases on every call, but alone
+ * does not change proposed IDs. All other context and snapshot inputs remain
+ * identity-bound; changing eligible survivors can still change course IDs.
  */
 export interface MissionPlanningContext {
   readonly incident_id: string;
