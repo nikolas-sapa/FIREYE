@@ -8,6 +8,41 @@ import type { Snapshot, Transport, TransportRequest } from '../integrations/rece
 import type { GemmaConfig, GemmaInput } from '../integrations/gemma/types.ts';
 
 const model = 'gemma-4-31b-it';
+
+test('G402 post-race Gemma microtask supersession delivers 0 successful results', async () => {
+  let current = true;
+  let checks = 0;
+  let calls = 0;
+  const result = await createGemmaClient(config(async () => { calls++; return Response.json(reply()); }, {
+    is_current: () => {
+      checks++;
+      if (checks === 2) queueMicrotask(() => { current = false; });
+      return current;
+    },
+  })).analyze(input());
+  assert.equal(current, false);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'STALE');
+  assert.equal(result.receipt?.status, 'STALE');
+  assert.ok(serverReceipt(result.receipt));
+  assert.equal(calls, 1);
+});
+
+test('G402 post-race Gemma microtask expiry delivers 0 successes at deadline', async () => {
+  let checks = 0;
+  let wall = Date.now();
+  const result = await createGemmaClient(config(async () => Response.json(reply()), {
+    now: () => wall, deadline_ms: 1000,
+    is_current: () => {
+      if (++checks === 2) queueMicrotask(() => { wall += 1000; });
+      return true;
+    },
+  })).analyze(input());
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'DEADLINE');
+  assert.equal(result.receipt?.status, 'DEADLINE');
+  assert.ok(serverReceipt(result.receipt));
+});
 const text = 'Exercise source reports smoke. Claim remains unverified.';
 function input(value = text): GemmaInput {
   const now = Date.now();

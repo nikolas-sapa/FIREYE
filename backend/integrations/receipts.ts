@@ -244,7 +244,18 @@ export async function perform<T>(adapter: Adapter, snapshot: Snapshot, input: un
     const deadline = new Promise<Result<T>>(resolve => {
       timer = setTimeout(() => { controller.abort(); resolve(Object.freeze({ ...fail('DEADLINE'), receipt: receipt('DEADLINE') })); }, config.deadline_ms!);
     });
-    return await Promise.race([operation(), deadline]);
+    const result = await Promise.race([operation(), deadline]);
+    if (!result.ok) return result;
+    const rejected = (code: 'STALE' | 'DEADLINE'): Result<T> => {
+      const value: Receipt = freeze({ ...result.receipt!, status: code, finished_at_ms: now() });
+      issuedReceipts.add(value);
+      return Object.freeze({ ...fail(code), receipt: value });
+    };
+    if (controller.signal.aborted || now() >= end) return rejected('DEADLINE');
+    try {
+      if (!validSnapshot(snapshot, now()) || !config.is_current!(snapshot)) return rejected('STALE');
+    } catch { return rejected('STALE'); }
+    return result;
   } catch {
     return Object.freeze({ ...fail(controller.signal.aborted ? 'DEADLINE' : 'INVALID_REPLY'), receipt: receipt(controller.signal.aborted ? 'DEADLINE' : 'INVALID_REPLY') });
   } finally { if (timer) clearTimeout(timer); }

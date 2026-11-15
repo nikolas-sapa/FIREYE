@@ -4,6 +4,8 @@
 
 ## Observed RED/GREEN
 
+Post-race review correction: actual Gemma fixture callback scheduled microtask supersession/deadline expiry after inner currentness check. Two regression tests RED 0/2 before shared `perform` fix. Successful race results now revalidate deadline, snapshot and trusted currentness before return; rejected replies retain issued server receipts with STALE/DEADLINE status and original invocation/cost provenance. GREEN 43/43 focused Gemma/sponsor tests, 215/215 consolidated full tests, typecheck/diff checks exit0; full 6704.225791ms, Node26.11.1. No provider calls.
+
 Review correction receipt, after baseline `2155c52`: two real-client cache regressions RED 0/2 (stale cached success, c2 closure got cached c1); two provenance/array regressions RED 0/2 (array-coerced enum accepted, null-prototype array threw). Fixed required exact `task_input`, callback-owned input, receipt hash/model matching, cache currentness before lookup and Promise reads, strict enums/dense array descriptors. Added 7 tests. Current GREEN: 32 focused sponsor tests, 103/103 combined (71 unchanged core +32 sponsor), typecheck/diff checks exit0, 485.831125ms combined, Node26.11.1. Real Iris cache becomes STALE with 0 extra calls; changed candidate task gets c2 in separate invocation; late Promise read becomes STALE; closure-mismatched actual client receipt rejects. Query/evidence inputs retain four distinct identities. Provenance arrays/malformed arrays reject with 0 calls/traps. Opaque single-use reservation and issued receipt preservation remain intact. `live_calls=0`.
 
 - RED: three initial native suites exited 1, 0/3 passed, missing actual Iris/shared/Treg modules, before implementation.
