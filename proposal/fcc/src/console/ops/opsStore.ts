@@ -159,6 +159,12 @@ export function sendLocal(target: string, text: string) {
   emit({ id: `loc-${t}-${seq}-${Math.random().toString(36).slice(2, 7)}`, lane: 'operator', t, local: true, from: 'OPERATOR', to: target, text });
 }
 
+/** A simulated alert/message into the SYSTEM lane (scenario time). */
+export function postSystem(from: string, text: string) {
+  const t = consoleStore.get().clock.t;
+  emit({ id: `sys-${t}-${seq}-${Math.random().toString(36).slice(2, 7)}`, lane: 'system', t, local: true, sim: true, from, verb: 'ALERT', text });
+}
+
 export function replyFromAgent(agent: string) {
   const s = consoleStore.get();
   const t = s.clock.t;
