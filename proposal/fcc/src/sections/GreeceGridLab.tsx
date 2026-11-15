@@ -329,7 +329,7 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
           <Button id="grid-analyze" className="w-full" loading={busy}
             disabled={lock || !scene || tiles.length !== 4 || !consent || !terms || configured !== true || completed === 4}
             onClick={() => void analyze()}>{started ? 'Recover same cells' : `Run AI review · max ${maxCalls} calls`}</Button>
-          <p className="text-xs text-bone-dim">All four cells run at once. A cell the palette gate rejects is regenerated automatically, up to the retry budget; each retry is a new paid call with a new random seed. Network or provider failures are not retried automatically. Recovery polls accepted jobs and resumes the same attempt; the server blocks anything past the budget.</p>
+          <p className="text-xs text-bone-dim">Cells run one at a time. The default makes at most four paid calls, with no automatic regeneration. Selecting retries explicitly increases the paid budget; each palette retry is a new paid call. Network or provider failures are not retried automatically. Recovery polls accepted jobs and resumes the same attempt; the server blocks anything past the budget.</p>
           {tiles.length === 4 && started && <ul className="space-y-1">
             {tiles.map(tile => { const r = reviews[tile.index]; return <li key={tile.index} className="flex flex-wrap justify-between gap-x-3 font-mono text-nano uppercase">
               <span className="text-bone">{LABELS[tile.index]} / {tile.status}</span>

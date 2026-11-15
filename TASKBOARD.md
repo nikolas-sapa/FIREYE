@@ -1,5 +1,15 @@
 # Fire Command Center shared taskboard
 
+## DEVIN-PR49-REPAIR-20261115
+
+Owner authorized Repair Then Merge for PR49 after review identified PNG decoder, paid-grid budget and historical-evidence regressions. Coordinator owns TASKBOARD and Git delivery. Isolated branch `devin/1794731537-repair-pr49`; exact implementation claim recorded before edits in ignored `.scratch/pr49-repair-20261115/claim-and-test-plan.md`: `proposal/fcc/server/image-lab-landscape.ts`, `proposal/fcc/src/image-lab/grid.ts`, `proposal/fcc/src/image-lab/grid-client.ts`, `proposal/fcc/tests/image-lab-grid.ts`, `proposal/fcc/src/sections/GreeceGridLab.tsx`, `proposal/fcc/docs/IMAGE_LAB.md`. Existing FIREYE/World3D features retained.
+
+Test plan before implementation: IMG49-01 restore inherited regression tests first, observe at least one failure on unchanged PR49 source. IMG49-02 valid 256px terrain accepts, oversized dimensions/extra scanline byte/filter5 reject 3/3; grid peak concurrency1 and default exactly4 ordered calls, zero retries. IMG49-03 frontend typecheck/image-lab/monitoring/console/spread/build/PWA exit0; built browser FIREYE/monitoring/replay at 1440x900 and375x812, zero page errors and paid/provider calls. Desktop interactions require stable post-boot verification, not HTTP200 alone.
+
+Implementation: restore reviewed main guards and tests, retain new line/area UI, restore budget and evidence caveats, verify exact six-file diff and record browser evidence, then coordinator delivery after review and hosted checks.
+
+Non-goals: mascot work, backend/frontend shared-state acceptance, public hosting, production auth, live provider calls, paid calls, dependency/security-policy changes, operational wildfire claims.
+
 BATCH-20261115-17 independent final review: dedicated reader task01a1ddf4-3c70-7191-a051-f3803abdb75d APPROVE exact two-document hashes,0blockers; independent native260+compiled260,typecheck/fullsourcecompiler0failure/skip,focused26/26,20actualexport probes0transport,7links+1anchor0missing. Root inspected actual four-line diff, independently repeated full checker/sourcehash/diff/scope. Coordinator authorizes docs-only branch delivery. Existing workflow path filters exclude docs-only PR, no fresh hosted CI claimed. Actual Marco mapping/CRS/clocks/cadence/600s and full issue remain unresolved;0frontend/providers.
 
 
