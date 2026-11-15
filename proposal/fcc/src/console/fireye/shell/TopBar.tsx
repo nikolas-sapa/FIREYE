@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppearanceToggle, FireyeWordmark, Icon, OrchestratorAvatar, cn } from '@ds';
+import { AppearanceToggle, FireyeWordmark, Icon, cn } from '@ds';
 import { useConsoleSelector } from '../../store';
 import { setMapMode, useMapSettings } from '../../stage3d/map-settings';
 import { localDay, localTime, packZone, zuluTime } from '../../ui/format';
+import { TamagotchiSprite } from '../../ui/TamagotchiSprite';
 import { fireyeUi, useFireye } from './ui';
 
 export function Seg<T extends string>({ value, options, onChange, label, className }: {
@@ -50,12 +51,13 @@ function Clock() {
 function OrchStatus({ pending, onOpen }: { pending: number; onOpen: () => void }) {
   const status = useConsoleSelector((s) => s.brief.headline);
   const thinking = useConsoleSelector((s) => s.messages.some((m) => m.thinking));
+  const paused = useConsoleSelector((s) => s.clock.paused);
   const chat = useFireye((s) => s.chat);
   return (
     <button type="button" onClick={onOpen} title={status}
       className="flex h-7 shrink-0 items-center gap-2 border border-line-strong bg-ink-900 px-2.5 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim hover:text-bone">
-      <OrchestratorAvatar size={18} state={pending ? 'alert' : thinking ? 'thinking' : chat ? 'listening' : 'idle'} className="text-bone" />
-      ORCH
+      <TamagotchiSprite size={16} state={pending ? 'alert' : thinking ? 'thinking' : chat ? 'working' : 'idle'} paused={paused} />
+      Chief
       <span className={cn('fcc-num', pending ? 'text-signal' : 'text-bone-mute')}>{pending ? `${pending} DECISION${pending > 1 ? 'S' : ''}` : 'MONITORING'}</span>
     </button>
   );

@@ -89,6 +89,15 @@ assert.ok(defaults.includes('width:32px;height:32px'));
 assert.ok(defaults.includes('background-position:0px 0px'));
 console.log('TM02 PASS:48 SSR combinations plus defaults, frame0, exact dimensions/rows, hidden noninteractive sprite');
 
+const chiefChat = readFileSync(resolve(process.cwd(), 'src/console/fireye/shell/OrchestratorCallout.tsx'), 'utf8');
+const chiefTopBar = readFileSync(resolve(process.cwd(), 'src/console/fireye/shell/TopBar.tsx'), 'utf8');
+assert.ok(chiefChat.includes('placeholder="Ask Chief"'));
+assert.ok(!chiefChat.includes('Ask the orchestrator'));
+assert.match(chiefChat, /<span className="font-mono text-micro uppercase tracking-\[0\.16em\] text-bone">Chief<\/span>/);
+assert.match(chiefTopBar, /import \{ TamagotchiSprite \} from '\.\.\/\.\.\/ui\/TamagotchiSprite';/);
+assert.match(chiefTopBar, /<TamagotchiSprite size=\{16\}/);
+console.log('CB01 PASS: Chief placeholder/header and existing topbar TamagotchiSprite');
+
 type MotionSnapshot = { frame: number; intervals: number; listeners: number; cadence: number[] };
 type MotionHarness = {
   snapshot(): Promise<MotionSnapshot>;

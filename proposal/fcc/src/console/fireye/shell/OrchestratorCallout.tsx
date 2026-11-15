@@ -167,7 +167,7 @@ export function OrchestratorChat() {
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3">
         <TamagotchiSprite size={32} state={mascotState} paused={paused} />
         <TamagotchiSprite character="scout" size={16} state={mascotState} paused={paused} />
-        <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">Orchestrator</span>
+        <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">Chief</span>
         <span className="font-mono text-micro uppercase text-bone-mute">simulated · no LLM</span>
         <button type="button" aria-label="Close chat" onClick={() => fireyeUi.set({ chat: false })} className="ml-auto text-bone-mute hover:text-bone"><Icon name="close" size={11} /></button>
       </header>
@@ -193,7 +193,7 @@ export function OrchestratorChat() {
         </div>
       )}
       <form className="flex shrink-0 border-t border-line" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask the orchestrator" aria-label="Message"
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask Chief" aria-label="Message"
           className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs text-bone placeholder:text-bone-mute focus:outline-none" />
         <button type="submit" aria-label="Send" className="px-3 text-bone-dim hover:text-bone"><Icon name="send" size={12} /></button>
       </form>
