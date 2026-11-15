@@ -1,5 +1,19 @@
 # Fire Command Center shared taskboard
 
+## ROOT-20261115-DOCS-DELIVERY, reviewed README and infographic integration
+
+Delivery owner: coordinator, branch `devin/20261115-current-docs-delivery`, base `c466b6f`. Implementation owners completed isolated item31/item32 worktrees; only frozen coordinator-reviewed artifacts may enter this branch. Exact delivery scope: `TASKBOARD.md`, `README.md`, and these16 assets under `docs/assets/readme/`: `demo-flow.svg`, `demo-flow.png`, `demo-flow.mmd`, `demo-flow.excalidraw`, `agent-roles.svg`, `agent-roles.png`, `agent-roles.mmd`, `agent-roles.excalidraw`, `system-overview.svg`, `system-overview.png`, `system-overview.mmd`, `system-overview.excalidraw`, `mission-lifecycle.svg`, `mission-lifecycle.png`, `mission-lifecycle.mmd`, `mission-lifecycle.excalidraw`.
+
+Test plan before integration:
+- DG01: all16 delivered asset hashes exactly match the frozen reviewed source artifacts; four SVGs render, four PNGs decode nonblank, four Mermaid graphs render, four editable scenes parse with matching text/edge status. Existing real missing-edge/heading-overflow negative controls fail. Native Excalidraw editor round-trip/font substitution remains explicitly untested.
+- DG02: README local paths/anchors/images resolve with0 missing references; actual script/source references exist. Deliberately nonexistent link in an ignored copy fails with exit1, restored exact copy passes with exit0. Reuse bounded document checks, not runtime-suite claims.
+- DG03: final diff contains only these18 approved paths. Backend/runtime/frontend/data/dependency/lock/CI trees remain unchanged. No source-data rederivation or original-vintage graph changes.
+- DG04: coordinator reviews every image, semantic edge and README delta before branch/PR delivery. Applicable hosted checks required before integration; no operational/provider/deployment acceptance inferred.
+
+Implementation: apply the exact reviewed binary asset patch, verify byte identity, then integrate only the final approved README delta. Preserve source snapshots, original embedded Geist/OFL notices, all existing infographic basenames and explicit LOCAL/FIXTURE versus pending/dormant boundaries.
+
+Non-goals: application/audience redesign, camera/runtime fixes, producer/executor mapping, source refresh, live inference/retrieval, credentials, media/cloud/auth activation, public deployment, extra dependencies, changed budgets or full issue closure.
+
 ## ROOT-20261115-BODY-LEASE, PR48 Node24 acceptance correction
 
 Coordinator reassigns the frozen PR48 test/contract continuation to one GPT-6.1 Sol builder on `devin/20261115-body-lease-test`, source `3ccdf88d68c84c73b86c87f086bac87acb4c4e7c`. Exact final edit ownership: `backend/tests/queued-gemini.test.ts`, `docs/contracts/queued-gemini.v1.md`. `backend/integrations/receipts.ts` is claimed only for one temporary negative-control mutation, restored byte-for-byte before final verification. No final production-source change authorized. Coordinator alone edits TASKBOARD and handles Git delivery. Other issue/recording worktrees remain untouched.

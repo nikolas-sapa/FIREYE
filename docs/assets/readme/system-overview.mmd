@@ -1,44 +1,26 @@
-%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":18,"themeVariables":{"background":"#ffffff","primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#8f8f8f","lineColor":"#4d4d4d","secondaryColor":"#ffffff","tertiaryColor":"#fafafa","clusterBkg":"#fafafa","clusterBorder":"#c9c9c9","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":32,"rankSpacing":48,"padding":20}}}%%
+%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":22,"themeVariables":{"primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#c9c9c9","lineColor":"#4d4d4d","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":40,"rankSpacing":56}}}%%
 graph TD
-  accTitle: Fire Command Center system overview, current local core and planned integrations
-  accDescr: Solid blue nodes are implemented pure local TypeScript. Dashed gray nodes are planned integrations. Evidence adapters and analyst models are not connected. Convex is the approved eventual shared authority, not provisioned. A separate teammate prototype is unmerged. Human decisions and received simulator facts must pass the local protocol boundary.
-
-  subgraph INPUTS["PLANNED inputs"]
-    direction TB
-    DATA["News · satellite · cameras<br/>Weather · terrain"]
-    ANALYSIS["Source adapters + analysts<br/>Unverified evidence / proposals"]
-    DATA --> ANALYSIS
-  end
-
-  subgraph CORE["BUILT local core"]
-    direction TB
-    VALIDATE["Validate envelopes<br/>Run · actor · revision · clocks"]
-    STATE["Received-event state<br/>Immutable reducer + history"]
-    GATE["Chief approval gate<br/>Finite scope + reservation"]
-    REPLAY["Deterministic replay<br/>Received facts only"]
-    VALIDATE --> STATE
-    STATE --> GATE
-    STATE --> REPLAY
-  end
-
-  subgraph APPLICATION["PLANNED app integration"]
-    direction TB
-    CONVEX["Convex canonical authority<br/>Approved direction, not provisioned"]
-    UI["Crew Map + Camera Room<br/>Teammate UI prototype unmerged"]
-    SIM["Single simulator producer<br/>Deterministic drone executors"]
-    CONVEX --> UI
-    CONVEX --> SIM
-  end
-
-  ANALYSIS -. received evidence .-> VALIDATE
-  UI -. current Chief decision .-> GATE
-  GATE -. enqueued simulation command .-> CONVEX
-  SIM -. actual received facts .-> VALIDATE
-
-  classDef built fill:#ffffff,stroke:#006bff,stroke-width:2px,color:#171717;
-  classDef planned fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:6 4,color:#171717;
-  class VALIDATE,STATE,GATE,REPLAY built;
-  class DATA,ANALYSIS,CONVEX,UI,SIM planned;
-  style INPUTS fill:#ffffff,stroke:#c9c9c9,stroke-dasharray:6 4
-  style CORE fill:#fafafa,stroke:#006bff
-  style APPLICATION fill:#ffffff,stroke:#c9c9c9,stroke-dasharray:6 4
+  accTitle: Local simulation and shared received state.
+  accDescr: Frontend exercise Runtime and backend received state remain distinct verified slices. Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept. Current local slices only. No second canonical authority or new schema is proposed here. Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use. 2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt.
+  HUMAN["Human local approval<br/>Human Chief authority"]
+  RUNTIME["Frontend Runtime<br/>Local planner / feed renderer / projector<br/>Local simulator executor<br/>6-drone frontend world"]
+  OPS["Ops / FIREYE<br/>Local exercise views"]
+  BACKEND["Backend received bridge / reducer<br/>Finite planner / --demo / jobs: implemented fixture composition<br/>--demo: exactly ONE registered single-drone fixture course<br/>Not the 6-drone frontend world"]
+  CREW["Crew read-only<br/>Received DTO only<br/>No Runtime fallback"]
+  SEAMS["Dormant provider / source / Boxd seams<br/>No live / cloud / media ingestion"]
+  HUMAN -- "LOCAL / FIXTURE" --> RUNTIME
+  RUNTIME -- "LOCAL / FIXTURE" --> OPS
+  BACKEND -- "LOCAL / FIXTURE" --> CREW
+  RUNTIME -. "NOT CONNECTED / producer / coordinate-clock mapping pending" .-> BACKEND
+  BACKEND -. "NOT CONNECTED / SimController / coordinate-clock mapping pending" .-> RUNTIME
+  BACKEND -. "Dormant / no live integration" .-> SEAMS
+  LEGEND["Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept."]
+  BOUNDARY["Current local slices only. No second canonical authority or new schema is proposed here.<br/>Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use.<br/>2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt."]
+  classDef local fill:#fafafa,stroke:#c9c9c9,stroke-width:1.5px,color:#171717;
+  classDef authority fill:#fafafa,stroke:#006bff,stroke-width:1.5px,color:#171717;
+  classDef pending fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:7 6,color:#171717;
+  classDef note fill:#ffffff,stroke:#ebebeb,color:#4d4d4d;
+  class HUMAN,RUNTIME,OPS,BACKEND,CREW local;
+  class HUMAN authority;
+  class SEAMS pending;
+  class LEGEND,BOUNDARY note;

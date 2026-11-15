@@ -1,42 +1,23 @@
-%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":18,"themeVariables":{"background":"#ffffff","primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#8f8f8f","lineColor":"#4d4d4d","secondaryColor":"#ffffff","tertiaryColor":"#fafafa","clusterBkg":"#fafafa","clusterBorder":"#c9c9c9","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":32,"rankSpacing":48,"padding":20}}}%%
+%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":22,"themeVariables":{"primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#c9c9c9","lineColor":"#4d4d4d","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":40,"rankSpacing":56}}}%%
 graph TD
-  accTitle: Human crew, planned analytical roles and the current local approval boundary
-  accDescr: Multiple human teammates coordinate a larger set of logical specialist contexts. All model and tool roles are planned, with zero verified product calls. Google would orchestrate, Iris would rank finite feasible choices, fal analysis selection is pending, and Treg supplies retrieval tools rather than model routing. Only the current human Chief may approve changed simulation scope. Built local gates do not establish real authentication or runtime integration.
-
-  CREW["Small human crew<br/>Chief + analyst / camera teammates"]
-  CHIEF["Current human Chief<br/>Reviews changed mission scope"]
-
-  subgraph INTELLIGENCE["PLANNED logical roles"]
-    direction TB
-    ORCH["Main orchestrator · Google<br/>Coordinates bounded analysis"]
-    SPECIALISTS["Evidence specialists<br/>Pixels · sources · relative projection"]
-    FAL["fal analysis candidate<br/>Model / modality selection pending"]
-    TREG["Treg retrieval tools<br/>Not a model router"]
-    IRIS["Iris choice ranker<br/>Finite feasible options only"]
-    ORCH --> SPECIALISTS
-    FAL --> SPECIALISTS
-    TREG --> SPECIALISTS
-    SPECIALISTS --> IRIS
-  end
-
-  subgraph LOCAL["BUILT local gates"]
-    direction TB
-    PROPOSAL["Proposal validation<br/>Scope · versions · expiry"]
-    APPROVAL["Current-Chief approval gate<br/>One reservation + command"]
-    PROPOSAL --> APPROVAL
-  end
-
-  EXECUTOR["PLANNED · drone executors<br/>Deterministic teammate simulator"]
-
-  CREW -. shared received picture .-> ORCH
-  CREW --> CHIEF
-  IRIS -. proposed choice .-> PROPOSAL
-  CHIEF -. explicit human decision .-> APPROVAL
-  APPROVAL -. simulation command only .-> EXECUTOR
-
-  classDef built fill:#ffffff,stroke:#006bff,stroke-width:2px,color:#171717;
-  classDef planned fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:6 4,color:#171717;
-  class PROPOSAL,APPROVAL built;
-  class CREW,CHIEF,ORCH,SPECIALISTS,FAL,TREG,IRIS,EXECUTOR planned;
-  style INTELLIGENCE fill:#ffffff,stroke:#c9c9c9,stroke-dasharray:6 4
-  style LOCAL fill:#fafafa,stroke:#006bff
+  accTitle: Human authority. Bounded software roles.
+  accDescr: Product roles and local contexts, not coding agents or verified model integrations. Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept. Chief / Scout assistance has no shared-backend command-execution link or human authority. Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use. 2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt.
+  HUMAN["Human Chief<br/>Approval authority<br/>Not Chief mascot / chat"]
+  LOCAL["Local simulator / drone contexts<br/>Approved local simulation<br/>No field control"]
+  ASSISTANT["Chief / Scout assistant<br/>And local demo agents<br/>Scripted / simulated, no verified LLM<br/>No human approval authority"]
+  BACKEND["Backend deterministic services<br/>Received reducer / finite toy planner<br/>Bounded queue / validation"]
+  SEAMS["Dormant model / source seams<br/>Iris / Gemini / Gemma / fal<br/>Treg / Firecrawl / Boxd<br/>Fixture / bounded exports, not live integration"]
+  CREW["Read-only Crew<br/>Received DTO only"]
+  HUMAN -- "Human-approved local decision" --> LOCAL
+  BACKEND -- "LOCAL / FIXTURE" --> CREW
+  BACKEND -. "Dormant / no live integration" .-> SEAMS
+  LEGEND["Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept."]
+  BOUNDARY["Chief / Scout assistance has no shared-backend command-execution link or human authority.<br/>Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use.<br/>2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt."]
+  classDef local fill:#fafafa,stroke:#c9c9c9,stroke-width:1.5px,color:#171717;
+  classDef authority fill:#fafafa,stroke:#006bff,stroke-width:1.5px,color:#171717;
+  classDef pending fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:7 6,color:#171717;
+  classDef note fill:#ffffff,stroke:#ebebeb,color:#4d4d4d;
+  class HUMAN,LOCAL,ASSISTANT,BACKEND,CREW local;
+  class HUMAN authority;
+  class SEAMS pending;
+  class LEGEND,BOUNDARY note;
