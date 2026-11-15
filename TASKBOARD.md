@@ -1,5 +1,13 @@
 # Fire Command Center shared taskboard
 
+## ORCH-01 · scoped-active · local orchestration walking skeleton
+
+Owner: `/root/orchestration`, branch `task/orchestration-demo-v1`, base `4748ee8`.
+Exact files: `backend/orchestration/types.ts`, `backend/orchestration/coordinator.ts`, `backend/tests/orchestration.test.ts`, `docs/contracts/orchestration-demo.v1.md`, `docs/architecture/orchestration-demo-proof.md`, this ORCH-01 append only.
+Test-first criteria and non-goals: [orchestration demo v1](docs/contracts/orchestration-demo.v1.md). No core/package/UI/schema writes. Root owns dependency integration, review and Git delivery. Actual local bridge/planner/sponsor exports, fixture metadata/receipts only; providers disabled, no auth/Convex/media ingest. No product-wide P0 completion claimed.
+Worker frozen, root review/delivery pending: 12/12 orchestration + 141/141 combined tests, typecheck/diff-check exit 0, Node 26.11.1. Actual bridge/core fixture loop 1 command/5 factual receipts/2 frames/0 provider transports; separate actual Iris client 1 fixture transport/1 reservation, preserved non-provider receipt. Dynamic seed registration absent, changed courses review-only. [Exact proof and limits](docs/architecture/orchestration-demo-proof.md).
+Follow-up frozen: 15/15 focused/typecheck exit 0 after RED receipt/cache cases. 20 hostile receipts leak/invoke 0, 20 cached interleaves return 0 stale successes. Planner-owned `acff252` integrated, real tick1→2 proposal/approval/checked command/receipt succeeds, tick7 expiry rejects. Final root combined rerun/review pending.
+
 Snapshot: 2026-11-14, 23:19 Europe/Athens. Preserve 44 task IDs. Separate research/admin receipts, merged local source and verified product milestones. [Current main board](https://github.com/nikolas-sapa/fire-command-center/blob/main/TASKBOARD.md) · [Brief](README.md) · [Rules](AGENTS.md) · [Parameter DRAFT/numeric cases](docs/specs/simulator-parameter-contract.md). Main now includes all four reviewed local protocol tasks; this post-merge status patch awaits separate docs-only delivery.
 
 ## Completion dashboard
