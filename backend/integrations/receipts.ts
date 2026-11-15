@@ -162,6 +162,14 @@ export class SponsorBudget {
 }
 
 type RequestSpec = Readonly<{ url: string; model: string | null; headers: Readonly<Record<string, string>>; body: unknown }>;
+function unsettledBody(): Promise<void> { return new Promise<void>(() => {}); }
+// A closed stream/bodyUsed flag is not underlying cancellation settlement.
+// Rejected/throwing cancellation leaves physical work unproven, fail closed.
+function settleBody(body: ReadableStream<Uint8Array>, reader?: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  try { return (reader ? reader.cancel() : body.cancel()).catch(unsettledBody); }
+  catch { return unsettledBody(); }
+}
+
 export function configured(config: ClientConfig): Failure | null {
   if (config.enabled !== true) return 'DISABLED';
   if (!id(config.authorization_id) || !positive(config.max_call_micro) || !positive(config.deadline_ms) || config.deadline_ms > 10_000
@@ -208,31 +216,47 @@ export async function perform<T>(adapter: Adapter, snapshot: Snapshot, input: un
     return value;
   };
   try {
+    let rejectEarly!: (result: Result<T>) => void;
+    const earlyFailure = new Promise<Result<T>>(resolve => { rejectEarly = resolve; });
     const operation = async (): Promise<Result<T>> => {
+      let response: Response | undefined;
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let complete = false;
+      let cleanup: Promise<void> | undefined;
+      const cancel = () => {
+        if (!complete && response?.body && !cleanup) cleanup = settleBody(response.body, reader);
+      };
+      const rejected = (code: Failure): Result<T> => {
+        const value = Object.freeze({ ...fail(code), receipt: receipt(code, response) });
+        rejectEarly(value); return value;
+      };
+      controller.signal.addEventListener('abort', cancel, { once: true });
       try {
       const request: TransportRequest = Object.freeze({ url: spec.url, method: 'POST', headers: Object.freeze({ 'Content-Type': 'application/json', ...spec.headers }),
         body: JSON.stringify(spec.body), signal: controller.signal, redirect: 'error' });
-      const response = config.transport ? await config.transport(request) : await fetch(request.url, {
+      response = config.transport ? await config.transport(request) : await fetch(request.url, {
         method: request.method, headers: request.headers, body: request.body, signal: request.signal, redirect: 'manual',
       });
-      if (response.redirected || (response.status >= 300 && response.status < 400)) return Object.freeze({ ...fail('REDIRECT'), receipt: receipt('REDIRECT') });
-      if (!response.ok) return Object.freeze({ ...fail('TRANSPORT'), receipt: receipt('TRANSPORT', response) });
+      // A previously read/cancelled body cannot transfer its hidden underlying
+      // settlement promise. Its EOF or second cancellation proves nothing.
+      if (response.bodyUsed) { cleanup = unsettledBody(); return rejected('INVALID_REPLY'); }
+      if (controller.signal.aborted) return rejected('DEADLINE');
+      if (response.redirected || (response.status >= 300 && response.status < 400)) return rejected('REDIRECT');
+      if (!response.ok) return rejected('TRANSPORT');
       const length = response.headers.get('content-length');
-      if (length !== null && (!/^\d+$/.test(length) || Number(length) > 262_144)) return Object.freeze({ ...fail('OVERSIZE'), receipt: receipt('OVERSIZE', response) });
-      const reader = response.body?.getReader();
-      if (!reader) return Object.freeze({ ...fail('INVALID_REPLY'), receipt: receipt('INVALID_REPLY', response) });
+      if (length !== null && (!/^\d+$/.test(length) || Number(length) > 262_144)) return rejected('OVERSIZE');
+      reader = response.body?.getReader();
+      if (!reader) return rejected('INVALID_REPLY');
       let size = 0;
       const chunks: Uint8Array[] = [];
-      try {
         while (true) {
           const next = await reader.read();
-          if (controller.signal.aborted) return Object.freeze({ ...fail('DEADLINE'), receipt: receipt('DEADLINE', response) });
-          if (next.done) break;
+          if (controller.signal.aborted) return rejected('DEADLINE');
+          if (next.done) { complete = true; break; }
           size += next.value.byteLength;
-          if (size > 262_144) { void reader.cancel().catch(() => {}); return Object.freeze({ ...fail('OVERSIZE'), receipt: receipt('OVERSIZE', response) }); }
+          if (size > 262_144) return rejected('OVERSIZE');
           chunks.push(next.value);
         }
-      } finally { reader.releaseLock(); }
       if (controller.signal.aborted || now() >= end) return Object.freeze({ ...fail('DEADLINE'), receipt: receipt('DEADLINE', response) });
       if (!validSnapshot(snapshot, now()) || !config.is_current!(snapshot)) return Object.freeze({ ...fail('STALE'), receipt: receipt('STALE', response) });
       const body: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -240,16 +264,21 @@ export async function perform<T>(adapter: Adapter, snapshot: Snapshot, input: un
       const value = parse(body, response);
       if (value === null) return Object.freeze({ ...fail('INVALID_REPLY'), receipt: receipt('INVALID_REPLY', response) });
       return freeze({ ok: true as const, value, receipt: receipt('accepted', response) });
-      } finally {
+      } catch { return rejected(controller.signal.aborted ? 'DEADLINE' : 'INVALID_REPLY'); } finally {
+        cancel();
+        if (cleanup) await cleanup;
+        reader?.releaseLock();
+        controller.signal.removeEventListener('abort', cancel);
         config.budget!.release();
-        // Trusted server lifecycle notification, actual work not deadline race.
+        // Only EOF/bodyless or fulfilled underlying body cancellation settles
+        // physical work. Caller failures/deadlines do not free this slot.
         try { config.on_transport_settled?.(); } catch { /* Notification cannot alter result or released budget. */ }
       }
     };
     const deadline = new Promise<Result<T>>(resolve => {
       timer = setTimeout(() => { controller.abort(); resolve(Object.freeze({ ...fail('DEADLINE'), receipt: receipt('DEADLINE') })); }, config.deadline_ms!);
     });
-    const result = await Promise.race([operation(), deadline]);
+    const result = await Promise.race([operation(), earlyFailure, deadline]);
     if (!result.ok) return result;
     const rejected = (code: 'STALE' | 'DEADLINE'): Result<T> => {
       const value: Receipt = freeze({ ...result.receipt!, status: code, finished_at_ms: now() });

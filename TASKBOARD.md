@@ -1,5 +1,19 @@
 # Fire Command Center shared taskboard
 
+BATCH-20261115-15 final owned review: dedicatedbuilder plus independentTypeScript01a1ddff-5de8-7201-8bc6-ba02003e83f3/security01a1ddff-5e52-7e03-bb72-61015e623dbe APPROVE final4hashes (8ef1wrapper/7491test/ed451receipts/4bd8contract),0blockers. Reviewed follow-up RED/GREEN catches pre-cancelledresponse and originaldeadline/snapshot dispatch/abortbody lifetime, finalactualD01-05five/5 andsecurity16/16pass. Root independently runsfullnative288/compiled288/noEmit/sourcecompiler0failure/skip and verifies exactdiff/sourcehashscope. Sharedreceiptsed451 reviewed handoff composed into#14 only byroot. Coordinatorauthorizes exact4ownedfiles+board branchdelivery/merge afterlatestmaincomposition/hostedchecks,0genuinecalls; service/media/provider/full#15remainopen.
+
+
+## BATCH-20261115-15, preserved lifecycle continuation
+
+Root coordinator assigns /root/issue15_builder, issue #15, branch `task/fcc-20261115-issue15`, clean current-main base `b1e5572b3c2be25ad46630805ae713fa2d6abca9`. Exact ownership: `backend/orchestration/queued-gemini.ts`, `backend/tests/queued-gemini.test.ts`, `backend/integrations/receipts.ts`, `docs/contracts/queued-gemini.v1.md` only. Earlier issue worktrees and scratch receipts remain read-only. Coordinator owns TASKBOARD and Git delivery; reviewers read only. #15 alone owns shared `receipts.ts`; #14 may consume it only after sequenced reviewed handoff, never edits it.
+
+Test plan before implementation: GEM15-01: 20 duplicates use exactly1 actual client/jobs/localhost transport/reservation/issued receipt. GEM15-02: 2 hung transports or response bodies hold physical/logical2 with queued8; early redirect/non2xx/oversize/header/body errors with delayed/rejected cancellation free0 slots before actual settlement. GEM15-03: 20 stale/deadline/cache/hostile input variants yield0 actionable/extra calls, original deadlines renewed0. GEM15-04: native+compiled/fullsourcecompiler/noEmit all exit0,0failure/skip; independent TypeScript/security plus root verification hash-bound.
+
+Implementation: reconcile preserved exact WIP and actual exports, reproduce original lifecycle fault with numeric RED, apply minimal owned delta, freeze source, review/test/hash-pin standalone and composed dependency, coordinator commit/push through PR. No generic scheduler/core/schema redesign or architecture choices.
+
+Non-goals: service/media input fabrication or new endpoint scope, frontend edits/launch, paid/provider/credential/cloud/VM activation, new dependencies/locks/CI/core redesign, dynamic registration/production auth, worker Git delivery, merge/deploy or full issue closure without remaining acceptance.
+
+
 ## PR38-CI-2026-11-15, headless frontend verification
 
 Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.
