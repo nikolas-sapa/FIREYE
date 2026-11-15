@@ -321,7 +321,8 @@ export function runSpread(pack: ScenarioPack, issuedAt: Ms, wx: (t: Ms) => Sprea
       const nt = tc + d / (dz > 0 ? r * slopeFactor(dz / d) : r);
       if (nt < T[j] && nt <= horizonMin) {
         T[j] = nt;
-        heap.push(nt, j);
+        // Compare popped keys and stored distances at the same precision; keep genuine stale entries stale.
+        heap.push(T[j], j);
       }
     }
   }
