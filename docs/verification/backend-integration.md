@@ -74,3 +74,24 @@ latest-per-feed cache entry. No invented geometry/calibration/media claim.
 All test-owned listeners/CLI children closed; unique compiled directory removed.
 Node24 floor and hosted CI remain unrun. Default CLI is still bridge only, not
 complete product readiness. Coordinator review and branch/PR delivery pending.
+
+## Consolidated coordinator receipt
+
+2026-11-15, Node 26.11.1, source `523b021` before this receipt-only update.
+Root ran the complete native and TypeScript-compiled check: 220/220 native and
+220/220 compiled, zero failures/skips, typecheck and check-runner exit0.
+Compiled suite 6650.294125 ms. Sources, sandbox, Gemma, provider setup and the
+callable `--demo` service are included. No frontend source delta from main.
+
+Independent TypeScript and security reviewers passed the final service source.
+Review-found cache, task-identity, malformed provenance, clock identity and
+model/assessment delivery races were reproduced and fixed before integration.
+Default startup remains bridge-only; explicit `--demo` enables fixture
+orchestration HTTP paths. Both modes are backend-only, no frontend opens.
+
+This is verified local fixture readiness, not completed live-sponsor or frontend
+integration. Genuine inference/retrieval and Boxd execution remain zero.
+Oumi/fal credential setup, authorized live transports and spend policy remain
+open; Firecrawl native retrieval and Boxd execution are unsupported. Node24
+floor and hosted CI still require observed receipts. Frontend launch requires
+explicit owner confirmation after desired backend scope is accepted.
