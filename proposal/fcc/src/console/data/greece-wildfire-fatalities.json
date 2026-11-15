@@ -1,0 +1,203 @@
+{
+  "schema_version": "fcc-historical-fatalities.v1",
+  "country": "Greece",
+  "period_start": 1980,
+  "period_end": 2024,
+  "measure": "Recorded fatalities associated with wildfires",
+  "total_recorded": 245,
+  "unit": "people",
+  "publisher": "European Environment Agency",
+  "data_source": "CATDAT by RiskLayer",
+  "source_page": "https://climate-adapt.eea.europa.eu/en/observatory/topics/health-impacts/wildfires",
+  "source_view_csv": "https://tableau-public.discomap.eea.europa.eu/views/Fatalitiesassociatedwithwildfire/Fatalitiesfromwildfire.csv",
+  "verified_at_utc": "2026-11-15T10:08:43.992801+00:00",
+  "capture_sha256": "a8afba170a3b5916d1415fa67ac640800ad270fe371d2efeaa861ef53ff177ec",
+  "limitations": [
+    "Historical source records, not a forecast or a complete estimate of smoke-attributable mortality.",
+    "Source-vintage counts may differ from later event-specific death-toll revisions.",
+    "Zeros mean zero recorded in this source series, not independently proven absence of deaths.",
+    "No lives-saved, evacuation-success, or counterfactual inference."
+  ],
+  "values": [
+    {
+      "year": 1980,
+      "fatalities": 0
+    },
+    {
+      "year": 1981,
+      "fatalities": 0
+    },
+    {
+      "year": 1982,
+      "fatalities": 0
+    },
+    {
+      "year": 1983,
+      "fatalities": 12
+    },
+    {
+      "year": 1984,
+      "fatalities": 0
+    },
+    {
+      "year": 1985,
+      "fatalities": 3
+    },
+    {
+      "year": 1986,
+      "fatalities": 0
+    },
+    {
+      "year": 1987,
+      "fatalities": 0
+    },
+    {
+      "year": 1988,
+      "fatalities": 0
+    },
+    {
+      "year": 1989,
+      "fatalities": 0
+    },
+    {
+      "year": 1990,
+      "fatalities": 0
+    },
+    {
+      "year": 1991,
+      "fatalities": 0
+    },
+    {
+      "year": 1992,
+      "fatalities": 0
+    },
+    {
+      "year": 1993,
+      "fatalities": 0
+    },
+    {
+      "year": 1994,
+      "fatalities": 0
+    },
+    {
+      "year": 1995,
+      "fatalities": 0
+    },
+    {
+      "year": 1996,
+      "fatalities": 0
+    },
+    {
+      "year": 1997,
+      "fatalities": 0
+    },
+    {
+      "year": 1998,
+      "fatalities": 14
+    },
+    {
+      "year": 1999,
+      "fatalities": 0
+    },
+    {
+      "year": 2000,
+      "fatalities": 7
+    },
+    {
+      "year": 2001,
+      "fatalities": 0
+    },
+    {
+      "year": 2002,
+      "fatalities": 0
+    },
+    {
+      "year": 2003,
+      "fatalities": 0
+    },
+    {
+      "year": 2004,
+      "fatalities": 0
+    },
+    {
+      "year": 2005,
+      "fatalities": 0
+    },
+    {
+      "year": 2006,
+      "fatalities": 0
+    },
+    {
+      "year": 2007,
+      "fatalities": 73
+    },
+    {
+      "year": 2008,
+      "fatalities": 0
+    },
+    {
+      "year": 2009,
+      "fatalities": 1
+    },
+    {
+      "year": 2010,
+      "fatalities": 0
+    },
+    {
+      "year": 2011,
+      "fatalities": 0
+    },
+    {
+      "year": 2012,
+      "fatalities": 1
+    },
+    {
+      "year": 2013,
+      "fatalities": 0
+    },
+    {
+      "year": 2014,
+      "fatalities": 0
+    },
+    {
+      "year": 2015,
+      "fatalities": 1
+    },
+    {
+      "year": 2016,
+      "fatalities": 0
+    },
+    {
+      "year": 2017,
+      "fatalities": 0
+    },
+    {
+      "year": 2018,
+      "fatalities": 102
+    },
+    {
+      "year": 2019,
+      "fatalities": 0
+    },
+    {
+      "year": 2020,
+      "fatalities": 0
+    },
+    {
+      "year": 2021,
+      "fatalities": 2
+    },
+    {
+      "year": 2022,
+      "fatalities": 0
+    },
+    {
+      "year": 2023,
+      "fatalities": 28
+    },
+    {
+      "year": 2024,
+      "fatalities": 1
+    }
+  ]
+}
