@@ -22,7 +22,13 @@ import { OpsTopBar } from './OpsTopBar';
 import { OpsRail } from './OpsRail';
 import { OpsInspect } from './OpsInspect';
 import { OpsComms } from './OpsComms';
-import { wireComms } from './opsStore';
+import { OpsPalette } from './OpsPalette';
+import { postSystem, wireComms } from './opsStore';
+import { alertFeed, counters, ensureOsm, hazardNow, placeAlerts, routesNow, useAlertVersion, useRoutes, wireAlerts } from './alerts';
+import { CivilianPanel, useHome } from './CivilianPanel';
+import { OpsOverlay } from './OpsOverlay';
+import { PresenterCaption, noteRoute, presenter, startPresenter, stopPresenter, usePresenter } from './Presenter';
+import { opsView, useOpsView, useOverlayOpts } from './view';
 
 enableWorld3dFeeds();
 
@@ -60,12 +66,13 @@ function useJournalReapply() {
 
 type RightTab = 'inspect' | 'comms';
 
-function useKeyboard(engine: StageEngine | null, composer: React.RefObject<HTMLInputElement | null>, openComms: () => void) {
+function useKeyboard(engine: StageEngine | null, composer: React.RefObject<HTMLInputElement | null>, openComms: () => void, openPalette: () => void) {
   const api = useConsoleApi();
-  const ref = useRef({ api, engine, composer, openComms });
-  ref.current = { api, engine, composer, openComms };
+  const ref = useRef({ api, engine, composer, openComms, openPalette });
+  ref.current = { api, engine, composer, openComms, openPalette };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); ref.current.openPalette(); return; }
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       const { api, engine, composer, openComms } = ref.current;
       const ui = fireyeUi.get();
@@ -101,19 +108,22 @@ function Shell() {
   const [rightTab, setRightTab] = useState<RightTab>('inspect');
   const [thread, setThread] = useState<string | null>(null);
   const [feedsOpen, setFeedsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const composer = useRef<HTMLInputElement | null>(null);
   const started = useRef(false);
   useFireyeSync();
   useJournalReapply();
-  useKeyboard(engine, composer, useCallback(() => setRightTab('comms'), []));
+  useKeyboard(engine, composer, useCallback(() => setRightTab('comms'), []), useCallback(() => setPaletteOpen(true), []));
 
   if (pack) { const z = packZone(pack); registerZone(z.label, z.offsetMin); }
   useEffect(() => {
     document.title = 'OPS · Mati 2018 exercise';
     setTheme('team', { persist: false });
-    setAppearance('dark', { persist: false }); // always-dark ops console, regardless of scenario daylight
     wireComms();
-    return () => { setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); };
+    wireAlerts();
+    ensureOsm();
+    if (import.meta.env.DEV) (window as unknown as { __opsAlerts?: unknown }).__opsAlerts = { opsView, hazardNow, routesNow, counters, placeAlerts, alertFeed };
+    return () => { setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); stopPresenter(); };
   }, []);
 
   useEffect(() => {
@@ -140,6 +150,52 @@ function Shell() {
     return () => document.removeEventListener('ops:tab', on as EventListener);
   }, []);
 
+  // Per-view appearance + hide the built-in (amber) projection layer; our red overlay replaces it.
+  const view = useOpsView();
+  const { on: presenting } = usePresenter();
+  useEffect(() => { setAppearance(view === 'civilian' ? 'light' : 'dark', { persist: false }); }, [view]);
+  useEffect(() => {
+    fireyeUi.setVis('projections', false);
+    return () => fireyeUi.setVis('projections', true);
+  }, []);
+
+  const home = useHome();
+  const overlayOpts = useOverlayOpts();
+  const proj = useConsoleSelector((s) => s.projection);
+  const routes = useRoutes(home?.pos ?? null, proj?.rev ?? -1);
+  useEffect(() => { noteRoute(routes.best); }, [routes.best]);
+
+  // Simulated alerts from stage transitions land in the SYSTEM comm lane too.
+  const t = useConsoleSelector((s) => s.clock.t);
+  const alertV = useAlertVersion();
+  const seenAlerts = useRef(new Set<string>());
+  useEffect(() => {
+    for (const r of alertFeed(pack, t)) {
+      const key = `${r.t}:${r.place}:${r.stage}`;
+      if (seenAlerts.current.has(key)) continue;
+      seenAlerts.current.add(key);
+      postSystem('ALERTS', r.text);
+    }
+  }, [pack, t, alertV]);
+
+  const togglePresent = useCallback(() => {
+    if (presenterOn.current) { stopPresenter(); return; }
+    startPresenter({ api, switchView: new URLSearchParams(window.location.search).get('switch') === 'civilian' });
+  }, [api]);
+  const presenterOn = useRef(false);
+  presenterOn.current = presenting;
+  // ?present=1 auto-starts once booted; Esc exits presenter.
+  useEffect(() => {
+    if (booted && new URLSearchParams(window.location.search).get('present') === '1' && !presenting) {
+      startPresenter({ api, switchView: new URLSearchParams(window.location.search).get('switch') === 'civilian' });
+    }
+  }, [booted, api, presenting]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && presenter.get().on) stopPresenter(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const descended = useRef(false);
   useEffect(() => {
     if (!engine || descended.current) return;
@@ -160,51 +216,78 @@ function Shell() {
     pack, ready, drones, feeds, globe: !!engine, chronicle: ch?.entries.length ?? 0, sensors: pack ? sensorModel(pack).specs.length : 0,
   }), [pack, ready, drones, feeds, engine, ch]);
 
+  const civilian = view === 'civilian';
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone">
-      {booted ? <OpsTopBar /> : <div className="h-11 shrink-0 border-b border-line bg-ink-950" />}
+      {booted ? <OpsTopBar presenting={presenting} onPresent={togglePresent} /> : <div className="h-9 shrink-0 border-b border-line bg-ink-950" />}
       <div className="flex min-h-0 flex-1">
-        {booted && <OpsRail engine={engine} onOpenThread={openThread} />}
+        {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className="relative min-w-0 flex-1">
           <StageShell onFocus={focus} onEngine={setEngine} />
           {booted && (
+            <OpsOverlay engine={engine} routes={routes} home={home?.pos ?? null}
+              showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} />
+          )}
+          {booted && presenting && <PresenterCaption />}
+          {booted && presenting && <PresenterCounters pack={pack} t={t} />}
+          {booted && !presenting && (
             <div className="pointer-events-none absolute left-3 top-3 z-[3]">
-              <span className="border border-line-strong bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">
+              <span className="block border border-line-strong bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">
                 Map · Mati{selected ? <> · <span className="text-bone">{selected}</span></> : ''}
+                <span className="mt-0.5 block text-bone-mute">Simulated projection · not a fireline · prototype spread model</span>
               </span>
             </div>
           )}
         </main>
-        {booted && (
+        {booted && (civilian ? <CivilianPanel home={home} /> : (
           <aside className="flex w-[380px] shrink-0 flex-col border-l border-line bg-ink-950">
-            <div role="tablist" aria-label="Panel" className="grid shrink-0 grid-cols-2 gap-px border-b border-line bg-line">
+            <div role="tablist" aria-label="Panel" className="flex shrink-0 border-b border-line">
               {(['inspect', 'comms'] as RightTab[]).map((id) => (
                 <button key={id} type="button" role="tab" aria-selected={rightTab === id} onClick={() => setRightTab(id)}
-                  className={cn('h-8 font-mono text-micro uppercase tracking-[0.14em]', rightTab === id ? 'bg-ink-700 text-bone' : 'bg-ink-950 text-bone-mute hover:text-bone-dim')}>
+                  className={cn('h-8 flex-1 border-t-2 font-mono text-micro uppercase tracking-[0.14em]', rightTab === id ? 'border-t-signal bg-ink-900 text-bone' : 'border-t-transparent bg-ink-950 text-bone-mute hover:text-bone-dim')}>
                   {id}
                 </button>
               ))}
             </div>
             {rightTab === 'inspect' ? <OpsInspect engine={engine} /> : <OpsComms agent={thread} onClearAgent={() => setThread(null)} composerRef={composer} />}
           </aside>
-        )}
+        ))}
       </div>
-      {booted && (feedsOpen ? (
-        <section aria-label="Feed deck" className="relative h-[180px] shrink-0 border-t border-line bg-ink-950 pt-1">
-          <button type="button" aria-label="Collapse feeds" onClick={() => setFeedsOpen(false)}
-            className="absolute right-1 top-1 z-raised flex h-5 w-5 items-center justify-center text-bone-mute hover:text-bone">
-            <Icon name="chevron-down" size={10} />
-          </button>
-          <FeedDeck onOpen={(id) => void dive.enter(id)} />
+      {booted && !civilian && !presenting && (feedsOpen ? (
+        <section aria-label="Feed deck" className="h-[180px] shrink-0 border-t border-line bg-ink-950">
+          <div className="flex h-6 items-center border-b border-line px-2 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">
+            Feeds · {feeds}
+            <button type="button" aria-label="Collapse feeds" onClick={() => setFeedsOpen(false)}
+              className="ml-auto flex h-5 w-5 items-center justify-center hover:text-bone">
+              <Icon name="chevron-down" size={10} />
+            </button>
+          </div>
+          <div className="h-[152px]"><FeedDeck onOpen={(id) => void dive.enter(id)} /></div>
         </section>
       ) : (
         <button type="button" onClick={() => setFeedsOpen(true)}
-          className="flex h-6 w-full shrink-0 items-center justify-center gap-2 border-t border-line bg-ink-950 font-mono text-micro uppercase tracking-[0.18em] text-bone-mute hover:text-bone">
-          <Icon name="chevron-down" size={10} className="rotate-180" />Feeds
+          className="flex h-7 w-full shrink-0 items-center justify-center gap-2 border-t border-line bg-ink-950 font-mono text-micro uppercase tracking-[0.18em] text-bone-mute hover:text-bone">
+          <Icon name="chevron-down" size={10} className="rotate-180" />Feeds · {feeds}
         </button>
       ))}
       {booted && <Timeline onSeek={seek} />}
+      {booted && !civilian && paletteOpen && <OpsPalette engine={engine} onOpenThread={openThread} onClose={() => setPaletteOpen(false)} />}
       {!booted && <Boot probe={probe} onDone={() => fireyeUi.set({ booted: true })} />}
+    </div>
+  );
+}
+
+function PresenterCounters({ pack, t }: { pack: ReturnType<typeof consoleStore.get>['pack']; t: Ms }) {
+  const v = useAlertVersion();
+  const c = useMemo(() => counters(pack, t), [pack, t, v]);
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 z-[3] flex border border-line-strong bg-ink-950/90" aria-label="Counters · simulated">
+      {([['Alert zones', c.alertZones], ['Warned', c.warned], ['Moved out', c.moved]] as const).map(([k, val]) => (
+        <div key={k} className="border-l border-line px-3 py-1.5 first:border-l-0">
+          <div className="fcc-num text-xl font-semibold text-bone">{val.toLocaleString('en-US')}</div>
+          <div className="font-mono text-micro uppercase tracking-[0.12em] text-bone-mute">{k}</div>
+        </div>
+      ))}
     </div>
   );
 }

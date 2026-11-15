@@ -8,7 +8,8 @@ import { dive } from '../fireye/shell/Dive';
 import { useDecisions } from '../fireye/shell/OrchestratorCallout';
 import { journal } from '../fireye/data/journal';
 import { useFireye } from '../fireye/shell/ui';
-import { WEIGHT_KEYS, loadWeights, saveWeights, type Weights } from './opsStore';
+import { WEIGHT_KEYS, loadWeights, postSystem, saveWeights, type Weights } from './opsStore';
+import { STAGE_RANK, placeAlerts, useAlertVersion } from './alerts';
 
 function Bar({ label, v }: { label: string; v: number }) {
   return (
@@ -50,7 +51,7 @@ function UnitCard({ unit, engine }: { unit: Unit; engine: StageEngine | null }) 
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">{unit.callsign}</span>
         <span className="font-mono text-micro uppercase text-bone-mute">{unit.kind}</span>
         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase text-phosphor">
-          <span className="h-1 w-1 animate-pulse bg-phosphor" aria-hidden />Updated {ago(t, t)}
+          <span className="h-1 w-1 bg-phosphor" aria-hidden />Updated {ago(t, t)}
         </span>
       </header>
       <div className="grid grid-cols-3 gap-px bg-line-faint">
@@ -107,24 +108,13 @@ function FindingCard({ f }: { f: Finding }) {
 
 /* ------------------------------------------------------------------ top match + weights */
 
-function Gauge({ v }: { v: number }) {
-  const r = 14;
-  const c = Math.PI * r;
-  const frac = Math.max(0, Math.min(100, v)) / 100;
-  return (
-    <svg viewBox="0 0 36 20" className="h-5 w-9" aria-hidden>
-      <path d="M4 18 A14 14 0 0 1 32 18" fill="none" strokeWidth="2.5" className="stroke-line-strong" />
-      <path d="M4 18 A14 14 0 0 1 32 18" fill="none" strokeWidth="2.5" strokeDasharray={`${c * frac} ${c}`} className="stroke-signal" />
-    </svg>
-  );
-}
-
 function TopMatch({ engine }: { engine: StageEngine | null }) {
   const api = useConsoleApi();
   const t = useConsoleSelector((s) => s.clock.t);
   const items = useConsoleSelector((s) => s.items);
   const { top } = useDecisions();
   const [w, setW] = useState<Weights>(loadWeights);
+  const [weightsOpen, setWeightsOpen] = useState(false);
   useEffect(() => saveWeights(w), [w]);
 
   const ranked = useMemo(() => {
@@ -151,8 +141,10 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <section aria-label="Top match" className="border-b border-line px-3 py-3">
-        <p className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">{top ? 'Top match · needs approval' : 'Top priority'}</p>
+      <AlertZones />
+      <section aria-label="Top match" className="border-b border-line">
+        <p className="flex h-7 items-center bg-ink-900 px-3 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">{top ? 'Top match · needs approval' : 'Top priority'}</p>
+        <div className="px-3 py-3">
         {top ? (
           <div className="mt-2 border border-line-strong border-t-signal bg-ink-900">
             <div className="flex items-start gap-3 px-3 py-2.5">
@@ -191,24 +183,30 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
         ) : (
           <p className="mt-2 border border-line-faint px-3 py-3 text-center font-mono text-micro uppercase text-bone-mute">No graded items yet</p>
         )}
+        </div>
       </section>
-      <section aria-label="Priority weights" className="px-3 py-3">
-        <p className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Priority weights</p>
-        <div className="mt-2 flex flex-col gap-1">
+      <section aria-label="Priority weights">
+        <button type="button" onClick={() => setWeightsOpen((o) => !o)} aria-expanded={weightsOpen}
+          className="flex h-7 w-full items-center gap-2 bg-ink-900 px-3 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute hover:text-bone-dim">
+          <Icon name={weightsOpen ? 'chevron-down' : 'chevron-right'} size={10} />Adjust priorities
+        </button>
+        {weightsOpen && (
+        <div className="mt-1 flex flex-col gap-1 px-3">
           {WEIGHT_KEYS.map((k) => (
             <div key={k} className="flex h-8 items-center gap-2 border-b border-line-faint last:border-0">
               <span className="w-24 shrink-0 font-mono text-micro uppercase text-bone-dim">{k}</span>
               <button type="button" aria-label={`Decrease ${k}`} onClick={() => setW((x) => ({ ...x, [k]: Math.max(0, x[k] - 10) }))}
                 className="flex h-5 w-5 items-center justify-center border border-line text-bone-mute hover:text-bone"><Icon name="minus" size={9} /></button>
-              <Gauge v={w[k]} />
+              <span className="h-px w-16 bg-ink-700"><span className="block h-px bg-signal" style={{ width: `${w[k]}%` }} /></span>
               <button type="button" aria-label={`Increase ${k}`} onClick={() => setW((x) => ({ ...x, [k]: Math.min(100, x[k] + 10) }))}
                 className="flex h-5 w-5 items-center justify-center border border-line text-bone-mute hover:text-bone"><Icon name="plus" size={9} /></button>
               <span className="fcc-num ml-auto font-mono text-micro text-bone">{w[k]}</span>
             </div>
           ))}
         </div>
-        <p className="mt-2 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Local re-rank · display only</p>
-        <ul className="mt-1" aria-label="Re-ranked items">
+        )}
+        <p className="mt-3 px-3 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Local re-rank · display only</p>
+        <ul className="mt-1 px-3 pb-3" aria-label="Re-ranked items">
           {ranked.map(({ item: i, delta }) => (
             <li key={i.id} className="flex h-7 items-center gap-2 border-b border-line-faint last:border-0">
               <span className="fcc-num w-8 shrink-0 font-mono text-micro text-signal">{Math.round(i.score)}</span>
@@ -223,6 +221,45 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
         </ul>
       </section>
     </div>
+  );
+}
+
+const STAGE_TXT: Record<string, string> = { leave: 'LEAVE NOW', shelter: 'SHELTER', prepare: 'PREPARE', monitor: 'MONITOR' };
+
+function AlertZones() {
+  const pack = useConsoleSelector((s) => s.pack);
+  const t = useConsoleSelector((s) => s.clock.t);
+  const v = useAlertVersion();
+  const [all, setAll] = useState(false);
+  const alerts = useMemo(() => placeAlerts(pack, t).filter((p) => p.eta != null || STAGE_RANK[p.stage] >= 1)
+    .sort((a, b) => STAGE_RANK[b.stage] - STAGE_RANK[a.stage] || (a.eta ?? 0) - (b.eta ?? 0)), [pack, t, v]);
+  const tz = packZone(pack).label;
+  if (!alerts.length) return null;
+  const shown = all ? alerts : alerts.slice(0, 5);
+  return (
+    <section aria-label="Alert zones" className="border-b border-line">
+      <p className="flex h-7 items-center bg-ink-900 px-3 font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Alert zones · simulated</p>
+      <ul aria-label="Places in the fire path">
+        {shown.map((p) => (
+          <li key={p.id} className="flex h-10 items-center gap-2 border-b border-line-faint px-3 last:border-0">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="truncate text-tiny text-bone">{p.name}</span>
+                <span className={cn('shrink-0 font-mono text-micro uppercase', STAGE_RANK[p.stage] >= 2 ? 'text-ember' : p.stage === 'prepare' ? 'text-amber' : 'text-bone-mute')}>{STAGE_TXT[p.stage]}</span>
+              </div>
+              <div className="truncate font-mono text-micro text-bone-mute">ETA {p.eta != null ? localTime(p.eta, tz) : '—'} · ~{p.residents} residents · SIM</div>
+            </div>
+            <button type="button" onClick={() => postSystem('ALERTS', `MANUAL ALERT · ${p.name} · ${STAGE_TXT[p.stage]} · SMS to ~${p.residents} residents · SIMULATED`)}
+              className="h-5 shrink-0 border border-line-strong px-1.5 font-mono text-micro uppercase text-bone-dim hover:border-bone hover:text-bone">
+              Send alert
+            </button>
+          </li>
+        ))}
+        {!all && alerts.length > 5 && (
+          <li><button type="button" onClick={() => setAll(true)} className="h-7 w-full font-mono text-micro uppercase tracking-[0.14em] text-bone-mute hover:text-bone">Show all +{alerts.length - 5}</button></li>
+        )}
+      </ul>
+    </section>
   );
 }
 

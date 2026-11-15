@@ -3,7 +3,6 @@ import { Icon, cn } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { localTime, packZone } from '../ui/format';
 import { jobStatusOf, replyFromAgent, sendLocal, useCommRows, type CommLane } from './opsStore';
-import { agentTone } from './OpsRail';
 
 type LaneFilter = 'all' | CommLane;
 const LANES: { id: LaneFilter; label: string }[] = [
@@ -78,25 +77,32 @@ export function OpsComms({ agent, onClearAgent, composerRef }: {
           const status = r.jobId ? jobStatusOf(r.jobId) : undefined;
           return (
             <div key={r.id} data-t={r.t} data-verb={r.verb ?? ''} title={`${r.from}${r.to ? ` → ${r.to}` : ''}${r.verb ? ` · ${r.verb}` : ''}\n${r.text}${r.meta ? `\n${r.meta}` : ''}`}
-              className="fireye-tick grid grid-cols-[52px_minmax(0,150px)_52px_minmax(0,1fr)] items-baseline gap-x-2 border-b border-line-faint py-1 font-mono text-micro leading-4 last:border-0">
-              <span className="fcc-num text-bone-mute">{localTime(r.t, tz)}</span>
-              <span className="truncate uppercase">
-                <span className={r.lane === 'operator' ? 'text-bone' : agentTone(r.from)}>{r.from}</span>
-                {r.to && <span className="text-bone-mute"> → <span className={agentTone(r.to)}>{r.to}</span></span>}
-              </span>
+              className={cn('fireye-tick grid grid-cols-[44px_40px_minmax(0,1fr)] items-baseline gap-x-2 border-b border-l-2 border-line-faint py-1 font-mono text-micro leading-4 last:border-0',
+                r.lane === 'operator' ? 'border-l-signal' : r.lane === 'agent' ? 'border-l-ice' : 'border-l-line')}>
+              <span className="fcc-num pl-1.5 text-bone-mute">{localTime(r.t, tz)}</span>
               <span className="flex items-center gap-1">
                 {status && <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0', DOT[status])} title={`job ${status}`} />}
                 {r.verb && <span className="border border-line px-1 uppercase text-bone-mute">{r.verb}</span>}
-                {r.sim && <span className="border border-amber/50 px-1 uppercase text-amber">SIM</span>}
+                {r.sim && <span className="border border-line px-1 uppercase text-bone-mute">SIM</span>}
               </span>
               <span className="min-w-0">
-                <span className={cn('break-words', r.lane === 'system' ? 'text-bone-mute' : 'text-bone-dim')}>{r.text}</span>
+                <span className="uppercase">
+                  <span className={r.lane === 'operator' ? 'text-bone' : 'text-ice'}>{r.from}</span>
+                  {r.to && <span className="text-bone-mute"> → <span className="text-ice">{r.to}</span></span>}
+                </span>
+                <span className={cn('break-words', r.lane === 'system' ? 'text-bone-mute' : 'text-bone-dim')}> {r.text}</span>
                 {r.meta && <span className="block truncate text-bone-mute">{r.meta}</span>}
               </span>
             </div>
           );
         })}
-        {rows.length === 0 && <p className="py-4 text-center font-mono text-micro uppercase text-bone-mute">No traffic yet</p>}
+        {rows.length === 0 && (
+          <div className="flex flex-col items-center gap-1.5 py-6 text-bone-mute">
+            <Icon name="send" size={14} />
+            <span className="font-mono text-micro uppercase">No traffic yet</span>
+            <span className="font-mono text-micro">Press / to message ORCH</span>
+          </div>
+        )}
       </div>
       <form className="flex shrink-0 items-stretch border-t border-line" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <select aria-label="Target" value={target} onChange={(e) => setTarget(e.target.value)} style={{ width: targetW }}
