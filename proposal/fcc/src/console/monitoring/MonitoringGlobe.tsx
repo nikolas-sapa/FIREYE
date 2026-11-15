@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
-import { color, getTheme, onThemeChange, setSolarDaylight } from '@ds';
+import { claimSolarDaylight, color, getTheme, onThemeChange, type SolarClaim } from '@ds';
 import type { BBox, Geo, ScenarioPack } from '../contracts';
 import { StageView } from '../stage3d/StageView';
 import type { StageEngine } from '../stage3d/StageEngine';
@@ -23,6 +23,13 @@ export function MonitoringGlobe({ pack, view, time, detections, cameras, geometr
   const [engine, setEngine] = useState<StageEngine | null>(null);
   const [theme, setTheme] = useState(getTheme());
   const ready = useCallback((e: StageEngine | null) => setEngine(e), []);
+  const solar = useRef<SolarClaim | null>(null);
+  // Claim and release in the same (layout) phase so a keyed remount cannot clear the new view's value.
+  useLayoutEffect(() => {
+    const claim = claimSolarDaylight();
+    solar.current = claim;
+    return () => { claim.release(); if (solar.current === claim) solar.current = null; };
+  }, []);
   useEffect(() => onThemeChange(() => setTheme(getTheme())), []);
   useEffect(() => {
     if (!engine) return;
@@ -47,13 +54,12 @@ export function MonitoringGlobe({ pack, view, time, detections, cameras, geometr
     stageWorld.set({ dataMode: 'monitoring', pack, t: time, paused: true, speed: 0, units: [], feeds: [],
       findings: [], projection: null, items: [], actions: [], coverage: [], directives: [], fireRev: 0,
       stage: { mode: 'globe', dimmed: false, highlight: [] } });
-    setSolarDaylight(daylight(sunPosition(time, VIEWS[view].center.lat, VIEWS[view].center.lon).elDeg));
+    solar.current?.set(daylight(sunPosition(time, VIEWS[view].center.lat, VIEWS[view].center.lon).elDeg));
   }, [pack, view]);
   useLayoutEffect(() => {
     stageWorld.set({ t: time });
-    setSolarDaylight(daylight(sunPosition(time, VIEWS[view].center.lat, VIEWS[view].center.lon).elDeg));
+    solar.current?.set(daylight(sunPosition(time, VIEWS[view].center.lat, VIEWS[view].center.lon).elDeg));
   }, [time, view]);
-  useEffect(() => () => setSolarDaylight(null), []);
 
   useEffect(() => {
     if (!engine || !focus) return;

@@ -69,7 +69,7 @@ export async function splitSatellite(blob: Blob, scene: GridScene): Promise<Grid
 }
 
 /**
- * Runs the four cells sequentially. Each cell submits, polls and palette-gates its output in the browser;
+ * Runs all four cells at once. Each cell submits, polls and palette-gates its output in the browser;
  * a rejected output is regenerated as a new attempt until one passes or the retry budget is spent.
  * Accepted jobs are polled again, never regenerated. Network and provider failures are not retried
  * automatically: the cell stops with an error, and calling this again resumes the same attempt.
@@ -86,7 +86,7 @@ export async function processGrid(
 ) {
   if (tiles.length !== GRID_COUNT || tiles.some((tile, i) => tile.index !== i)) throw new Error('Exactly four ordered cells are required.');
   const total = settings.retries + 1;
-  const processTile = async (initial: GridTileRun) => {
+  await Promise.all(tiles.map(async initial => {
     if (initial.done || signal.aborted) return;
     let tile: GridTileRun = { ...initial, attempts: [...initial.attempts], error: undefined };
     const put = (patch: Partial<GridTileRun>) => { tile = { ...tile, ...patch }; update(tile); };
@@ -128,8 +128,7 @@ export async function processGrid(
       if (signal.aborted) return;
       put({ status: 'Needs attention', error: error instanceof Error ? error.message : 'Could not process this cell.' });
     }
-  };
-  for (const initial of tiles) await processTile(initial);
+  }));
 }
 export async function stitchImages(sources: string[], size = GRID_TILE_PX): Promise<Blob> {
   if (sources.length !== GRID_COUNT) throw new Error('All four images are required for a stitched export.');

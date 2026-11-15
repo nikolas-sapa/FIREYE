@@ -7,12 +7,15 @@ import { legacyEntry } from './monitoring/model';
 
 const ConsoleApp = lazy(() => import('./ConsoleApp'));
 const MonitoringApp = lazy(() => import('./monitoring/MonitoringApp'));
-const replay = legacyEntry(window.location.search);
+const FireyeApp = lazy(() => import('./fireye/FireyeApp'));
+const search = window.location.search;
+const replay = legacyEntry(search);
+const monitoring = !replay && new URLSearchParams(search).get('mode') === 'monitoring';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-ink-950 font-mono text-bone">Loading FCC console</div>}>
-      {replay ? <ConsoleApp /> : <MonitoringApp />}
+    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-void font-mono text-micro uppercase tracking-[0.32em] text-bone-mute">FIREYE</div>}>
+      {replay ? <ConsoleApp /> : monitoring ? <MonitoringApp /> : <FireyeApp />}
     </Suspense>
   </React.StrictMode>,
 );

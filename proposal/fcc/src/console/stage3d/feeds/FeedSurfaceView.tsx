@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn, fmtLat, fmtLon, pad, zulu } from '@ds';
 import type { Feed } from '../../contracts';
-import { MODEL_LABEL } from '../fx';
-import { useStageWorld } from '../world';
+import { MODEL_LABEL, modelFor } from '../fx';
+import { stageWorld, useStageWorld } from '../world';
+import { asDemoFeed, fireyePose, getWorld3D, markWorld3dFailed, thermalOf, world3dEligible } from './world3d';
 import { FeedRenderer, FULL_H, FULL_W, THUMB_H, THUMB_W, type Detection, type FeedFrame } from './FeedRenderer';
 import { fitFeedFrame } from './dynamics';
 import { ArchiveCamera } from './ArchiveCamera';
@@ -42,20 +43,61 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
     return () => observer.disconnect();
   }, []);
 
+  const worldHandle = useRef<{ update: (p: { visible?: boolean; thermal?: 'white' | 'iron'; lead?: boolean }) => void } | null>(null);
+  const lead = variant === 'full' || hud !== 'none';
+  const thermal = feed ? thermalOf(feed) : undefined;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !hasFeed) return;
-    const r = FeedRenderer.get();
-    if (!r) {
-      setFailed(true);
-      return;
-    }
+    let dead = false, dispose: (() => void) | undefined;
     setFrame(null);
     setFailed(false);
     canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
-    return r.register({ feedId, variant, canvas, onFrame: (f) => { setFrame(f); setFailed(false); },
-      onError: () => { setFrame(null); setFailed(true); } });
+    const cesium = () => {
+      const r = FeedRenderer.get();
+      if (!r) { setFailed(true); return; }
+      dispose = r.register({ feedId, variant, canvas, onFrame: (f) => { setFrame(f); setFailed(false); },
+        onError: () => { setFrame(null); setFailed(true); } });
+    };
+    const s0 = stageWorld.get(), f0 = s0.feeds.find((f) => f.id === feedId), pack0 = s0.pack;
+    if (f0 && pack0 && world3dEligible(f0, pack0)) {
+      void getWorld3D(pack0).then((w) => {
+        if (dead) return;
+        if (!w) { cesium(); return; }
+        let failedOnce = false;
+        const reg = w.register({ feed: asDemoFeed(f0), canvas, full: variant === 'full', active: true, visible: true, moving: true, frozen: false,
+          lead, thermal: thermalOf(f0), pose: fireyePose(feedId, f0, pack0),
+          onReady: () => {},
+          onError: () => {
+            if (failedOnce || dead) return;
+            failedOnce = true;
+            markWorld3dFailed();
+            queueMicrotask(() => { if (dead) return; dispose?.(); worldHandle.current = null; setFrame(null); cesium(); });
+          },
+          onTelemetry: (pose) => {
+            const s = stageWorld.get(), feedNow = s.feeds.find((f) => f.id === feedId) ?? f0;
+            const unit = feedNow.unitId ? s.units.find((u) => u.id === feedNow.unitId) : undefined;
+            setFrame({ feedId, pose, detections: [], frame: Number(canvas.dataset.frame ?? 0), renderedAt: performance.now(),
+              model: modelFor(feedNow), speedMps: unit?.speedMps, replayRate: s.speed ?? 1 });
+            setFailed(false);
+          } });
+        dispose = () => reg.dispose();
+        worldHandle.current = reg;
+      });
+    } else cesium();
+    return () => { dead = true; dispose?.(); worldHandle.current = null; };
   }, [feedId, variant, hasFeed]);
+
+  useEffect(() => { worldHandle.current?.update({ thermal, lead }); }, [thermal, lead]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver((entries) => worldHandle.current?.update({ visible: entries[0].isIntersecting }), { threshold: 0.05 });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
   const full = variant === 'full';
   const showHud = hud !== 'none';

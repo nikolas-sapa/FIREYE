@@ -9,6 +9,7 @@ import { loadScenario } from '../src/console/scenario/load';
 import { CAMERAS } from '../src/console/monitoring/cameras';
 import { archiveCrop } from '../src/console/stage3d/feeds/archive-camera';
 import { checkMonitoringFeeds } from './monitoring-feeds';
+import { checkWorld3d } from './world3d';
 
 assert.deepEqual(archiveCrop(4000, 3000, 2, 0), { x: 980, y: 1065, width: 2040, height: 1020 });
 for (const [w, h] of [[4096, 3454], [3840, 4035], [384, 216]]) for (const aspect of [0.56, 1, 16 / 9, 3.5]) {
@@ -53,6 +54,7 @@ globalThis.fetch = fileFetch;
 const pack = await loadScenario('mati-2018');
 globalThis.fetch = originalFetch;
 await checkMonitoringFeeds(pack);
+checkWorld3d(pack);
 const safe = contextPack(pack);
 assert.notEqual(safe, pack); assert.equal(safe.elevation, pack.elevation);
 assert.ok(safe.arrival.every(n => n === Infinity)); assert.ok(pack.arrival.some(Number.isFinite));

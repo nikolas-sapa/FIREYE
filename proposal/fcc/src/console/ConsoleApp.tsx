@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Brackets, Dot, ThemeToggle, toggleTheme } from '@ds';
+import { Brackets, Dot } from '@ds';
 import { ConsoleProvider, useConsoleApi, useConsoleSelector } from './store';
 import { BottomStrip } from './ui/BottomStrip';
 import { CommandStrip, FccMark } from './ui/CommandStrip';
@@ -51,8 +51,6 @@ function useKeyboard() {
         else ui.setPanel(null);
       } else if (k === 'l' || k === 'L') {
         ui.setLegend(!ui.legend);
-      } else if (k === 't' || k === 'T') {
-        toggleTheme();
       } else if (LENS_KEYS[k]) {
         api.setLens(LENS_KEYS[k]!);
       }
@@ -90,8 +88,7 @@ function Boot() {
         <Brackets size={8} tone="bone" />
         <div className="flex items-center gap-3">
           <FccMark size={24} />
-          <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">FCC console · REV D</span>
-          <ThemeToggle compact className="ml-auto" />
+          <span className="font-mono text-nano uppercase tracking-[0.16em] text-bone">FIREYE · legacy replay</span>
         </div>
         <div className="flex items-center gap-2">
           <Dot className="bg-ice" live size={6} />
@@ -116,7 +113,7 @@ function useScenarioChrome() {
     registerZone(z.label, z.offsetMin);
   }
   useEffect(() => {
-    document.title = `FCC Console — ${scenarioName(pack)} replay`;
+    document.title = `FIREYE · ${scenarioName(pack)} legacy replay`;
   }, [pack]);
 }
 

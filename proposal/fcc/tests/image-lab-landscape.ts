@@ -3,7 +3,7 @@ import { FuelClass } from '../src/console/contracts';
 import { randomGridScene } from '../src/image-lab/grid';
 import {
   FuelOrigin, MODEL_CELLS, MODEL_SIDE, LANDSCAPE_SCHEMA, PX_PER_CELL, REVIEW_INPUT_PX, REVIEW_CLASSES, SPREAD_BANDS_MIN, blendOutputs, clcToFuel, classifyReview,
-  featherWeight, fromBase64, fuseFuel, overlapAgreement, stitchReviews, landscapeExport, modelGrid, rasterizeRings, reviewCrop, reviewPrompt, runLandscapeSpread, weatherFor,
+  featherWeight, fromBase64, fuseFuel, overlapAgreement, stitchReviews, landscapeExport, modelGrid, rasterizeRings, reviewCrop, reviewPrompt, runLandscapeSpread, startCells, weatherFor,
   type WeatherSeries, type WindChoice,
 } from '../src/image-lab/landscape';
 
@@ -176,6 +176,74 @@ const blocked = runLandscapeSpread(grid, moat, flat, centre, manual(270, 60));
 for (let y = 0; y < MODEL_SIDE; y++) assert.ok(!(blocked.arrival[y * MODEL_SIDE + 160] <= 360));
 console.log(`Weather selection, wind-driven spread, monotonic bands and fuel barriers PASS (${westerly.computeMs.toFixed(1)} ms per run)`);
 
+// Fire fronts: rasterized lines have no gaps, areas fill, and every burnable start cell burns at minute 0.
+const at = (x: number, y: number) => y * MODEL_SIDE + x;
+const connected = (cells: number[]) => {
+  const set = new Set(cells), seen = new Set([cells[0]]), queue = [cells[0]];
+  while (queue.length) {
+    const c = queue.pop()!;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nb = c + dy * MODEL_SIDE + dx;
+      if (set.has(nb) && !seen.has(nb)) { seen.add(nb); queue.push(nb); }
+    }
+  }
+  return seen.size === set.size;
+};
+assert.equal(startCells({ kind: 'line', vertices: [at(10, 50), at(20, 50)] }).cells.length, 11);
+for (const [a, b] of [[at(10, 10), at(200, 37)], [at(5, 200), at(17, 3)], [at(30, 30), at(90, 90)], [at(250, 0), at(0, 255)]]) {
+  const { cells } = startCells({ kind: 'line', vertices: [a, b] });
+  assert.ok(cells.includes(a) && cells.includes(b) && connected(cells), 'A drawn line is one connected run of cells');
+  assert.ok(cells.length <= 2 * Math.max(Math.abs(a % MODEL_SIDE - b % MODEL_SIDE), Math.abs(Math.floor(a / MODEL_SIDE) - Math.floor(b / MODEL_SIDE))) + 1);
+}
+const square = startCells({ kind: 'area', vertices: [at(100, 100), at(110, 100), at(110, 110), at(100, 110)] });
+assert.equal(square.cells.length, 121, 'An 11 x 11 cell square fills completely');
+assert.equal(square.edge.length, 40);
+const tri = startCells({ kind: 'area', vertices: [at(0, 0), at(100, 0), at(0, 100)] });
+assert.ok(Math.abs(tri.cells.length - 5151) < 120, `Triangle fills about half its box (got ${tri.cells.length})`);
+assert.ok(connected(tri.cells) && tri.edge.every(c => tri.cells.includes(c)));
+// A degenerate line is the point ignition, cell for cell.
+const asLine = runLandscapeSpread(grid, shrub, flat, { kind: 'line', vertices: [centre, centre] }, manual(270));
+assert.deepEqual(asLine.arrival, westerly.arrival);
+assert.equal(asLine.seedCells, 1);
+// A north-south line under a west wind burns from every cell at once and runs east.
+const lineStart = { kind: 'line' as const, vertices: [at(100, 60), at(100, 196)] };
+const fireLine = runLandscapeSpread(grid, shrub, flat, lineStart, manual(270));
+const lineCells = startCells(lineStart).cells;
+assert.equal(fireLine.seedCells, lineCells.length);
+assert.equal(fireLine.skippedCells, 0);
+assert.ok(lineCells.every(c => fireLine.arrival[c] === 0));
+assert.ok(Math.abs(fireLine.startHa - lineCells.length * grid.cellHa) < 1e-9);
+assert.ok(fireLine.areasHa[60] > 5 * westerly.areasHa[60], 'A long front burns far more than a point');
+assert.ok(fireLine.run && Math.abs(fireLine.run.bearingDeg - 90) < 10, `Front head runs downwind (got ${fireLine.run?.bearingDeg})`);
+// Downwind of its middle, a front advances exactly like a point fire on the same row.
+const slowLine = runLandscapeSpread(grid, shrub, flat, lineStart, manual(270), 90);
+const slowPoint = runLandscapeSpread(grid, shrub, flat, at(100, 128), manual(270), 90);
+assert.ok(!slowLine.reachedEdge && !slowPoint.reachedEdge);
+for (let x = 100; x < 256; x++) assert.equal(slowLine.arrival[at(x, 128)], slowPoint.arrival[at(x, 128)]);
+assert.ok(slowLine.run && slowPoint.run && Math.abs(slowLine.run.distanceM / slowPoint.run.distanceM - 1) < 0.05,
+  `Front run matches the point head (${slowLine.run?.distanceM.toFixed(0)} vs ${slowPoint.run?.distanceM.toFixed(0)} m)`);
+// A burning area counts as burned inside and grows outward from its edge.
+const areaStart = { kind: 'area' as const, vertices: [at(100, 100), at(130, 100), at(130, 130), at(100, 130)] };
+const fireArea = runLandscapeSpread(grid, shrub, flat, areaStart, manual(270));
+assert.equal(fireArea.seedCells, 31 * 31);
+assert.ok(startCells(areaStart).cells.every(c => fireArea.arrival[c] === 0));
+assert.ok(fireArea.areasHa[60] >= fireArea.startHa && fireArea.run && Math.abs(fireArea.run.bearingDeg - 90) < 10);
+const lightArea = runLandscapeSpread(grid, shrub, flat, areaStart, manual(270, 5));
+assert.ok(lightArea.run && Math.abs(lightArea.run.bearingDeg - 90) < 15, `A light wind still gives a burning area a head (got ${lightArea.run?.bearingDeg})`);
+const calmArea = runLandscapeSpread(grid, shrub, flat, areaStart, manual(0, 0));
+assert.ok(calmArea.run === null || calmArea.run.distanceM < 200, 'No wind on flat ground has no main run direction for an area either');
+// Non-burnable cells on a front are skipped; the fire crosses nothing it cannot burn.
+const river = shrub.slice();
+for (let y = 0; y < MODEL_SIDE; y++) for (let x = 120; x < 124; x++) river[at(x, y)] = FuelClass.Water;
+const across = runLandscapeSpread(grid, river, flat, { kind: 'line', vertices: [at(100, 128), at(140, 128)] }, manual(0, 0));
+assert.equal(across.skippedCells, 4);
+assert.equal(across.seedCells, 37);
+for (let x = 120; x < 124; x++) assert.ok(!(across.arrival[at(x, 128)] <= 360));
+assert.throws(() => runLandscapeSpread(grid, river, flat, { kind: 'line', vertices: [at(120, 10), at(123, 200)] }, manual(0)), /None of this fire front/);
+assert.throws(() => runLandscapeSpread(grid, shrub, flat, { kind: 'area', vertices: [at(1, 1), at(5, 5)] }, manual(0)), /at least three/);
+assert.throws(() => runLandscapeSpread(grid, shrub, flat, { kind: 'line', vertices: [centre] }, manual(0)), /at least two/);
+console.log(`Fire fronts: gap-free lines, area fill, point equivalence, multi-seed spread, skipped non-burnable cells, front run ${(fireLine.run!.distanceM / 1000).toFixed(1)} km PASS (${fireLine.computeMs.toFixed(1)} ms)`);
+
 // Export contract.
 const fused = fuseFuel(shrub, [], 'add');
 const record = landscapeExport({ scene, sources: [], baseFuel: shrub, fused, elevation: flat, fusion: 'add', weather: series, wind: choice,
@@ -194,4 +262,13 @@ const withPixels = landscapeExport({ scene, sources: [], baseFuel: shrub, fused,
 assert.ok(!/"(labels|pixels)"/.test(JSON.stringify(withPixels)), 'Halo labels and pixels stay out of the export');
 assert.ok(round.limitations.length >= 3);
 assert.ok(Math.abs(round.spread.ignition.lat - scene.center.lat) < 0.01);
+assert.deepEqual(round.spread.start, { kind: 'point', seedCells: 1, startHa: grid.cellHa });
+const frontRecord = JSON.parse(JSON.stringify(landscapeExport({ scene, sources: [], baseFuel: river, fused: fuseFuel(river, [], 'base'), elevation: flat, fusion: 'base',
+  weather: series, wind: choice, review: { tiles: [] }, spread: across, imagery: { name: 'x', license: 'y', url: 'z' } })));
+assert.equal(frontRecord.spread.start.kind, 'line');
+assert.equal(frontRecord.spread.start.vertices.length, 2);
+assert.equal(frontRecord.spread.start.vertices[0].index, at(100, 128));
+assert.ok(Number.isFinite(frontRecord.spread.start.vertices[1].lat) && Number.isFinite(frontRecord.spread.start.vertices[1].lon));
+assert.equal(frontRecord.spread.start.skippedCells, 4);
+assert.equal(new Uint16Array(fromBase64(frontRecord.spread.arrivalMin).buffer)[at(100, 128)], 0);
 console.log(`${LANDSCAPE_SCHEMA} export round-trips rasters, arrival, review gate and ignition (${(JSON.stringify(record).length / 1024).toFixed(0)} KiB) PASS`);

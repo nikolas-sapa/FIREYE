@@ -3,7 +3,7 @@ export const GRID_SIDE = 2;
 export const GRID_COUNT = 4;
 /** Automatic regenerations per cell after the palette gate rejects its output. The server enforces the maximum. */
 export const GRID_MAX_RETRIES = 3;
-export const GRID_DEFAULT_RETRIES = 0;
+export const GRID_DEFAULT_RETRIES = 2;
 export const GRID_TILE_PX = 512;
 export const GRID_IMAGE_PX = GRID_SIDE * GRID_TILE_PX;
 export const GRID_REGIONS = [
