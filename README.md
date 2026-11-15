@@ -4,7 +4,7 @@ Small human crew. Larger team of analyst and drone-agent contexts. One shared pi
 
 Fire Command Center is a hackathon coordination prototype for **wildfire exercises**. Intended workflow: collect permission-cleared evidence, surface unverified hypotheses, rank finite collection or placement options, obtain Chief approval, track simulated execution, then replay the decision trail. Goal: make evidence, uncertainty and responsibility understandable to a small crew without assigning a human to every logical agent. No measured staffing benefit claimed.
 
-Current main delivers the local protocol foundation, not that whole application: pure TypeScript validation, received-event state, revision-bound approval and deterministic replay. Teammate's visual console is a separate submitted prototype. No operational emergency response, live drone control or validated rescue prediction.
+Current main delivers a bounded local backend: validated received state, revision-bound approval/replay, a loopback HTTP bridge, deterministic toy planner, callable seeded-fixture orchestration demo and dormant provider/source/compute seams. Teammate's visual console remains a separate submitted prototype. No operational emergency response, live drone control or validated rescue prediction.
 
 [Taskboard](TASKBOARD.md) · [Collaboration rules](AGENTS.md) · [Docs index](docs/README.md) · [Software status](SOFTWARE.md)
 
@@ -26,31 +26,33 @@ Proposed scan-area illustration, not a working end-to-end demonstration. Table b
 
 | Story step | What the audience should see | Current boundary |
 |---|---|---|
-| 1. Capture | Identified feed, acquisition/receipt clocks, source mode and uncertainty. | Typed frame/telemetry records exist; no ingest or media decoder. |
-| 2. Analyze | Unverified human/animal/fire/canister hypothesis linked to evidence. | Hypothesis validation exists; actual model inference absent. |
-| 3. Review | Finite options and rationale, current Chief decision, visible rejection. | Local approval/reservation checks exist; real session/UI integration absent. |
-| 4. Track and replay | Separate receipt stages, last-known state during loss, historical knowledge cutoff. | Local receipt/replay rules exist; network/executor integration absent. |
+| 1. Capture | Identified feed, acquisition/receipt clocks, source mode and uncertainty. | Metadata HTTP receipt bridge exists; no camera/media ingest or decoder. |
+| 2. Analyze | Unverified human/animal/fire/canister hypothesis linked to evidence. | Validated jobs and deterministic fallback exist; genuine model inference absent. |
+| 3. Review | Finite options and rationale, current Chief decision, visible rejection. | Callable demo reviews one registered fixture course with local role gates; real identity/UI integration absent. |
+| 4. Track and replay | Separate receipt stages, last-known state during loss, historical knowledge cutoff. | Loopback bridge records supplied receipts and replay; teammate executor/frontend integration unverified. |
 
-Proposed scenario may combine news, satellite context, weather/terrain and authorized cameras. Current PR #2 uses a Caldor scene; North Evia/Greek data remains a candidate, not an adopted replacement. Proposed fleet sizes, region, fidelity and final recording length still require agreement. Do not present the concept diagram as a live-provider receipt.
+Proposed scenario may combine news, satellite context, weather/terrain and authorized cameras. Current PR #2 defaults to the Mati historical replay, with Caldor selectable; North Evia remains a candidate, not an adopted replacement. Proposed fleet sizes, region, fidelity and final recording length still require agreement. Do not present the concept diagram as a live-provider receipt.
 
 ## Implementation status
 
-Snapshot: 2026-11-15, main source baseline `6ade6aea`. **Built** means implemented local code, **Submitted** means separate unmerged source, **Planned** means future gated integration, **Proposed** means draft concept/contract. These labels are not readiness percentages. [TASKBOARD](TASKBOARD.md) owns detailed receipts and work status.
+Snapshot: 2026-11-15, main source `0dc82518` (PR #34 at `47094cf`, PR #35 at `0dc8251`). **Built** means implemented local code, **Submitted** means separate unmerged source, **Planned** means future gated integration, **Proposed** means draft concept/contract. These labels are not readiness percentages. [Current main summary](TASKBOARD.md#current-main-backend-summary) supersedes earlier protocol-only/pending-delivery board snapshots; historical receipts retain their original source/date.
 
 | Area | Status | What exists / what does not |
 |---|---|---|
 | Protocol validation | Built, main | Closed JSON guards for seed, seven event kinds and approval requests. No source authenticity guarantee. |
-| Received state | Built, main | Immutable reducer, revisions, stream ordering, duplicate handling and authority freeze. No network service. |
-| Approval and receipts | Built, main | Trusted-context local approval, exclusive reservation, enqueued command, acceptance checks and receipt progression. No real auth or dispatcher. |
+| Received state and bridge | Built, main | Immutable reducer plus bounded loopback HTTP service, two fixture readers, producer-loss freeze and received-only DTOs. No Convex/persistent/shared production authority. |
+| Approval and receipts | Built, main | Local role-capability/Chief checks, exclusive reservation, enqueued command and supplied receipt progression. No real identity or teammate executor integration. |
 | Replay | Built, main | Canonical log reconstruction and receipt-cutoff snapshots. No model calls, live commands or integrated console replay acceptance. |
-| Local verification | Built, main | 71 native Node tests; TypeScript typecheck. Not distributed, browser or field acceptance. |
-| Visual console/simulator | Submitted | [Draft PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), pinned `6bdb5884`, unmerged. Isolated install/build/typecheck passed; browser/full-product acceptance unverified. |
-| Shared application | Planned | Convex approved as eventual canonical authority, one teammate simulator producer. No SDK, provisioning or two-client integration. |
-| Model/source integrations | Planned | Google, Iris, fal and Firecrawl/Treg roles researched. No genuine product inference/retrieval calls. |
+| Planner and orchestration demo | Built, main | Toy planner proposes up to three-drone courses; callable `--demo` registers exactly one single-drone fixture course. Changed/unregistered courses stay review-only, no dynamic registry. |
+| Local verification and CI | Built, main | 242 native and compiled tests reviewed; hosted backend Node 24/26 checks SUCCESS. Not Convex, browser, genuine-provider or field acceptance. |
+| Visual console/simulator | Submitted | [Draft PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), current `c2682d4`, unmerged. Historical isolated install/build/typecheck at `6bdb5884`; current browser/full-product acceptance unverified. |
+| Shared application | Deferred | Historical Convex eventual-authority direction, one teammate simulator producer. No SDK/provisioning/Convex two-client integration, no replacement authority decision. |
+| Provider setup and jobs | Built, dormant | Iris/Gemini/fal/Treg/Gemma clients, bounded queue, sanitized setup/preflight and smoke seam. Default disabled; genuine inference/retrieval 0, live hard-ceiling restrictions unchanged. |
+| Source/weather and Boxd | Built, dormant | Validated source/context and explicit weather packets, unsupported Firecrawl native route, finite local sandbox jobs. No genuine retrieval/weather fetch/remote execution. |
 | Thermal fleet, Camera Room, fault-aware exercise | Proposed | Draft contracts and simulator requirements. Current console's mixed EO/false-color channels do not satisfy every-drone thermal requirement. |
 | Deployment and submission | Planned | No deployed service or final submission receipt established by this repository. |
 
-The [approved bounded spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md) and [four-task test-first plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) authorize only the merged local protocol slice. Full V1 remains gated. Administrative work and passing local tests do not complete any full-product P0 card.
+The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md) and [four-task plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) are historical first-slice authorization. Later exact-file claims/tests/reviews authorized the bounded backend additions above, not full V1. Frontend launch/adoption requires explicit owner confirmation; media, Convex and real application auth remain deferred. Administrative work and passing local tests do not complete any full-product P0 card.
 
 ## Runtime agent role map
 
@@ -58,7 +60,7 @@ The [approved bounded spec](docs/superpowers/specs/2026-11-14-backend-protocol-d
 
 ![Role map separating human Chief authority, planned model analysts and orchestrator, submitted simulator ownership, and implemented deterministic protocol checks.](docs/assets/readme/agent-roles.png)
 
-All model roles below are planned. Deterministic core is built; it is not an LLM. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
+Diagram preserves the earlier protocol-only concept. Current deterministic coordinator/jobs are built; genuine model roles remain inactive, not an LLM receipt. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
 
 | Role | Intended responsibility | Allowed output / authority |
 |---|---|---|
@@ -70,7 +72,7 @@ All model roles below are planned. Deterministic core is built; it is not an LLM
 | Drone/task context and simulator | Execute only approved finite simulated work, capture observations, emit factual receipts. | Teammate owns simulator truth/render/execution; root consumes events. Submitted console is not integrated with this core. |
 | Deterministic protocol/state core | Reject invalid/stale input, preserve received state, bind approval and reconstruct history. | Pure local functions. No inference, physical safety calculation, transport or cloud allocation. |
 
-Planned analysts consume immutable received snapshots, not animation frames or hidden future-world arrays. Proposed bounds in [crew contract](docs/contracts/crew-agent-boundaries.md): at most 16 logical contexts, 2 in-flight requests, 8 queued jobs, 30 calls/10 minutes, 8-second timeout. These are draft limits, not an implemented scheduler or measured performance.
+Analysts/coordinator consume immutable received snapshots, not animation frames or hidden future-world arrays. [Sponsor jobs](docs/contracts/sponsor-jobs.v1.md) implement bounded scheduling, including 2 physical in-flight and 8 queued jobs. Broader [crew contract](docs/contracts/crew-agent-boundaries.md) limits remain draft; do not conflate them with measured application performance or live-provider acceptance.
 
 ## System and data architecture
 
@@ -78,16 +80,16 @@ Two worlds must stay separate: **simulation truth** (teammate's producer) and **
 
 ![System overview: gated sources and submitted simulator feed validated events into the built local received-state, approval and replay core; future Convex and crew clients remain planned.](docs/assets/readme/system-overview.png)
 
-Implemented local modules are distinguished from future integrations. Arrows describe intended seams, not existing network connections. [Vector image](docs/assets/readme/system-overview.svg) · [Mermaid source](docs/assets/readme/system-overview.mmd) · [Editable scene](docs/assets/readme/system-overview.excalidraw).
+Diagram preserves the earlier protocol-only snapshot. Current loopback connections are documented in [backend bridge](docs/contracts/backend-bridge.v1.md) and [callable demo](docs/demo/backend-service.md); arrows to external providers/Convex/crew clients remain intended seams. [Vector image](docs/assets/readme/system-overview.svg) · [Mermaid source](docs/assets/readme/system-overview.mmd) · [Editable scene](docs/assets/readme/system-overview.excalidraw).
 
-1. Capture/source adapters preserve facts and permissions; future verified server derives actor/run/lease context. Neither layer exists as a live service in main.
+1. Local bridge derives fixture actor/run/lease context; source/weather seams validate explicit packets. Actual cameras, media ingestion, verified human identity and genuine source retrieval remain absent.
 2. Closed validators accept exact versioned JSON shapes. Body-supplied role/session fields cannot grant Chief authority.
 3. `commitEvent` returns a new canonical state/log with one revision advance; duplicates do not advance it. Acquisition clocks remain in payloads; receipt/actor/revision metadata comes from context.
 4. Analysts propose only registered current finite candidates. `approveProposal` binds Chief, proposal/input/plan/reservation revisions and expiry, returning reservation plus enqueued command in one local transition.
 5. Simulator receipts report separately received stages. Acceptance validation is an intent gate, not an executor, acknowledgement or completion generator.
 6. `replayLog` validates stored canonical history; `selectReceivedSnapshot` exposes the prefix at a UTC receipt cutoff without seed/control fields. Full dual-cursor frontend replay remains future work.
 
-Convex is approved as eventual canonical shared authority. One designated teammate producer retains simulation/capture/execution, not one independent authoritative world per browser. Local compare-and-commit models the boundary; it does **not** prove distributed transaction safety. Host loss requires freeze and explicit reconciled takeover, not automatic second-producer startup.
+Convex's historical eventual-authority direction is currently deferred. One designated teammate producer retains simulation/capture/execution, not one independent authoritative world per browser. Local compare-and-commit models the boundary; it does **not** prove Convex distributed transaction safety or decide a replacement. Host loss requires freeze and explicit reconciled takeover, not automatic second-producer startup.
 
 ## Approval and mission lifecycle
 
@@ -95,7 +97,7 @@ Evidence becomes an **unverified hypothesis**, then a **finite proposal**, never
 
 ![Mission state progression from proposal and human approval to enqueued, sent, delivered, accepted, running and completed, with failed, cancelled and rejected outcomes distinct.](docs/assets/readme/mission-lifecycle.png)
 
-Built core validates/records local transitions; transport and simulated executor integration are planned. [Vector image](docs/assets/readme/mission-lifecycle.svg) · [Mermaid source](docs/assets/readme/mission-lifecycle.mmd) · [Editable scene](docs/assets/readme/mission-lifecycle.excalidraw).
+Built core and loopback bridge validate/record supplied transitions; teammate simulated executor integration remains unverified. Diagram is a protocol concept, not a current provider/executor receipt. [Vector image](docs/assets/readme/mission-lifecycle.svg) · [Mermaid source](docs/assets/readme/mission-lifecycle.mmd) · [Editable scene](docs/assets/readme/mission-lifecycle.excalidraw).
 
 | Stage | Exact meaning |
 |---|---|
@@ -152,18 +154,18 @@ Role selection is intended product design, not proof of using every sponsor. [SO
 
 | Component | Intended role | Verified/reported state |
 |---|---|---|
-| TypeScript / Node | Deterministic protocol checks and development typechecking. | Main package, Node ≥24; tested 26.11.1. TypeScript 5.9.3 / `@types/node` 24.10.1 dev-only, zero runtime dependencies. |
+| TypeScript / Node | Bounded local backend and development typechecking. | Main package, Node ≥24; local 26.11.1, hosted Node 24/26 SUCCESS. TypeScript 5.9.3 / `@types/node` 24.10.1 dev-only, zero runtime dependencies. |
 | Vite / React / Cesium | Teammate's 3D console, camera previews and simulator presentation. | Separate draft PR #2, Vite 5/React 18/Tailwind 3/strict TS/Cesium; unmerged. Not root backend dependencies. |
-| Convex | Eventual canonical shared state and transaction adapter. | Direction approved, SDK/provisioning/integration absent. |
-| Google / Gemini | Candidate orchestrator and visual analysis. | Project/key/authorized access unconfirmed; no product call. |
+| Convex | Historical eventual shared-state direction. | Currently deferred, SDK/provisioning/integration absent. |
+| Google / Gemini / Gemma | Candidate analysis and finite ranking. | Dormant clients/queue; previous authenticated Gemini model catalog included Gemma. Not current validity, quota or inference proof; genuine calls 0. |
 | Oumi / Iris | Finite decision/ranking model. | Existing organization/project verified; key setup and genuine inference pending. Account presence is not API acceptance. |
 | fal | Candidate vision/video/segmentation analysis; optional generated exercise media deferred. | Credits ready per owner report, API/thermal-task capability unverified. Catalog schemas do not prove accuracy. |
-| Firecrawl | Candidate news/article retrieval. | No confirmed product connector or ingestion receipt. |
-| Treg | Tool registry and source retrieval, complementary to article tools. | Scoped local CLI/auth verified; proposed three-file source adapter remains draft, not implemented/called. Not a general model gateway. |
-| Boxd | Optional bounded CPU preprocessing after approval. | Scoped auth verified; zero machines created. No compute/inference receipt. |
+| Firecrawl | Candidate news/article retrieval. | Dormant schema/context seam; native route unsupported. Prior CLI auth/quota check is not current validity or product retrieval. |
+| Treg | Tool registry and source retrieval, complementary to article tools. | Dormant client/source seam; prior scoped auth check, genuine retrieval 0. Not a general model gateway or current validity claim. |
+| Boxd | Optional bounded CPU preprocessing after approval. | Dormant jobs, remote execution unsupported. Prior auth/existing hibernated VM receipt is not wake/provision/remote-execution permission. |
 | Camera/satellite tooling | Permission-cleared recorded/stream/context inputs. | Research only. Transport code licenses do not license media. |
 
-No `.env.example`, application env-variable contract or provider setup script exists in this slice. Do not invent key names or copy private account details into examples. A future authorized adapter needs real non-mocked receipts plus timeout, stale-result and offline fallback tests before integration can be marked working.
+Nonsecret [backend example](backend/.env.example), [provider setup](docs/architecture/provider-setup.md), [Gemma setup](docs/architecture/gemma4-setup.md) and [dry preflight](docs/architecture/provider-activation.md) exist. Oumi/fal credentials were missing within the previously checked scope, setup unresolved. Do not copy private account details or treat earlier account/catalog checks as fresh validity. Default activation/inference/retrieval remains 0; actual loopback fixture transports are not live-provider receipts.
 
 ## Run local protocol checks
 
@@ -176,13 +178,20 @@ npm test
 npm run typecheck
 ```
 
-Verified on Node 26.11.1; Node 24 minimum declared, not separately tested. [Package scripts](backend/package.json) use native `node --test tests/*.test.ts` and `tsc --noEmit`. Install restores pinned dev tooling from [lockfile](backend/package-lock.json); tests/typecheck need no provider key, service, VM or cloud database.
+Local reviewed native/compiled result: 242/242 on Node 26.11.1. Hosted backend Node 24/26 checks [SUCCESS](https://github.com/nikolas-sapa/fire-command-center/actions/runs/43674391602), coordinator-verified. [Package scripts](backend/package.json) use native `node --test tests/*.test.ts` and `tsc --noEmit`. Install restores pinned dev tooling from [lockfile](backend/package-lock.json); tests/typecheck need no provider key, VM or cloud database. Tests open and close local fixture listeners/children only.
 
-These commands **do not start an application** or contact model providers. No root app manifest, dev server, API endpoint or main-branch frontend launch command exists. Console install/build instructions belong to its separate PR and teammate-owned package. Node <24 support and non-erasable TypeScript syntax are outside this package's contract.
+From repository root, full pinned native/compiled verification and dry provider status:
+
+```sh
+node backend/scripts/check-backend.mjs
+node backend/scripts/provider-preflight.ts --status
+```
+
+Backend-only service: `node backend/scripts/start-local.ts` starts the bridge; `node backend/scripts/start-local.ts --demo` starts callable seeded-fixture orchestration. No browser/frontend/provider starts. See [local launcher](docs/demo/local-backend.md) and [demo runbook](docs/demo/backend-service.md) for exact loopback/role/expiry boundaries. Demo has one registered single-drone course, no fabricated heartbeat/completion, and freezes after >5 seconds without a real producer heartbeat. There is no root app manifest or authorized frontend launch command. Node <24/non-erasable syntax remain outside this package's contract.
 
 ## Public protocol and state API
 
-Wire version: `backend-protocol.v1`, readonly snake_case JSON records. [Protocol exports](backend/protocol/index.ts) expose three validators; [state exports](backend/state/index.ts) expose six functions. Both re-export public [types](backend/protocol/types.ts). These are local TypeScript functions, **not REST/WebSocket endpoints**.
+Wire version: `backend-protocol.v1`, readonly snake_case JSON records. [Protocol exports](backend/protocol/index.ts) expose three validators; [state exports](backend/state/index.ts) expose six functions. Both re-export public [types](backend/protocol/types.ts). These are local TypeScript functions. The separately composed [HTTP bridge](docs/contracts/backend-bridge.v1.md) does not change these nine core signatures.
 
 <details>
 <summary>All nine exact public function signatures</summary>
@@ -258,12 +267,24 @@ fire-command-center/
 ├── backend/
 │   ├── protocol/       types.ts, validation.ts, index.ts
 │   ├── state/          reducer.ts, approval.ts, replay.ts, index.ts
-│   ├── tests/          fixtures plus validation/reducer/approval/replay suites
+│   ├── integration/    loopback authority, HTTP bridge, received-view DTO
+│   ├── planning/       deterministic toy mission candidates
+│   ├── orchestration/  bounded coordinator
+│   ├── demo/           callable seeded-fixture service/scenario
+│   ├── integrations/   dormant clients, queue and provenance receipts
+│   ├── setup/          provider config and dry activation status
+│   ├── sources/        source/context and explicit weather packets
+│   ├── sandbox/        dormant finite jobs, unsupported remote execution
+│   ├── scripts/        local launcher, checker, smoke and dry preflight
+│   ├── tests/          242 native/compiled fixture tests
 │   └── package.json / package-lock.json / tsconfig.json
 └── docs/
     ├── assets/readme/  four code-native infographic families
-    ├── contracts/      thermal-camera and crew-agent drafts
-    ├── data/           camera/satellite candidate catalog
+    ├── contracts/      reviewed backend seams and thermal/crew drafts
+    ├── architecture/   backend proofs and dormant provider/compute setup
+    ├── data/           camera/satellite catalog and source/context seam
+    ├── demo/           backend-only launcher/service runbooks
+    ├── verification/   composition/CI and producer lifecycle receipts
     ├── references/     preserved operational-clarity archive/index
     ├── specs/          simulator parameter draft
     └── superpowers/    approved protocol spec and historical test-first plan
@@ -286,7 +307,7 @@ Use separate task branches/worktrees; preserve other workers' changes. Do not re
 
 ## Verification and failure modes
 
-Current 71-test suite calls actual local public exports with fixtures. It proves bounded consistency rules, not field observations, source permissions, real authentication or Convex atomicity. [Taskboard receipts](TASKBOARD.md) record reviewed/merged source separately from product acceptance.
+Current 242-test suite calls actual native/compiled exports with fixtures, including real loopback HTTP and CLI composition. It proves bounded local consistency/lifecycle rules, not field observations, source permissions, real authentication or Convex atomicity. [Current main receipts](TASKBOARD.md#current-main-backend-summary) distinguish reviewed/merged source from product acceptance. The table below describes the original protocol suites only, not the current total.
 
 | Suite | Count | Exercised locally |
 |---|---:|---|
@@ -295,17 +316,17 @@ Current 71-test suite calls actual local public exports with fixtures. It proves
 | [Approval](backend/tests/approval.test.ts) | 18 | Current human-context/revision binding, local serialized races, reservation/TTL/lease and command acceptance. |
 | [Replay](backend/tests/replay.test.ts) | 11 | Canonical reconstruction/cutoffs, receipt progression, corruption rejection and preserved critical hypotheses. |
 
-Unproven: two real clients/20 approval races, full transport loss/retry/rejoin, real auth, thermal pixels/detection, hidden-truth isolation across actual adapters, browser accessibility/performance, route/energy physics, authorized model calls, deployment. Node 24 minimum remains unrun. Direct offline/frozen exact-duplicate approval coverage is a documented non-blocking test gap, not silently claimed solved.
+Verified locally: two actual HTTP fixture clients and bounded approval races, rejection/freeze lifecycle, real compiled exports and callable CLI. Hosted Node 24/26 backend checks passed. Unproven: actual teammate producer/ten-minute frontend integration, Convex races, full transport loss/retry/rejoin, real identity, thermal pixels/detection, browser accessibility/performance, calibrated route/energy physics, genuine provider calls and deployment. Original offline/frozen exact-duplicate approval gap remains a historical protocol note, not a claim that full fault acceptance is complete.
 
 | Failure | Core behavior / remaining integration duty |
 |---|---|
-| Wrong run/epoch/revision or malformed model-shaped result | Reject stale/invalid input, no mutation. Actual provider validation adapters pending. |
-| Exact duplicate / conflicting reused ID | Authorized exact duplicate leaves current state unchanged; changed reuse rejects. Network retries not implemented. |
-| Stream gap | `STREAM_GAP`, unchanged state. Future ingestor must commit explicit authority freeze before admitting further approvals, then reconcile. |
+| Wrong run/epoch/revision or malformed model-shaped result | Reject stale/invalid input, no mutation. Dormant adapter validation exists; genuine provider acceptance absent. |
+| Exact duplicate / conflicting reused ID | Authorized exact duplicate leaves current state unchanged; changed reuse rejects. HTTP retry fixtures exist, full teammate link fault model unverified. |
+| Stream gap | Core rejects `STREAM_GAP`; bridge commits explicit freeze for semantically valid producer gaps. Malformed/foreign payloads do not freeze. Reconcile before further execution. |
 | Producer loss or Chief handoff | Explicit loss freezes; server takeover advances epochs; old intent blocked while executor history remains. No automatic host election. |
 | Late frame or ACK | Preserve history without replacing newer last-known facts or regressing terminal status. UI stale presentation still pending. |
 | Corrupt replay suffix | Reject complete log, not partial success. No replay-time calls/dispatch. |
-| Provider outage / missing calibration / missing receipt | Planned deterministic fallback; unknown temperature remains unknown; absent progress is unconfirmed, never invented success. Provider/fault scheduler absent. |
+| Provider outage / missing calibration / missing receipt | Bounded jobs/deterministic fallback exist; unknown temperature remains unknown, absent progress unconfirmed. Genuine providers and full exercise fault model unverified. |
 
 ## Roadmap and current gates
 
@@ -339,9 +360,9 @@ Future camera/person evidence needs explicit access rights, minimal retained dat
 
 ## FAQ
 
-**Can I run the full visual product from main?** No. Main runs local protocol tests/typecheck. Visual console is separate draft PR #2, not adopted or deployed.
+**Can I run the full visual product from main?** No. Main runs the bounded backend and callable seeded-fixture demo, not the full visual product. Console remains separate draft PR #2; frontend launch/adoption requires explicit owner confirmation. No deployment claimed.
 
-**Which models have actually run for this product?** None verified. Google/Iris/fal roles are planned; scripted console cards and fixture payloads are not inference receipts. Treg auth is not a product retrieval call.
+**Which models have actually run for this product?** Genuine inference/retrieval 0. Dormant Google/Iris/fal/Gemma clients and actual loopback fixture tests are not provider receipts. Earlier Treg/Google/Firecrawl auth/catalog checks are not current validity or product retrieval proof.
 
 **Why a larger agent team but only one Chief?** Analysts handle bounded logical tasks; accountable human chooses changed mission scope. Contexts do not each require a human, process or VM. Scale benefit remains a product goal, not measured.
 
@@ -349,7 +370,7 @@ Future camera/person evidence needs explicit access rights, minimal retained dat
 
 **What does “live” mean here?** A local control-mode/context label, not proof of real footage, model access, cloud service or current source acquisition. Always inspect source mode and original clocks.
 
-**What happens when evidence goes stale or link disappears?** Keep last-known facts and unresolved critical hypotheses; no invented arrival/completion. Core supports explicit freeze/version rules; integrated loss/rejoin and UI aging remain future work.
+**What happens when evidence goes stale or link disappears?** Keep last-known facts and unresolved critical hypotheses; no invented arrival/completion. Local bridge freezes after producer absence; actual teammate loss/rejoin and UI aging remain unverified.
 
 **Can models approve commands or invent target pins?** No intended authority. Chief context/revisions gate approval; unknown geography stays null. Models propose finite known options and unverified evidence-linked hypotheses.
 
