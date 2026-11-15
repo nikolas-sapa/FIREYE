@@ -4,7 +4,21 @@ From: marcseli (Marco) and his build agent (Factory Droid).
 To: nikolas-sapa and the team's coordinator / builder agents.
 Status: **working prototype, simulated execution, not an operational system.** Submitted as a proposal for the team to adopt, adapt or reject. Nothing here approves architecture on the team's behalf.
 
-## REV D integration update
+## Precision/presentation follow-up, 2026-11-15
+
+Stacked on draft [PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), not main.
+Tested production source: [`c2ff541578a9deceaed2dcfdc6cbd92b3b6f65b2`](https://github.com/nikolas-sapa/fire-command-center/commit/c2ff541578a9deceaed2dcfdc6cbd92b3b6f65b2).
+See [exact claimed paths](fcc/docs/REVIEW_SCOPE.md) and [current receipt](fcc/docs/REVIEW_RECEIPT.md).
+
+- Fix the Float32-distance/Float64-heap fresh-entry rejection without weakening the stale guard. Permanent exact corridor control, independent shortest-path graph, boundary and fractional-seed checks pass. Both 190-second tours still require manual high-risk approval.
+- Transfer the owner's monitoring/presentation work from an isolated, frozen snapshot. `/console.html` now defaults to real-data Current Attica / Mati 2018 / Attica 2024; `?mode=replay` and existing scenario/beat links preserve legacy replay. The six separate simulated camera views always use Mati terrain and dated archive imagery, without incident detections or thermal-measurement claims.
+- Include cartography/motion and the explicit opt-in image lab. Restore four sequential 1K paid calls by default, no automatic regenerations; nondefault retries require explicit selection/consent. Bound terrain PNG decompression. No paid/provider request was made during this review.
+- Exclude 249 experiment outputs and six study CLIs, local credentials, builds/dependencies and browser artifacts. Original dirty local work remains untouched. Frozen revisions and dependency lock are unchanged.
+- No broad-repository security certification or refreshed browser/performance acceptance. This remains draft pending independent broad-diff/browser review and coordinator acceptance, despite green local automated checks.
+- Read the newer `producer-handoff.v1` at `d1213b03edaaf439f0533caa6c37065929b7f08c`. All d1–3/t1–3 owner mappings and candidate/mission/route resolution remain unsupported, not inferred. No reviewed CRS/origin/axes/units/altitude-datum or sim-tick/UTC conversion is adopted. Capture/receipt unknowns remain separate.
+- Monitoring is not a crew bridge. Legacy replay still has per-page Runtime; designated producer ownership, zero-Runtime crew readers/capabilities, factual receipts and a reviewed heartbeat/telemetry/recovery schedule remain unimplemented. [#8](https://github.com/nikolas-sapa/fire-command-center/issues/8)/[#9](https://github.com/nikolas-sapa/fire-command-center/issues/9) are not completed. No frontend/backend launch or merge permission is inferred.
+
+## Historical REV D integration update (pre-follow-up)
 
 Source of truth remains Marco's FCC app, imported with history. Marco (`marcseli`) owns this proposal and its local frontend/simulator work. This is not a takeover of the coordinator's backend, data or agent implementation lane.
 

@@ -1,5 +1,15 @@
 # REV D validation receipt
 
+## Current stacked follow-up, 2026-11-15
+
+The source-pinned current checks and retained unfavorable prediction results are in
+[REVIEW_RECEIPT.md](REVIEW_RECEIPT.md), source `c2ff541578a9deceaed2dcfdc6cbd92b3b6f65b2`.
+The precision regression reaches 20/20 cells instead of the pinned baseline's 2/20.
+Both scenario tours, monitoring/image-lab suites, typecheck, no-key build and PWA pass.
+Mati's current initial coast error is +23 minutes; the +178 minutes below is historical pre-fix evidence.
+No fresh browser or backend/frontend integration acceptance was run in this follow-up.
+The remaining sections retain earlier dated receipts, not new claims for this source.
+
 Run: 2026-11-14, macOS 25.2 (Apple silicon, 10 CPUs, 16 GB), Node 22.14.0.
 Browser: Chromium headless, 1920 × 1080. Scenario-defined seeds, unchanged.
 
@@ -33,7 +43,7 @@ git diff --check -- . ':!public/rev-c/cesium/**'
   Point arrival differences: west Neos Voutzas +9 min, Neos Voutzas +1, Marathonos −1,
   Mati coast +4. These fitted checks are not prediction validation.
 
-## Forecast failure retained
+## Forecast failure retained (historical pre-fix)
 
 The first Mati prediction at 16:43 EEST scores 0.36 IoU at +30 min (21 vs 56 ha)
 and 0.19 at +60 (56 vs 289 ha), against the **reconstruction**.
