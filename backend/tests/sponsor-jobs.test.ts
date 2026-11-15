@@ -7,14 +7,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { ClientConfig, Snapshot } from '../integrations/receipts.ts';
 import type { SponsorJob } from '../integrations/jobs.ts';
 import { createIrisClient } from '../integrations/iris/client.ts';
+import type { Reservation } from '../integrations/receipts.ts';
+const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
 function snapshot(): Snapshot {
   const now = Date.now();
   return { incident_id: 'i1', run_id: 'r1', authority_epoch: 1, input_revision: 1, snapshot_id: 's1', received_cutoff_ms: now, valid_until_ms: now + 1000,
     evidence: [{ evidence_id: 'e1', source_id: 'source1', rights_manifest_id: 'rights1', source_kind: 'simulated', captured_at_ms: now - 10, received_at_ms: now - 5,
-      modality: 'eo', synthetic: true, radiometric: false, calibration: null, content_hash: createHash('sha256').update('fixture').digest('hex'), byte_length: 7, width_px: 1, height_px: 1 }] };
+      modality: 'eo', synthetic: true, radiometric: false, calibration: null, content_hash: createHash('sha256').update(Buffer.from(png, 'base64')).digest('hex'), byte_length: Buffer.from(png, 'base64').length, width_px: 1, height_px: 1 }] };
 }
-function job(n = 1): SponsorJob { return { job_id: `j${n}`, adapter: 'gemini', task_version: 'v1', model: 'gemini-2.5-flash', snapshot: { ...snapshot(), snapshot_id: `s${n}` }, deadline_at_ms: Date.now() + 500, max_call_micro: 100 }; }
+function job(n = 1): SponsorJob { return { job_id: `j${n}`, adapter: 'gemini', task_version: 'v1', model: 'gemini-2.5-flash', snapshot: { ...snapshot(), snapshot_id: `s${n}` }, deadline_at_ms: Date.now() + 500, max_call_micro: 100, task_input: { evidence_id: 'e1', png_base64: png } }; }
 function config(extra: Partial<ClientConfig> = {}): ClientConfig { return { enabled: true, authorization_id: 'auth1', budget: new SponsorBudget(100, 100_000), is_current: () => true, ...extra }; }
 const positive = { ok: true as const, value: { kind: 'evidence-analysis', verification_status: 'unverified', evidence_ids: ['e1'], hypotheses: ['fire'], synthesis: 'review-required' } };
 
@@ -48,12 +50,12 @@ test('SP03 scheduled actual Iris client maxcalls1 reserves once, preserves serve
   const candidate = `proposed:candidate:${'a'.repeat(64)}`;
   let calls = 0;
   const input = job();
-  const result = await jobs.submit({ ...input, adapter: 'iris', model: 'projects/public-fixture/models/iris-latest' }, async (_signal, reservation) => {
+  const result = await jobs.submit({ ...input, adapter: 'iris', model: 'projects/public-fixture/models/iris-latest', task_input: { candidate_ids: [candidate] } }, async (_signal, reservation, bound) => {
     const client = createIrisClient({ ...config({ budget }), max_call_micro: 100, deadline_ms: 500, reservation,
       model: 'projects/public-fixture/models/iris-latest', registered_candidate_ids: [candidate], transport_mode: 'fixture',
       transport: async () => { calls++; return Response.json({ model: 'projects/public-fixture/models/iris-latest', answers: { ranking: {
         choice: candidate, probabilities: { [candidate]: 1 }, confidence: 1 } } }); } });
-    return client.analyze({ snapshot: input.snapshot, candidate_ids: [candidate] });
+    return client.analyze(bound);
   });
   assert.equal(result.ok, true);
   assert.equal(calls, 1);
@@ -128,4 +130,87 @@ test('SP02 20 superseded job results produce 0 accepted outputs; 20 hostile resu
     assert.equal(unsafe.ok, false);
     assert.equal(JSON.stringify(unsafe).includes(raw), false);
   }
+});
+
+test('SP02 real Iris cached success becomes STALE after currentness changes, 0 extra calls', async () => {
+  let current = true;
+  let calls = 0;
+  const budget = new SponsorBudget(2, 200);
+  const jobs = new SponsorJobs(config({ budget, is_current: () => current }));
+  const input = { ...job(), adapter: 'iris' as const, model: 'projects/public-fixture/models/iris-latest', task_input: { candidate_ids: ['c1'] } };
+  const run = async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => {
+    const client = createIrisClient({ ...config({ budget, is_current: () => current }), max_call_micro: 100, deadline_ms: 500, reservation,
+      model: input.model, registered_candidate_ids: ['c1'], transport_mode: 'fixture', transport: async () => {
+        calls++; return Response.json({ model: input.model, answers: { ranking: { choice: 'c1', probabilities: { c1: 1 }, confidence: 1 } } });
+      } });
+    return client.analyze(bound);
+  };
+  assert.equal((await jobs.submit(input, run)).ok, true);
+  current = false;
+  const cached = await jobs.submit(input, run);
+  assert.equal(cached.ok, false);
+  if (!cached.ok) assert.equal(cached.code, 'STALE');
+  assert.equal(calls, 1);
+});
+
+test('SP03 real Iris different candidate task input produces c2, never cached c1', async () => {
+  let calls = 0;
+  const budget = new SponsorBudget(2, 200);
+  const jobs = new SponsorJobs(config({ budget }));
+  const first = { ...job(), adapter: 'iris' as const, model: 'projects/public-fixture/models/iris-latest', task_input: { candidate_ids: ['c1'] } };
+  const run = (candidate: string) => async (_signal: AbortSignal, reservation: Reservation, bound: unknown) => {
+    const client = createIrisClient({ ...config({ budget }), max_call_micro: 100, deadline_ms: 500, reservation,
+      model: first.model, registered_candidate_ids: ['c1', 'c2'], transport_mode: 'fixture', transport: async () => {
+        calls++; return Response.json({ model: first.model, answers: { ranking: { choice: candidate, probabilities: { [candidate]: 1 }, confidence: 1 } } });
+      } });
+    return client.analyze(bound);
+  };
+  assert.equal((await jobs.submit(first, run('c1'))).ok, true);
+  const second = await jobs.submit({ ...first, job_id: 'j2', task_input: { candidate_ids: ['c2'] } }, run('c2'));
+  assert.equal(second.ok, true);
+  if (second.ok) assert.equal((second.value as { ranking: { candidate_id: string }[] }).ranking[0].candidate_id, 'c2');
+  assert.equal(calls, 2);
+});
+
+test('SP02 cached Promise resolution rechecks currentness, 0 actionable cached values', async () => {
+  let current = true;
+  const jobs = new SponsorJobs(config({ is_current: () => current }));
+  const input = job();
+  assert.equal((await jobs.submit(input, async () => positive)).ok, true);
+  const cached = jobs.submit(input, async () => positive);
+  current = false;
+  const result = await cached;
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'STALE');
+});
+
+test('SP03 bound frozen input prevents closure mismatch, actual issued Iris receipt rejects changed c2', async () => {
+  const budget = new SponsorBudget(1, 100);
+  const jobs = new SponsorJobs(config({ budget }));
+  const input = { ...job(), adapter: 'iris' as const, model: 'projects/public-fixture/models/iris-latest', task_input: { candidate_ids: ['c1'] } };
+  const result = await jobs.submit(input, async (_signal, reservation, bound) => {
+    assert.ok(Object.isFrozen(bound));
+    assert.deepEqual('candidate_ids' in bound && bound.candidate_ids, ['c1']);
+    const client = createIrisClient({ ...config({ budget }), max_call_micro: 100, deadline_ms: 500, reservation, model: input.model,
+      registered_candidate_ids: ['c1', 'c2'], transport_mode: 'fixture', transport: async () => Response.json({ model: input.model,
+        answers: { ranking: { choice: 'c2', probabilities: { c2: 1 }, confidence: 1 } } }) });
+    return client.analyze({ snapshot: input.snapshot, candidate_ids: ['c2'] });
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'INVALID_REPLY');
+});
+
+test('SP03 query/evidence task inputs bind identity, 4 distinct jobs invoke 4 callbacks', async () => {
+  const jobs = new SponsorJobs(config());
+  let calls = 0;
+  const base = job();
+  const twoEvidence = { ...base.snapshot, evidence: [...base.snapshot.evidence, { ...base.snapshot.evidence[0], evidence_id: 'e2' }] };
+  for (const evidence_id of ['e1', 'e2']) {
+    assert.equal((await jobs.submit({ ...base, job_id: `j-${evidence_id}`, snapshot: twoEvidence, task_input: { evidence_id, png_base64: png } }, async () => { calls++; return { ...positive, value: { ...positive.value, evidence_ids: [evidence_id] } }; })).ok, true);
+  }
+  for (const query of ['public fire one', 'public fire two']) {
+    assert.equal((await jobs.submit({ ...base, adapter: 'treg', job_id: `j-${calls}`, task_input: { query } }, async () => { calls++; return { ok: true, value: { kind: 'public-source-links', urls: [], verification_status: 'unverified', served_by: null } }; })).ok, true);
+  }
+  assert.equal(calls, 4);
+  assert.equal(jobs.counts().retained, 4);
 });
