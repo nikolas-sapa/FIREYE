@@ -1,5 +1,21 @@
 # Fire Command Center shared taskboard
 
+## ROOT-20261115-BODY-LEASE, PR48 Node24 acceptance correction
+
+Coordinator reassigns the frozen PR48 test/contract continuation to one GPT-6.1 Sol builder on `devin/20261115-body-lease-test`, source `3ccdf88d68c84c73b86c87f086bac87acb4c4e7c`. Exact final edit ownership: `backend/tests/queued-gemini.test.ts`, `docs/contracts/queued-gemini.v1.md`. `backend/integrations/receipts.ts` is claimed only for one temporary negative-control mutation, restored byte-for-byte before final verification. No final production-source change authorized. Coordinator alone edits TASKBOARD and handles Git delivery. Other issue/recording worktrees remain untouched.
+
+Test plan before implementation:
+- BL01: actual ten-concurrent plus sixty-sequential localhost responses produce exactly70 sanitized terminal failures; maximum observed client budget leases exactly2, initial logical2/queued8, final client physical/logical0 and unread bodies0. Server-side open responses must drain to0 within1000ms, but observed remote peak is diagnostic, not proof of upstream cancellation.
+- BL02: preserve all existing BODY01/BODY02 delayed/rejected/throwing/locked cancellation assertions, two physical/callback slots, eight queued expirations and no extra reservations. No concurrency-cap, request-deadline or budget increase.
+- BL03: temporary removal of awaited cleanup must make the existing twenty-direct-terminal-failures test fail; restoring the exact source must make it pass. Record nonzero/zero deciding exits and unchanged production hash.
+- BL04: one final complete backend checker, native/compiled/noEmit/source compilation all exit0, zero failures/cancellations/skips. Node24 and26 results remain distinct; unavailable local Node24 is skipped, never relabelled passed. Hosted Node24/26 acceptance required before integration.
+
+Implementation: measure the actual shared client budget at every real fetch dispatch in BODY01, retain remote server counters as separate diagnostics, preserve real HTTP requests and final drain assertions. Clarify the test contract and preserve unfavorable historical receipts. Freeze exact diff for coordinator review. Negative control changes no production behavior in the delivered patch.
+
+Non-goals: backend execution/route/schema/provider/config/queue redesign; larger concurrency or money limits; remote cancellation guarantees; frontend/audience changes; paid calls, credentials, new dependencies, provisioning or deployment; worker Git delivery; closing full issue15.
+
+Coordinator review: APPROVE exact test/contract delta after full diff and raw status/TAP inspection. On source3ccdf88, changed BODY01 passes5/5 on Node24.21.0 and26.11.1; remote Node24 peak4 remains diagnostic while observed client leases stay2. Removing awaited cleanup fails the selected real direct-client assertion (exit1, actual0/expected1), exact restoration passes (exit0); receipts SHA remainsed451e26dffd61c08287619d84eaab05446ba768fb9adfa97a04324259d8c97c. One full Node26 checker passes native320/320 and compiled320/320, zero failures/cancellations/skips, noEmit/all-source compilation exit0. Full local Node24 checker not run; fresh hosted Node24/26 acceptance and full issue15 orchestration remain pending. No production-source/dependency/provider/runtime changes retained.
+
 BATCH-20261115-15 final owned review: dedicatedbuilder plus independentTypeScript01a1ddff-5de8-7201-8bc6-ba02003e83f3/security01a1ddff-5e52-7e03-bb72-61015e623dbe APPROVE final4hashes (8ef1wrapper/7491test/ed451receipts/4bd8contract),0blockers. Reviewed follow-up RED/GREEN catches pre-cancelledresponse and originaldeadline/snapshot dispatch/abortbody lifetime, finalactualD01-05five/5 andsecurity16/16pass. Root independently runsfullnative288/compiled288/noEmit/sourcecompiler0failure/skip and verifies exactdiff/sourcehashscope. Sharedreceiptsed451 reviewed handoff composed into#14 only byroot. Coordinatorauthorizes exact4ownedfiles+board branchdelivery/merge afterlatestmaincomposition/hostedchecks,0genuinecalls; service/media/provider/full#15remainopen.
 
 
