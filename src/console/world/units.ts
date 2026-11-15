@@ -4,6 +4,7 @@ import type { ScenarioContext } from './context';
 import type { Rng } from './rng';
 import type { Sim, UnitMeta } from './sim';
 import { MIN, bearingDeg, clamp, destination, distanceM } from './geo';
+import { stepAircraft } from './flight';
 
 /** Road-following route (OSM graph via DATA's nearestRoadPath); straight line if no road is near. */
 export function roadRoute(ctx: ScenarioContext, from: Geo, to: Geo): Geo[] {
@@ -33,7 +34,7 @@ export function createUnits(ctx: ScenarioContext, rng: Rng, t0: number): { units
       kind: s.kind,
       pos: { lon: s.pos.lon, lat: s.pos.lat, alt: air ? s.alt ?? 120 : 0 },
       heading: rng.range(0, 360),
-      speedMps: 0,
+      speedMps: s.kind === 'tanker' ? s.cruise ?? CRUISE[s.kind] : 0,
       status: s.kind === 'ems' || s.kind === 'law' ? 'standby' : 'active',
       division: s.division,
       trail: [],
@@ -46,7 +47,7 @@ export function createUnits(ctx: ScenarioContext, rng: Rng, t0: number): { units
       patrol: s.patrol ?? [],
       home: { lon: s.pos.lon, lat: s.pos.lat },
       nextTrailT: t0,
-      altAGL: s.alt ?? 0,
+      altAGL: air ? s.alt ?? 120 : 0,
       cruise: s.cruise ?? CRUISE[s.kind],
       marine: s.marine,
       helmetCam: s.helmetCam,
@@ -83,6 +84,7 @@ function moveAlong(u: Unit, pts: Geo[], i: number, dist: number): number {
 }
 
 function stepUnit(sim: Sim, u: Unit, m: UnitMeta, dt: number): void {
+  if (AIRBORNE.has(u.kind)) { stepAircraft(sim, u, m, dt); return; }
   const plan = m.plan;
   const speed = m.override ?? m.cruise;
   switch (plan.mode) {
@@ -152,11 +154,11 @@ function stepUnit(sim: Sim, u: Unit, m: UnitMeta, dt: number): void {
 }
 
 export function tickUnits(sim: Sim, dtS: number): void {
-  const steps = Math.max(1, Math.ceil(dtS / 15));
-  const dt = dtS / steps;
   for (const u of sim.units) {
     const m = sim.umeta.get(u.id);
     if (!m) continue;
+    const steps = Math.max(1, Math.ceil(dtS / (AIRBORNE.has(u.kind) ? 0.5 : 15)));
+    const dt = dtS / steps;
     for (let k = 0; k < steps; k++) stepUnit(sim, u, m, dt);
     if (sim.t >= m.nextTrailT) {
       u.trail = [...u.trail.slice(-23), { lon: u.pos.lon, lat: u.pos.lat, alt: u.pos.alt }];

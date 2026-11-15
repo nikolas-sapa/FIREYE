@@ -425,7 +425,7 @@ function beats(ctx: ScenarioContext): BeatDef[] {
       id: 'ignition',
       at: 20,
       title: 'Ignition at Daou Penteli',
-      caption: `${ctx.fmtTime(ign)}: a fire starts at Daou Penteli. Simulated ridge-camera and social detections raise the only Z0 interrupt. The prototype spread model (reconstructed issue-time seed, DEM, fuel, ${Math.round(w.windKph)} km/h ${Math.round(w.windDirDeg)}° wind, archived future weather as a perfect forecast) puts the head at ${n.marathonos} in ${fmtM(toRoad)} and at the sea in ${fmtM(toSea)}. It substantially underpredicts the historical spread speed.`,
+      caption: `${ctx.fmtTime(ign)}: a fire starts at Daou Penteli. Simulated ridge-camera and social detections raise the only Z0 interrupt. The prototype spread model (reconstructed issue-time seed, DEM, fuel, ${Math.round(w.windKph)} km/h ${Math.round(w.windDirDeg)}° wind, archived future weather as a perfect forecast) puts the head at ${n.marathonos} in ${fmtM(toRoad)} and at the sea in ${fmtM(toSea)}. Its timing against the sourced checkpoints is scored as the replay runs; it has no ember spotting.`,
       speed: 30,
       anchor: ctx.tDetect,
       enter: (h) => ops.setAutonomy(h.sim, 'act'),
@@ -505,6 +505,8 @@ export const mati: ScenarioScript = {
   tzOffsetMin: 180,
   areaUnit: 'ha',
   primary: { match: /^mati$/i, fallback: { id: 'mati', name: 'Mati', pos: { lon: 24.0045, lat: 38.0455 }, kind: 'town' }, radiusM: 1500 },
+  // 14:00 EEST: the hot, dry, gusty afternoon before ignition (hourly ERA5 covers the whole day).
+  windowStart: () => Date.UTC(2018, 6, 23, 11, 0),
   timeline: ({ start, end, ignitionT }) => {
     const ign = ignitionT && ignitionT >= start && ignitionT < end ? ignitionT : start + 30 * MIN;
     return { T0: Math.max(start, ign - 12 * MIN), tShift: null, tDetect: ign + 2 * MIN };

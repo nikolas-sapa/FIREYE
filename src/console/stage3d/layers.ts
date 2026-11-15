@@ -1,5 +1,5 @@
 import * as Cesium from 'cesium';
-import { color as ds } from '@ds';
+import { color as ds, cssToken, font, getDaylightBlend, getTheme } from '@ds';
 import type {
   Action, ConsoleState, Finding, Geo, GradedItem, Projection, ScenarioPack, Unit, Zone,
 } from '../contracts';
@@ -7,6 +7,7 @@ import { FINDING_ICON, GLYPH_SCALE, UNIT_ICON, glyph, headingChevron, placeTick 
 import { pal } from './palette';
 import { RasterSampler, centroid, circle, destination } from './raster';
 import { unitHeading, unitPos } from './world';
+import { DEFAULT_MAP_SETTINGS, findingVisible, unitVisible, type MapSettings } from './map-settings';
 
 const FONT = '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
 const FONT_SM = '500 9px "JetBrains Mono Variable", ui-monospace, monospace';
@@ -100,7 +101,29 @@ export class StageLayers {
   private placeById = new Map<string, Geo>();
   private actionTargets = new Map<string, Geo>();
   private itemPos = new Map<string, Geo>();
+  private appearanceKey = '';
+  private labelTokens = new WeakMap<Cesium.LabelGraphics, string>();
   selectedId: string | null = null;
+  private visibility = DEFAULT_MAP_SETTINGS.layers;
+
+  /** Filters only main-view graphics. Simulation, feeds and decision queues stay intact. */
+  applyVisibility(v: MapSettings['layers']) {
+    this.visibility = v;
+    for (const r of this.units.values()) {
+      for (const e of r.entities) {
+        const suffix = e.id.slice(`u:${r.unit.id}`.length);
+        e.show = unitVisible(v, r.unit.kind) && (suffix === ':trail' ? v.trails
+          : suffix === ':fov' ? v.sensorFootprints : suffix === ':stem' ? v.altitudeStems : true);
+      }
+      if (r.main.label?.show?.getValue() !== v.unitLabels) r.main.label!.show = new Cesium.ConstantProperty(v.unitLabels);
+    }
+    for (const [id, r] of this.findings) {
+      const f = this.findingById.get(id);
+      for (const e of r.entities) e.show = !!f && findingVisible(v, f.kind) && (e === r.dot || v.uncertainty);
+      const label = v.findingLabels && r.labelOn;
+      if (r.dot.label?.show?.getValue() !== label) r.dot.label!.show = new Cesium.ConstantProperty(label);
+    }
+  }
 
   constructor(private viewer: Cesium.Viewer, private s: RasterSampler, private opts: LayerOptions) {
     for (const d of Object.values(this.ds)) viewer.dataSources.add(d);
@@ -127,19 +150,22 @@ export class StageLayers {
     for (const p of pack.manifest.places) {
       this.placeById.set(p.id, p.pos);
       const major = p.kind === 'town';
+      const far = major ? this.opts.labelFarM ?? 160000
+        : Math.min(this.opts.minorLabelFarM ?? 45000, p.kind === 'hamlet' ? 9000 : 4000);
       e.add({
         id: `p:${p.id}`,
         position: this.cart(p.pos, 2),
-        billboard: { image: placeTick(), scale: GLYPH_SCALE, color: major ? pal.bone : pal.boneDim, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        billboard: { image: placeTick(), scale: GLYPH_SCALE, color: major ? pal.bone : pal.boneDim, disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, far) },
         label: labelOpts(p.name, {
-          font: major ? FONT : FONT_SM,
+          font: `500 ${major ? 13 : 10}px ${font.mono}`,
           fillColor: major ? pal.bone : pal.boneDim,
           showBackground: false,
           pixelOffset: new Cesium.Cartesian2(10, 0),
           outlineColor: pal.void.withAlpha(0.9),
           outlineWidth: 3,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, major ? this.opts.labelFarM ?? 160000 : this.opts.minorLabelFarM ?? 45000),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, far),
         }),
       });
     }
@@ -352,8 +378,9 @@ export class StageLayers {
       const sig = `${u.kind}|${selected ? 1 : 0}|${u.callsign}|${u.status}`;
       let rec = this.units.get(u.id);
       if (rec) {
+        const trailChanged = rec.unit.trail !== u.trail;
         rec.unit = u;
-        rec.trail.polyline!.positions = new Cesium.ConstantProperty(this.trailPositions(u, air));
+        if (trailChanged) rec.trail.polyline!.positions = new Cesium.ConstantProperty(this.trailPositions(u, air));
         if (rec.sig === sig) continue;
         for (const en of rec.entities) e.remove(en);
       } else {
@@ -395,7 +422,7 @@ export class StageLayers {
             color: Cesium.Color.fromCssColorString(color).withAlpha(0.9),
             rotation: new Cesium.CallbackProperty(() => camera.heading - (unitHeading(holder.unit) * Math.PI) / 180, false),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            show: u.speedMps > 0.3 || air,
+            show: new Cesium.CallbackProperty(() => holder.unit.speedMps > 0.3 || air, false),
           },
         }),
       );
@@ -581,9 +608,10 @@ export class StageLayers {
   /** World position for any stage id (finding, unit, place, action, graded item). */
   resolve(id: string, result?: Cesium.Cartesian3): Cesium.Cartesian3 | undefined {
     const f = this.findingById.get(id);
-    if (f) return this.cart(f.pos, 3, result);
+    if (f) return findingVisible(this.visibility, f.kind) ? this.cart(f.pos, 3, result) : undefined;
     const u = this.units.get(id);
     if (u) {
+      if (!unitVisible(this.visibility, u.unit.kind)) return undefined;
       const p = unitPos(u.unit);
       const air = AIR.includes(u.unit.kind);
       return this.cart(p, air ? Math.max(40, p.alt ?? 120) : 3, result);
@@ -617,6 +645,45 @@ export class StageLayers {
     for (const r of this.actions.values()) r.sig = '';
     for (const r of this.coverage.values()) r.sig = '';
     this.projSig = '';
+  }
+
+  /** Restyle existing main-map labels without rebuilding terrain, glyphs or ground geometry. */
+  applyAppearance(force = false) {
+    const key = `${getTheme()}/${getDaylightBlend().toFixed(4)}`;
+    if (!force && key === this.appearanceKey) return;
+    this.appearanceKey = key;
+    const tokens = ['bone', 'bone-dim', 'bone-mute', 'ink-950', 'void', 'ember', 'amber', 'phosphor', 'ice', 'violet', 'signal'];
+    const colors = Object.fromEntries(tokens.map((t) => [t, Cesium.Color.fromCssColorString(cssToken(t))]));
+    const original: Record<string, string> = {
+      [ds.bone.DEFAULT.toLowerCase()]: 'bone', [ds.bone.dim.toLowerCase()]: 'bone-dim',
+      [ds.bone.mute.toLowerCase()]: 'bone-mute', [ds.ember.toLowerCase()]: 'ember',
+      [ds.amber.toLowerCase()]: 'amber', [ds.phosphor.toLowerCase()]: 'phosphor',
+      [ds.ice.toLowerCase()]: 'ice', [ds.violet.toLowerCase()]: 'violet',
+      [ds.signal.DEFAULT.toLowerCase()]: 'signal',
+    };
+    const set = (property: Cesium.Property | undefined, value: unknown) => {
+      if (property instanceof Cesium.ConstantProperty) property.setValue(value);
+    };
+    for (const source of Object.values(this.ds)) for (const entity of source.entities.values) {
+      const label = entity.label;
+      if (label) {
+        let token = this.labelTokens.get(label);
+        if (!token) {
+          const current = label.fillColor?.getValue(Cesium.JulianDate.now()) as Cesium.Color | undefined;
+          token = current ? original[current.toCssHexString().toLowerCase()] ?? 'bone' : 'bone';
+          this.labelTokens.set(label, token);
+        }
+        set(label.fillColor, colors[token]);
+        set(label.backgroundColor, colors['ink-950'].withAlpha(0.90));
+        set(label.outlineColor, colors.void.withAlpha(0.95));
+        const size = /(\d+)px/.exec(String(label.font?.getValue()))?.[1] ?? '10';
+        set(label.font, `500 ${size}px ${font.mono}`);
+      }
+      if (entity.id.startsWith('p:') && entity.billboard) set(entity.billboard.color, colors['bone-dim']);
+      if (entity.id.startsWith('perim:') && entity.polyline?.material instanceof Cesium.PolylineDashMaterialProperty) {
+        set(entity.polyline.material.color, colors['bone-dim'].withAlpha(0.55));
+      }
+    }
   }
 
   destroy() {

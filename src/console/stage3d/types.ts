@@ -4,9 +4,13 @@ import type {
 
 /** The slice of console state the 3D stage and feed renderer consume. */
 export interface StageSnapshot {
+  /** Monitoring disables reconstruction effects and replay-derived perimeters. */
+  dataMode?: 'replay' | 'monitoring';
   pack: ScenarioPack | null;
   t: Ms;
   paused: boolean;
+  /** Scenario seconds per real second. */
+  speed?: number;
   units: Unit[];
   findings: Finding[];
   feeds: Feed[];

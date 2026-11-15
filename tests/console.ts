@@ -6,9 +6,29 @@ import { createBus } from '../src/console/bus';
 import { isBusEvent } from '../src/console/bus/adapters';
 import { Runtime } from '../src/console/world/runtime';
 import { ops } from '../src/console/world/engine';
-import { runSpread } from '../src/console/agents/spread';
+import { runSpread, runTravelTime, SpreadSeeds, headRos, fineFuelMoisture } from '../src/console/agents/spread';
+import { FuelClass } from '../src/console/contracts';
 import { emitDirective } from '../src/console/orchestrator/directives';
 
+// Solver regression: on uniform flat shrub the head must advance at exactly the head rate downwind
+// (a float32/float64 stale-entry bug once stalled the front), and stronger wind must burn more.
+{
+  const N = 256, fuel = new Uint8Array(N * N).fill(FuelClass.Shrub), elev = new Float32Array(N * N);
+  const solve = (windKph: number, horizonMin = 360) => {
+    const seeds = new SpreadSeeds(); seeds.push(128 * N + 32, 0);
+    return runTravelTime({ gw: N, gh: N, dxM: 40, dyM: 40, fuel, elev, horizonMin, weatherAt: () => ({ windKph, windDirDeg: 270, tempC: 32, rh: 20 }) }, seeds);
+  };
+  for (const kph of [10, 30, 60]) {
+    const [ros] = headRos(FuelClass.Shrub, kph, fineFuelMoisture(32, 20));
+    const t = solve(kph);
+    for (const d of [1, 7, 20, 50]) assert.ok(Math.abs(t[128 * N + 32 + d] - (d * 40) / ros) < 1e-3 * d + 1e-3, `head at ${d} cells, ${kph} km/h`);
+  }
+  // Area grows with wind only while the 16-neighbour stencil can resolve the ellipse (LB below about 3);
+  // above roughly 30 km/h it under-represents narrow fires (PROJECTION.md, known limitations).
+  const area = (t: Float32Array) => t.reduce((n, v) => n + (v <= 60 ? 1 : 0), 0);
+  assert.ok(area(solve(30, 60)) > area(solve(10, 60)) && area(solve(10, 60)) > area(solve(5, 60)), 'stronger wind burns more');
+  console.log('Spread solver head rate and wind monotonicity PASS');
+}
 assert.equal(isBusEvent({ type: 'prediction.scored', at: 0 }), true);
 assert.equal(isBusEvent({ type: 'prediction.scored', at: Infinity }), false);
 assert.equal(isBusEvent({ type: 'prediction.scored', at: NaN }), false);

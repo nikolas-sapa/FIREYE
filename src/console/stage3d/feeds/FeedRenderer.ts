@@ -13,7 +13,8 @@ import { RasterSampler, weatherAt, DEG2RAD } from '../raster';
 import { getSampler } from '../sampler';
 import { getSmokeField, type SmokeField } from '../smoke';
 import { applySunLight, createDarkViewer, setupBasemap } from '../viewer';
-import { stageWorld, unitPos } from '../world';
+import { stageWorld, unitHeading, unitPos } from '../world';
+import { CameraFilter, FeedCadence } from './dynamics';
 import { feedPose, type FeedPose } from './poses';
 import { drawSatScene, pickSatScene, satProject, type SatScene } from './satellite';
 
@@ -21,7 +22,6 @@ export const FULL_W = 960;
 export const FULL_H = 540;
 export const THUMB_W = 384;
 export const THUMB_H = 216;
-const FULL_INTERVAL_MS = 1000 / 24;
 const THUMB_PERIOD_MS = 2000;
 
 export interface Detection {
@@ -52,15 +52,17 @@ export interface FeedFrame {
   sat?: SatScene | { real: false };
   /** Ground speed of the carrying unit (m/s), for telemetry / burn-in. */
   speedMps?: number;
+  replayRate?: number;
 }
 
-interface CamState { exp: number; vel: number; lastS: number; nucUntil: number; nextNuc: number }
+interface CamState { exp: number; lastS: number; nucUntil: number; nextNuc: number }
 
 export interface SurfaceHandle {
   feedId: string;
   variant: 'thumb' | 'full';
   canvas: HTMLCanvasElement;
   onFrame?: (f: FeedFrame) => void;
+  onError?: () => void;
 }
 
 interface Surface extends SurfaceHandle {
@@ -79,7 +81,7 @@ const PROXY_SIZE: Partial<Record<FindingKind, { w: number; l: number; h: number;
 };
 
 /**
- * One hidden Cesium viewer shared by every <FeedSurface>. It renders the active full feed at ~18 fps
+ * One hidden Cesium viewer shared by every <FeedSurface>. It targets 30 fps for the active full feed
  * and refreshes thumbnails round-robin (each about every 2 s), copying the WebGL canvas into each
  * surface's own 2D canvas.
  */
@@ -118,6 +120,7 @@ export class FeedRenderer {
   private satCanvas = document.createElement('canvas');
   private satKey = '';
   private satReady = false;
+  private surfacePrimed = new Set<string>();
   private src: CanvasImageSource | null = null;
   private portraitTmp = document.createElement('canvas');
   private surfaces = new Map<number, Surface>();
@@ -130,12 +133,19 @@ export class FeedRenderer {
   private particles: FireParticles | null = null;
   private exaggeration = 1;
   private ready = false;
-  private lastFull = 0;
+  private cadence = new FeedCadence();
+  private fullId: string | null = null;
+  private filters = new Map<string, CameraFilter>();
+  private motionEpoch = -1;
+  private visualS = 0;
+  private lastStepAt = 0;
+  private failures = 0;
+  private retryAt = 0;
+  private signalFailed = false;
   private lastThumb = 0;
   private thumbCursor = 0;
   private warm: { key: number; feedId: string } | null = null;
   private frameNo = 0;
-  private t0 = performance.now();
   private renderCost = 8;
   private proxies = new Cesium.CustomDataSource('feed-proxies');
   private proxySig = '';
@@ -145,6 +155,13 @@ export class FeedRenderer {
   private idleTimer = 0;
   private activeModel: CameraModel | null = null;
   private sizeMode: 'full' | 'thumb' = 'thumb';
+  private initializing = false;
+  private dead = false;
+  private basemapTiles: Cesium.Cesium3DTileset | undefined;
+  private buildings: Cesium.Primitive | undefined;
+  private sampleAt = performance.now();
+  private sceneTime = Cesium.JulianDate.now();
+  private renderTime = new Cesium.JulianDate();
 
   private constructor() {
     const host = document.createElement('div');
@@ -155,6 +172,7 @@ export class FeedRenderer {
     this.host = host;
     const credit = document.createElement('div');
     this.viewer = createDarkViewer(host, { msaa: 1, preserveDrawingBuffer: true, useDefaultRenderLoop: false, creditContainer: credit });
+    this.viewer.clock.shouldAnimate = false;
     const scene = this.viewer.scene;
     scene.fog.density = 1.2e-4;
     scene.globe.maximumScreenSpaceError = 2.5;
@@ -173,31 +191,55 @@ export class FeedRenderer {
 
   private async initPack() {
     const pack = stageWorld.get().pack;
-    if (!pack || pack === this.pack) return;
+    if (this.dead || this.initializing || !pack || pack === this.pack) return;
+    this.initializing = true;
+    this.ready = false;
+    this.releasePack();
     this.pack = pack;
+    this.signalFailed = false; this.failures = 0; this.retryAt = 0;
+    this.sunKey = this.weatherT = NaN;
+    this.proxySig = this.unitSig = '';
+    this.filters.clear(); this.camState.clear();
+    this.satKey = ''; this.satReady = false;
+    this.surfacePrimed.clear();
+    this.proxies.entities.removeAll();
+    this.viewer.imageryLayers.removeAll();
+    this.viewer.scene.globe.show = true;
+    this.viewer.scene.globe.enableLighting = false;
     const s = getSampler(pack);
     this.sampler = s;
     try {
       const bm = await setupBasemap(this.viewer, pack, s);
+      this.basemapTiles = bm.tileset;
+      if (this.dead || stageWorld.get().pack !== pack) return;
       this.exaggeration = bm.exaggeration;
       const scene = this.viewer.scene;
       this.profile = getProfile(pack);
-      this.field = getFireField(pack, s);
-      this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced, strength: 1.0 });
-      this.particles = new FireParticles(scene, s, { maxFlames: 12, maxSmoke: 5, maxEmbers: 8, exaggeration: this.exaggeration, smokeScale: 0.8, profile: this.profile });
-      this.particles.show = !this.reduced;
-      this.smoke = getSmokeField(pack, s);
-      // Atmosphere first (scene-referred light, smoke, sky), then the sensor model.
-      this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'camera', quality: 1.4, shimmer: !this.reduced });
+      if (stageWorld.get().dataMode !== 'monitoring') {
+        this.field = getFireField(pack, s);
+        this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced, strength: 1.0 });
+        this.particles = new FireParticles(scene, s, { maxFlames: 12, maxSmoke: 5, maxEmbers: 8, exaggeration: this.exaggeration, smokeScale: 0.8, profile: this.profile });
+        this.particles.show = !this.reduced;
+        this.smoke = getSmokeField(pack, s);
+        // Atmosphere first (scene-referred light, smoke, sky), then the sensor model.
+        this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'camera', quality: 1.4, shimmer: !this.reduced });
+        this.addBuildings(pack, s);
+      }
       this.cams = createCameraStages(scene, this.camU);
-      this.addBuildings(pack, s);
       this.ready = true;
       this.syncFire();
       this.syncProxies();
       this.syncUnitProxies();
       this.kick();
     } catch (err) {
-      console.error('[stage3d] feed renderer init failed', err);
+      if (!this.dead) {
+        console.error('[stage3d] feed renderer init failed', err);
+        this.signalFailed = true;
+        for (const surface of this.surfaces.values()) surface.onError?.();
+      }
+    } finally {
+      this.initializing = false;
+      if (!this.dead && stageWorld.get().pack !== this.pack) void this.initPack();
     }
   }
 
@@ -233,9 +275,8 @@ export class FeedRenderer {
         attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(c) },
       });
     });
-    this.viewer.scene.primitives.add(
-      new Cesium.Primitive({ geometryInstances: instances, appearance: new Cesium.PerInstanceColorAppearance({ flat: false, translucent: false }), asynchronous: true }),
-    );
+    this.buildings = this.viewer.scene.primitives.add(
+      new Cesium.Primitive({ geometryInstances: instances, appearance: new Cesium.PerInstanceColorAppearance({ flat: false, translucent: false }), asynchronous: true }));
   }
 
   /** Simple 3D stand-ins for detections so cameras actually see something at the finding. */
@@ -292,9 +333,16 @@ export class FeedRenderer {
         id: `pu:${u.id}`,
         position: new Cesium.CallbackPositionProperty((_t, result) => {
           const cur = stageWorld.get().units.find((x) => x.id === ref.u.id) ?? ref.u;
-          const p = unitPos(cur, performance.now(), g);
+          const p = unitPos(cur, this.sampleAt, g);
           const base = s.elevation(p.lon, p.lat) * this.exaggeration;
           return Cesium.Cartesian3.fromDegrees(p.lon, p.lat, base + (air ? Math.max(40, p.alt ?? 120) : dims[2] / 2), undefined, result);
+        }, false),
+        orientation: new Cesium.CallbackProperty(() => {
+          const cur = stageWorld.get().units.find((x) => x.id === ref.u.id) ?? ref.u;
+          const p = unitPos(cur, this.sampleAt);
+          const position = Cesium.Cartesian3.fromDegrees(p.lon, p.lat,
+            s.elevation(p.lon, p.lat) * this.exaggeration + (air ? Math.max(40, p.alt ?? 120) : dims[2] / 2));
+          return Cesium.Transforms.headingPitchRollQuaternion(position, new Cesium.HeadingPitchRoll(unitHeading(cur, this.sampleAt) * DEG2RAD, 0, 0));
         }, false),
         box: { dimensions: new Cesium.Cartesian3(dims[0], dims[1], dims[2]), material: Cesium.Color.fromCssColorString(hex) },
       });
@@ -308,6 +356,7 @@ export class FeedRenderer {
     if (!ctx) return () => undefined;
     const key = this.nextKey++;
     this.surfaces.set(key, { ...h, key, ctx, registeredAt: performance.now(), lastFrameAt: 0 });
+    if (this.signalFailed) h.onError?.();
     this.kick();
     return () => {
       this.surfaces.delete(key);
@@ -332,11 +381,17 @@ export class FeedRenderer {
     }
     window.clearTimeout(this.idleTimer);
     this.idleTimer = 0;
-    if (this.ready) {
+    if (this.ready && performance.now() >= this.retryAt) {
       try {
         this.step();
+        this.failures = 0;
       } catch (err) {
-        console.warn('[stage3d] feed render error', err);
+        this.retryAt = performance.now() + 250 * 2 ** this.failures++;
+        if (this.failures === 1) console.warn('[stage3d] feed render error, backing off', err);
+        if (this.failures >= 3) {
+          this.ready = false; this.signalFailed = true;
+          for (const s of this.surfaces.values()) s.onError?.();
+        }
       }
     }
     this.raf = requestAnimationFrame(this.loop);
@@ -348,13 +403,29 @@ export class FeedRenderer {
 
   private step() {
     const now = performance.now();
+    const world = stageWorld.get();
+    this.reduced = prefersReducedMotion();
+    if (this.particles) this.particles.show = !this.reduced;
+    if (this.atmos) this.atmos.shimmer = !this.reduced;
+    if (this.motionEpoch !== stageWorld.motionEpoch()) {
+      this.motionEpoch = stageWorld.motionEpoch();
+      this.filters.clear(); this.camState.clear(); this.visualS = 0;
+    }
+    const ids = new Set(world.feeds.map((f) => f.id));
+    for (const id of this.filters.keys()) if (!ids.has(id)) this.filters.delete(id);
+    for (const id of this.camState.keys()) if (!ids.has(id)) this.camState.delete(id);
+    if (this.lastStepAt && !world.paused && !this.reduced) this.visualS += Math.min(0.1, (now - this.lastStepAt) / 1000);
+    this.lastStepAt = now;
     const all = [...this.surfaces.values()];
     let full: Surface | null = null;
     for (const s of all) if (s.variant === 'full' && this.feedById(s.feedId) && (!full || s.registeredAt > full.registeredAt)) full = s;
+    if (this.fullId !== (full?.feedId ?? null)) {
+      this.fullId = full?.feedId ?? null; this.cadence.reset(); this.warm = null;
+    }
     // Resizing reallocates framebuffers, so the size follows "is any full surface active", not each render.
     this.setSize(full ? 'full' : 'thumb');
 
-    if (this.warm) {
+    if (this.warm && !full) {
       // Second pass for a thumbnail: tiles requested last frame are now resident.
       const w = this.warm;
       this.warm = null;
@@ -366,8 +437,7 @@ export class FeedRenderer {
       return;
     }
 
-    if (full && now - this.lastFull >= FULL_INTERVAL_MS) {
-      this.lastFull = now;
+    if (full && this.cadence.due(now)) {
       const feed = this.feedById(full.feedId)!;
       const frame = this.render(feed);
       for (const s of all) if (s.variant === 'full' && s.feedId === full.feedId) this.copy(s, frame);
@@ -375,6 +445,8 @@ export class FeedRenderer {
       for (const s of all) if (s.variant === 'thumb' && s.feedId === full.feedId && now - s.lastFrameAt > 250) this.copy(s, frame);
       return;
     }
+    // Never spend a full-frame deadline warming a thumbnail.
+    if (full && this.cadence.slack(now) < this.renderCost + 5) return;
 
     const thumbs = all.filter((s) => s.variant === 'thumb' && (!full || s.feedId !== full.feedId) && this.feedById(s.feedId));
     if (!thumbs.length) return;
@@ -387,8 +459,9 @@ export class FeedRenderer {
     const fresh = thumbs.find((s) => !s.lastFrameAt);
     const id = fresh ? fresh.feedId : feedsIds[this.thumbCursor++ % feedsIds.length];
     const feed = this.feedById(id)!;
-    this.render(feed);
-    this.warm = { key: 0, feedId: id };
+    const frame = this.render(feed);
+    for (const s of thumbs) if (s.feedId === id) this.copy(s, frame);
+    if (!full) this.warm = { key: 0, feedId: id };
   }
 
   private setSize(mode: 'full' | 'thumb') {
@@ -399,13 +472,13 @@ export class FeedRenderer {
     this.viewer.resize();
   }
 
-  private camStateOf(id: string): CamState {
+  private camStateOf(id: string, nowS: number): CamState {
     let c = this.camState.get(id);
     if (!c) {
       // Stagger NUC events per camera so several IR feeds never flatten together.
       let h = 0;
       for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-      c = { exp: 1, vel: 0, lastS: 0, nucUntil: 0, nextNuc: 8 + (h % 23) };
+      c = { exp: 1, lastS: NaN, nucUntil: 0, nextNuc: nowS + 8 + (h % 23) };
       this.camState.set(id, c);
     }
     return c;
@@ -438,28 +511,27 @@ export class FeedRenderer {
   private scratchD = new Cesium.Cartesian3();
   private scratchW = new Cesium.Cartesian2();
 
-  /** Sensor dynamics: auto exposure / AGC with model-specific lag (phones pump), NUC on thermal cores. */
+  /** Stable exposure / AGC with model-specific lag and staggered thermal NUC. */
   private sensor(feed: Feed, model: CameraModel, nowS: number): { nuc: boolean } {
-    const c = this.camStateOf(feed.id);
-    const dt = Math.min(0.5, Math.max(0.001, nowS - (c.lastS || nowS - 0.05)));
+    const c = this.camStateOf(feed.id, nowS);
+    const initial = !Number.isFinite(c.lastS);
+    const dt = initial ? 0 : Math.min(2, Math.max(0, nowS - c.lastS));
     c.lastS = nowS;
     const fire = this.fireInView();
     const sun = this.atmos?.sunElevDeg ?? 30;
     const dusk = sun < 6 ? 1 + (6 - Math.max(-6, sun)) * 0.06 : 1;
-    let target = 1, k = 6, damp = 5;
+    let target = 1, tau = 0.5;
     switch (model) {
-      case 'phone': target = (1.08 / (1 + 2.2 * fire)) * dusk; k = 9; damp = 2.2; break; // under-damped: visible pumping
-      case 'dash': case 'helmet': target = (1.0 / (1 + 1.4 * fire)) * dusk; k = 7; damp = 4; break;
-      case 'uav-eo': case 'ridge': target = (1.0 / (1 + 0.6 * fire)) * dusk; k = 4; damp = 4.5; break;
-      case 'ir-white': case 'ir-iron': target = 1 / (1 + 0.5 * fire); k = 5; damp = 5; break;
+      case 'phone': target = (1.08 / (1 + 2.2 * fire)) * dusk; tau = 0.35; break;
+      case 'dash': case 'helmet': target = (1.0 / (1 + 1.4 * fire)) * dusk; break;
+      case 'uav-eo': case 'ridge': target = (1.0 / (1 + 0.6 * fire)) * dusk; tau = 0.7; break;
+      case 'ir-white': case 'ir-iron': target = 1 / (1 + 0.5 * fire); tau = 0.6; break;
       default: target = 1;
     }
-    if (this.reduced) {
+    if (this.reduced || initial) {
       c.exp = target;
-      c.vel = 0;
     } else {
-      c.vel += ((target - c.exp) * k - c.vel * damp) * dt;
-      c.exp += c.vel * dt;
+      c.exp += (target - c.exp) * (1 - Math.exp(-dt / tau));
     }
     let nuc = false;
     if (isThermal(model) && !this.reduced) {
@@ -481,13 +553,20 @@ export class FeedRenderer {
 
   private render(feed: Feed): FeedFrame {
     const t0 = performance.now();
+    this.sampleAt = t0;
     const w = stageWorld.get();
-    const nowS = this.reduced ? 0 : (t0 - this.t0) / 1000;
+    const nowS = this.visualS;
     const scene = this.viewer.scene;
     const model = modelFor(feed);
-    const pose = feedPose(feed, w, this.sampler!, this.exaggeration, nowS, (g) => scene.globe.getHeight(Cesium.Cartographic.fromDegrees(g.lon, g.lat)));
+    let filter = this.filters.get(feed.id);
+    if (!filter) { filter = new CameraFilter(); this.filters.set(feed.id, filter); }
+    const groundAt = feed.kind.startsWith('uav-') ? undefined
+      : (g: { lon: number; lat: number }) => scene.globe.getHeight(Cesium.Cartographic.fromDegrees(g.lon, g.lat));
+    const pose = filter.update(feedPose(feed, w, this.sampler!, this.exaggeration, nowS, groundAt, t0), t0);
+    pose.headingDeg = (pose.heading / DEG2RAD % 360 + 360) % 360;
+    // Airborne camera height uses the stable native DEM, not a changing streamed terrain LOD.
     const unit = feed.unitId ? w.units.find((u) => u.id === feed.unitId) : undefined;
-    const base = { feedId: feed.id, pose, frame: ++this.frameNo, model, speedMps: unit?.speedMps };
+    const base = { feedId: feed.id, pose, frame: ++this.frameNo, model, speedMps: unit?.speedMps, replayRate: w.speed ?? 1 };
 
     if (model === 'sat' && this.pack) {
       const pick = pickSatScene(this.pack, w.t);
@@ -498,10 +577,10 @@ export class FeedRenderer {
         if (key !== this.satKey) {
           this.satKey = key;
           this.satReady = false;
-          this.satCanvas.width = size[0];
-          this.satCanvas.height = size[1];
-          void drawSatScene(this.satCanvas, pick, pose.geo, fp).then((ok) => {
-            if (this.satKey === key) this.satReady = ok;
+          const canvas = document.createElement('canvas');
+          canvas.width = size[0]; canvas.height = size[1];
+          void drawSatScene(canvas, pick, pose.geo, fp).then((ok) => {
+            if (this.satKey === key && !this.viewer.isDestroyed()) { this.satCanvas = canvas; this.satReady = ok; }
           });
         }
         this.src = this.satReady ? this.satCanvas : null;
@@ -539,9 +618,20 @@ export class FeedRenderer {
     scene.fog.density = feed.kind === 'satellite' ? 0 : 1.0e-4;
     const own = feed.unitId ? this.proxies.entities.getById(`pu:${feed.unitId}`) : undefined;
     if (own) own.show = false;
-    this.viewer.render();
-    if (own) own.show = true;
-    this.src = scene.canvas;
+    this.fire?.tick(nowS);
+    this.viewer.clock.currentTime = Cesium.JulianDate.addSeconds(this.sceneTime, nowS, this.renderTime);
+    try { this.viewer.render(); } finally { if (own) own.show = true; }
+    // Keep the visible archive-camera fallback until this sensor has a real terrain frame.
+    // Once primed, ordinary terrain refinement must not keep switching the feed back and forth.
+    if (!this.surfacePrimed.has(feed.id)) {
+      // A moving camera can keep the global tile queue nonempty indefinitely. A hit on
+      // rendered terrain is enough to start this feed; unrelated proxy assets cannot block it.
+      this.scratchW.x = scene.canvas.clientWidth * 0.5;
+      this.scratchW.y = scene.canvas.clientHeight * 0.75;
+      const ray = cam.getPickRay(this.scratchW);
+      if (scene.globe.tilesLoaded || (ray && scene.globe.pick(ray, scene))) this.surfacePrimed.add(feed.id);
+    }
+    this.src = this.surfacePrimed.has(feed.id) ? scene.canvas : null;
     const dets = this.detect(feed, w.findings);
     this.renderCost = this.renderCost * 0.8 + (performance.now() - t0) * 0.2;
     return {
@@ -593,7 +683,9 @@ export class FeedRenderer {
       const f = findings.find((x) => x.id === id);
       if (!f) continue;
       const color = findingColor(f, 'Z3_FOCUS');
-      if (f.bbox && f.bbox.feedId === feed.id) {
+      // Stored detector boxes describe an earlier source frame. Reproject the synthetic scene every
+      // render instead of pinning a stale box to the screen as its camera moves.
+      if (feed.kind === 'social' && f.bbox && f.bbox.feedId === feed.id) {
         out.push({ id: f.id, kind: f.kind, label: f.label, confidence: f.confidence, color, x: f.bbox.x, y: f.bbox.y, w: f.bbox.w, h: f.bbox.h });
         continue;
       }
@@ -624,12 +716,27 @@ export class FeedRenderer {
     }, 60000);
   }
 
+  private releasePack() {
+    if (this.viewer.isDestroyed()) return;
+    this.atmos?.destroy(); this.atmos = null;
+    this.field = null; this.smoke = null;
+    this.fire?.destroy(); this.fire = null;
+    this.particles?.destroy(); this.particles = null;
+    if (this.cams) for (const stage of Object.values(this.cams)) this.viewer.scene.postProcessStages.remove(stage);
+    this.cams = null; this.activeModel = null;
+    this.field = null; this.smoke = null; this.profile = null; this.src = null;
+    if (this.buildings) this.viewer.scene.primitives.remove(this.buildings);
+    if (this.basemapTiles && !this.basemapTiles.isDestroyed()) this.viewer.scene.primitives.remove(this.basemapTiles);
+    this.buildings = undefined; this.basemapTiles = undefined;
+  }
+
   destroy() {
+    if (this.dead) return;
+    this.dead = true;
     cancelAnimationFrame(this.raf);
+    window.clearTimeout(this.idleTimer);
     this.unsub();
-    this.atmos?.destroy();
-    this.fire?.destroy();
-    this.particles?.destroy();
+    this.releasePack();
     if (!this.viewer.isDestroyed()) this.viewer.destroy();
     this.host.remove();
     if (FeedRenderer.inst === this) FeedRenderer.inst = null;

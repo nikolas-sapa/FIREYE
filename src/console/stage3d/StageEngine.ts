@@ -1,6 +1,6 @@
 import * as Cesium from 'cesium';
 import type { Directive, Geo, ScenarioPack } from '../contracts';
-import { onThemeChange } from '@ds';
+import { onDaylightRender, onThemeChange } from '@ds';
 import { AtmospherePass } from './atmosphere';
 import { easeServo, prefersReducedMotion } from './easing';
 import { FireOverlay, getFireField, type FireField } from './fire';
@@ -40,6 +40,10 @@ export interface CameraInfo {
   pitchDeg: number;
   altM: number;
   center?: Geo;
+  metersPerPixel?: number;
+  streamedContext?: boolean;
+  demSpacingM?: number;
+  localTerrain?: boolean;
 }
 
 /** Imperative owner of the main Cesium scene. React only mounts it and forwards selection. */
@@ -56,10 +60,21 @@ export class StageEngine {
   private sunKey = NaN;
   private offTheme: () => void;
   private offMap: () => void;
+  private offDaylight: () => void;
   private outline: OutlineMap | null = null;
   private satellite: BasemapResult | null = null;
   private satelliteTask: Promise<void> | null = null;
   private satelliteTerrain: Cesium.TerrainProvider | null = null;
+  private satelliteDatum = 0;
+  private appliedDatum = 0;
+  private offTiles: () => void;
+  private groundScale = 0;
+  private scaleAt = 0;
+  private scalePosition = new Cesium.Cartesian3();
+  private scaleDirection = new Cesium.Cartesian3();
+  private scaleWidth = 0;
+  private scaleHeight = 0;
+  private resolutionKey = '';
   private grade: Cesium.PostProcessStage | null = null;
   private pack: ScenarioPack | null = null;
   private pending = new Set<StageKey>();
@@ -80,6 +95,10 @@ export class StageEngine {
   constructor(private o: StageEngineOptions) {
     this.viewer = createDarkViewer(o.container, { creditContainer: o.creditContainer, msaa: 4 });
     const scene = this.viewer.scene;
+    this.viewer.useBrowserRecommendedResolution = false;
+    this.offTiles = scene.globe.tileLoadProgressEvent.addEventListener((remaining: number) => {
+      if (remaining === 0) this.groundScale = 0;
+    });
     // Until a pack arrives the camera sits far out; initPack frames the scenario from its profile.
     const first = stageWorld.get().pack;
     const c0 = first ? getProfile(first).center : { lon: 0, lat: 20 };
@@ -94,6 +113,10 @@ export class StageEngine {
       this.viewer.scene.requestRender();
     });
     this.offMap = onMapSettingsChange(() => { void this.applyMapSettings(); });
+    // Palette-driven materials change during the appearance blend; demand-rendered scenes must repaint.
+    this.offDaylight = onDaylightRender(() => {
+      if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+    });
     scene.preRender.addEventListener(this.onPreRender);
     scene.postRender.addEventListener(this.onPostRender);
     this.handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
@@ -116,14 +139,18 @@ export class StageEngine {
     this.pack = pack;
     this.o.onStatus?.({ phase: 'loading' });
     try {
-      const s = getSampler(pack);
+      // Feed/provider calibration must never mutate the main map's local height frame.
+      const s = new RasterSampler(pack);
       this.sampler = s;
       const [outline] = await Promise.all([
         OutlineMap.create(this.viewer, pack, s),
         loadIcons(),
         document.fonts?.load('500 10px "JetBrains Mono Variable"').catch(() => undefined),
       ]);
-      if (this.destroyed) return;
+      if (this.destroyed) {
+        outline.destroy();
+        return;
+      }
       this.outline = outline;
       this.basemap = 'offline';
       this.exaggeration = 1;
@@ -134,14 +161,16 @@ export class StageEngine {
       ctrl.minimumZoomDistance = prof.minZoomM;
       ctrl.maximumZoomDistance = prof.maxZoomM;
       scene.fog.density = Math.min(2.4e-4, Math.max(4e-5, 1.6e-4 * (30000 / prof.spanM) ** 0.5));
-      this.field = getFireField(pack, s);
-      this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced });
-      this.particles = new FireParticles(scene, s, { maxFlames: 16, maxSmoke: 6, maxEmbers: 6, exaggeration: this.exaggeration, profile: prof });
-      this.particles.show = !this.reduced;
-      this.smoke = getSmokeField(pack, s);
-      // Order matters: the atmosphere works on the scene-referred image, the grade runs last.
-      if (!/[?&]atmos=0\b/.test(location.search)) {
-        this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'stage', quality: 1, shimmer: !this.reduced });
+      if (stageWorld.get().dataMode !== 'monitoring') {
+        this.field = getFireField(pack, s);
+        this.fire = new FireOverlay(scene, this.field, { flicker: !this.reduced });
+        this.particles = new FireParticles(scene, s, { maxFlames: 16, maxSmoke: 6, maxEmbers: 6, exaggeration: this.exaggeration, profile: prof });
+        this.particles.show = !this.reduced;
+        this.smoke = getSmokeField(pack, s);
+        // Order matters: the atmosphere works on the scene-referred image, the grade runs last.
+        if (!/[?&]atmos=0\b/.test(location.search)) {
+          this.atmos = new AtmospherePass(scene, pack, this.field, this.smoke, { look: 'stage', quality: 1, shimmer: !this.reduced });
+        }
       }
       this.grade = createGradeStage(scene, { saturation: 0.92, vignette: 0.42 });
       this.layers = new StageLayers(this.viewer, s, {
@@ -155,6 +184,7 @@ export class StageEngine {
       for (const d of stageWorld.get().directives) this.handled.add(d.id);
       this.homeView(0);
       this.ready = true;
+      if (import.meta.env.DEV) performance.measure('fcc:stage-init', { start: this.t0, end: performance.now() });
       for (const k of ['t', 'fireRev', 'projection', 'findings', 'units', 'coverage', 'actions', 'items'] as StageKey[]) this.pending.add(k);
       await this.applyMapSettings();
     } catch (err) {
@@ -170,6 +200,8 @@ export class StageEngine {
     this.unsub();
     this.offTheme();
     this.offMap();
+    this.offDaylight();
+    this.offTiles();
     this.handler.destroy();
     this.atmos?.destroy();
     this.fire?.destroy();
@@ -189,7 +221,9 @@ export class StageEngine {
 
   private onPreRender = () => {
     const now = (performance.now() - this.t0) / 1000;
+    this.updateResolution();
     this.fire?.tick(this.reduced ? 0 : now);
+    this.updateGroundScale();
     this.applyMapVisibility();
     if (this.atmos && this.profile && this.sampler) {
       const d = this.sampler.datumOffset;
@@ -215,20 +249,24 @@ export class StageEngine {
     const pack = this.pack!;
     const L = this.layers!;
     if (keys.has('t') || keys.has('fireRev')) {
-      const updated = this.field!.sync(w.t, w.fireRev);
-      const wx = weatherAt(pack, w.t);
-      if (updated || wx.t !== this.weatherT) {
-        this.weatherT = wx.t;
-        const wind = { dirDeg: wx.windDirDeg, kph: wx.windKph };
-        this.particles!.setHotspots(this.field!.hotspots, wind);
-        this.smoke!.update(this.field!.sources, wind, this.exaggeration);
+      // Cesium's own sun and lighting read the viewer clock; keep it on scene time, not wall time.
+      if (w.t) Cesium.JulianDate.fromDate(new Date(w.t), this.viewer.clock.currentTime);
+      if (w.dataMode !== 'monitoring' && this.field) {
+        const updated = this.field.sync(w.t, w.fireRev);
+        const wx = weatherAt(pack, w.t);
+        if (updated || wx.t !== this.weatherT) {
+          this.weatherT = wx.t;
+          const wind = { dirDeg: wx.windDirDeg, kph: wx.windKph };
+          this.particles!.setHotspots(this.field!.hotspots, wind);
+          this.smoke!.update(this.field!.sources, wind, this.exaggeration);
+        }
       }
       const sk = Math.round(w.t / 120000);
       if (sk !== this.sunKey && this.viewer.scene.globe.enableLighting) {
         this.sunKey = sk;
         applySunLight(this.viewer.scene, pack, w.t);
       }
-      L.syncPerimeter(pack, w.t);
+      if (w.dataMode !== 'monitoring') L.syncPerimeter(pack, w.t);
     }
     if (keys.has('projection')) L.syncProjection(w.projection);
     if (keys.has('findings') || keys.has('items')) L.syncFindings(w.findings, w.items);
@@ -236,6 +274,7 @@ export class StageEngine {
     if (keys.has('coverage')) L.syncCoverage(w.coverage);
     if (keys.has('actions')) L.syncActions(w.actions);
     if (keys.has('directives')) this.applyDirectives(w.directives);
+    L.applyAppearance(true);
     this.applyMapVisibility();
   }
 
@@ -246,7 +285,10 @@ export class StageEngine {
       if (!this.satelliteTask) {
         this.satelliteTask = (async () => {
           this.satellite = await setupBasemap(this.viewer, this.pack!, this.sampler!);
-          if (!this.destroyed) this.satelliteTerrain = this.viewer.terrainProvider;
+          if (!this.destroyed) {
+            this.satelliteTerrain = this.viewer.terrainProvider;
+            this.satelliteDatum = this.sampler!.datumOffset;
+          }
         })();
       }
       try { await this.satelliteTask; }
@@ -256,15 +298,33 @@ export class StageEngine {
     // Read again after the async load: an Outline click during loading must win.
     const outline = getMapSettings().mode === 'outline' || !this.satellite;
     const scene = this.viewer.scene;
+    const datum = outline ? 0 : this.satelliteDatum;
+    if (this.appliedDatum !== datum) {
+      this.appliedDatum = datum;
+      this.sampler.datumOffset = datum;
+      this.layers?.destroy();
+      const prof = this.profile!;
+      this.layers = new StageLayers(this.viewer, this.sampler, {
+        exaggeration: 1, labelFarM: prof.labelFarM,
+        minorLabelFarM: prof.minorLabelFarM, unitLabelFarM: prof.unitLabelFarM,
+      });
+      this.layers.selectedId = this.selected;
+      this.layers.syncPlaces(this.pack);
+      for (const k of ['t', 'projection', 'findings', 'units', 'coverage', 'actions', 'items'] as StageKey[]) this.pending.add(k);
+    }
+    this.sampler.datumOffset = datum;
+    this.groundScale = 0;
     this.viewer.terrainProvider = outline ? this.outline.terrain : this.satelliteTerrain!;
     for (let i = 0; i < this.viewer.imageryLayers.length; i++) {
       const layer = this.viewer.imageryLayers.get(i);
-      if (!this.outline.owns(layer)) layer.show = !outline;
+      if (!this.outline.context.owns(layer)) layer.show = !outline;
     }
     if (this.satellite?.tileset) this.satellite.tileset.show = !outline;
     scene.globe.show = outline || this.satellite?.basemap !== 'google-3d';
     scene.globe.enableLighting = !outline && this.satellite?.basemap === 'ion-world';
     scene.verticalExaggeration = 1;
+    // Cartographic lines already antialias analytically. Avoid redundant multisample buffers at Retina.
+    scene.msaaSamples = outline ? 1 : 4;
     this.sunKey = NaN;
     this.basemap = outline ? 'offline' : this.satellite!.basemap;
     this.applyMapVisibility();
@@ -277,15 +337,20 @@ export class StageEngine {
     const settings = getMapSettings(), v = settings.layers;
     const { lat, lon } = this.profile.center;
     const day = daylight(sunPosition(stageWorld.get().t, lat, lon).elDeg);
-    this.outline.apply(settings, day);
+    this.outline.apply(settings, this.groundScale);
+    this.layers.applyAppearance();
+    this.layers.applyVisibility(v);
     const outline = settings.mode === 'outline';
     this.layers.ds.projection.show = v.projection;
     this.layers.ds.units.show = v.units;
     this.layers.ds.findings.show = v.findings;
     this.layers.ds.actions.show = v.actions;
     this.layers.ds.coverage.show = v.coverage;
-    for (const entity of this.layers.ds.base.entities.values) entity.show = entity.id.startsWith('p:') ? v.places : v.fire;
-    if (this.fire) this.fire.show = v.fire;
+    for (const entity of this.layers.ds.base.entities.values) entity.show = entity.id.startsWith('p:') ? v.places : v.perimeter;
+    if (this.fire) {
+      this.fire.setTactical(outline);
+      this.fire.show = v.fire && (this.field?.stats.burnedCells ?? 0) > 0;
+    }
     if (this.particles) this.particles.show = !outline && v.fire && v.atmosphere && !this.reduced;
     if (this.atmos) this.atmos.stage.enabled = !outline && v.atmosphere;
     if (this.grade) {
@@ -337,7 +402,8 @@ export class StageEngine {
     const cam = this.viewer.camera;
     const scene = this.viewer.scene;
     const c = new Cesium.Cartesian2(scene.canvas.clientWidth / 2, scene.canvas.clientHeight / 2);
-    const hit = cam.pickEllipsoid(c, scene.globe.ellipsoid);
+    const ray = cam.getPickRay(c);
+    const hit = ray ? scene.globe.pick(ray, scene) : undefined;
     let center: Geo | undefined;
     if (hit) {
       const cg = Cesium.Cartographic.fromCartesian(hit);
@@ -348,7 +414,41 @@ export class StageEngine {
       pitchDeg: cam.pitch / DEG2RAD,
       altM: cam.positionCartographic.height,
       center,
+      metersPerPixel: this.groundScale || undefined,
+      streamedContext: this.outline?.context.active,
+      demSpacingM: this.pack?.raster.cellM,
+      localTerrain: center ? this.sampler?.inside(center.lon, center.lat) : false,
     };
+  }
+
+  /** Ground footprint at the view centre, not ellipsoid altitude. At most 10 samples/second. */
+  private updateGroundScale() {
+    const camera = this.viewer.camera, scene = this.viewer.scene, canvas = scene.canvas;
+    const now = performance.now();
+    if (now - this.scaleAt < 100) return;
+    if (this.groundScale > 0 && Cesium.Cartesian3.equals(camera.positionWC, this.scalePosition)
+      && Cesium.Cartesian3.equals(camera.directionWC, this.scaleDirection)
+      && canvas.clientWidth === this.scaleWidth && canvas.clientHeight === this.scaleHeight) return;
+    this.scaleAt = now;
+    Cesium.Cartesian3.clone(camera.positionWC, this.scalePosition);
+    Cesium.Cartesian3.clone(camera.directionWC, this.scaleDirection);
+    this.scaleWidth = canvas.clientWidth; this.scaleHeight = canvas.clientHeight;
+    const x = canvas.clientWidth / 2, y = canvas.clientHeight / 2;
+    const a = camera.getPickRay(new Cesium.Cartesian2(x - 40, y));
+    const b = camera.getPickRay(new Cesium.Cartesian2(x + 40, y));
+    const p = a && scene.globe.pick(a, scene), q = b && scene.globe.pick(b, scene);
+    this.groundScale = p && q ? Cesium.Cartesian3.distance(p, q) / 80 : 0;
+  }
+
+  /** Native-density hairlines, bounded to four megapixels; does not affect sensor viewers. */
+  private updateResolution() {
+    const canvas = this.viewer.scene.canvas;
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = window.devicePixelRatio || 1;
+    const key = `${w}/${h}/${dpr}`;
+    if (key === this.resolutionKey || !w || !h) return;
+    this.resolutionKey = key;
+    const density = Math.min(dpr, 2, Math.sqrt(4_000_000 / (w * h)));
+    this.viewer.resolutionScale = density / dpr;
   }
 
   /* -------------------------------------------------------------- picking & projection */

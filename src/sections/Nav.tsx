@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AppearanceToggle, Button, Dot, Icon, InstallAppButton, Serial, ThemeToggle, cn, zulu } from '@ds';
+import { AppearanceToggle, Button, Dot, Icon, InstallAppButton, Serial, cn, zulu } from '@ds';
 
 export const REV_A_HREF = '/rev-a/index.html';
 export const REV_B_HREF = '/rev-b/index.html';
@@ -11,7 +11,9 @@ const LINKS = [
   { id: 'architecture', index: '02', label: 'Architecture' },
   { id: 'stack', index: '03', label: 'Stack' },
   { id: 'dashboard', index: '04', label: 'Live Ops' },
+  { id: 'image-lab', index: '04B', label: 'Image Lab' },
   { id: 'system', index: '05', label: 'Design System' },
+  { id: 'identity', index: '06', label: 'Identity' },
 ] as const;
 
 type SectionId = (typeof LINKS)[number]['id'];
@@ -122,7 +124,6 @@ export default function Nav() {
               <Icon name="arrow-up-right" size={10} />
             </a>
           ))}
-          <ThemeToggle compact className="hidden sm:inline-flex" />
           <AppearanceToggle className="hidden sm:inline-flex" />
           <InstallAppButton />
           <Button variant="primary" size="sm" iconRight="arrow-up-right" onClick={goConsole} title="Open the full-screen console">

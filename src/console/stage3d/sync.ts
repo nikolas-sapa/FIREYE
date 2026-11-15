@@ -10,6 +10,7 @@ export function useStageSync() {
   const pack = useConsoleSelector((s) => s.pack);
   const t = useConsoleSelector((s) => s.clock.t);
   const paused = useConsoleSelector((s) => s.clock.paused);
+  const speed = useConsoleSelector((s) => s.clock.speed);
   const units = useConsoleSelector((s) => s.units);
   const findings = useConsoleSelector((s) => s.findings);
   const feeds = useConsoleSelector((s) => s.feeds);
@@ -21,6 +22,6 @@ export function useStageSync() {
   const directives = useConsoleSelector((s) => s.directives);
   const fireRev = useConsoleSelector((s) => s.fireRev);
   useLayoutEffect(() => {
-    stageWorld.set({ pack, t, paused, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev });
-  }, [pack, t, paused, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev]);
+    stageWorld.set({ pack, t, paused, speed, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev });
+  }, [pack, t, paused, speed, units, findings, feeds, projection, items, actions, coverage, stage, directives, fireRev]);
 }

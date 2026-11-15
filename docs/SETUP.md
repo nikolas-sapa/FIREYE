@@ -2,7 +2,7 @@
 
 How to run the proposal site and full-screen console, add optional credentials, and rebuild the Mati or Caldor scenario pack.
 
-Every token is optional. The default Outline globe uses the scenario DEM and cached OSM outlines. Satellite uses streamed Google/ion imagery when configured, otherwise the cached imagery mosaic. Both local modes work without a key.
+The default entry is the real-data Attica monitoring presentation. See [Monitoring setup, source limits and recording safety](MONITORING.md). The original simulated Mati console remains at `?mode=replay`. Every map token is optional; local terrain and historical cases work without one.
 
 ## 1. Requirements
 
@@ -19,7 +19,9 @@ npm run dev          # http://localhost:5173
 | URL | What |
 |---|---|
 | `http://localhost:5173/` | The proposal site (REV D). |
-| `http://localhost:5173/console.html` | Full-screen console: Mati 2018 reconstruction. |
+| `http://localhost:5173/#image-lab` | Random Greece satellite 2×2 bench, capped four-call analysis, seam inspection/exports, plus single-image uploads. |
+| `http://localhost:5173/console.html` | Real-data monitoring: Current Attica, Mati 2018 and Attica 2024. |
+| `http://localhost:5173/console.html?mode=replay` | Original simulated Mati 2018 reconstruction. |
 | `http://localhost:5173/console.html?scenario=caldor-2021` | Caldor 2021 replay. |
 | `http://localhost:5173/console.html?theme=team` | Team theme: blue accent and Geist fonts. |
 | `http://localhost:5173/rev-b/index.html` | Frozen REV B build. |
@@ -39,9 +41,14 @@ cp .env.example .env.local
 |---|---|---|
 | `VITE_CESIUM_ION_TOKEN` | Console stage | Cesium World Terrain and ion imagery. |
 | `VITE_GOOGLE_MAPS_KEY` | Console stage | Google Photorealistic 3D Tiles. |
-| `FIRMS_MAP_KEY` | `scripts/fetch-data.mjs` only | Fetch real FIRMS hotspots (with real FRP and confidence) instead of NASA FEDS fire pixels with synthesized FRP. Never exposed to the browser (no `VITE_` prefix). |
+| `FIRMS_MAP_KEY` | Local monitoring server and data scripts | Free NASA FIRMS area queries; monitoring falls back to official public downloads without it. Never exposed to the browser. |
+| `WINDY_API_KEY` | Local monitoring server only | Optional Windy Webcams discovery; curated provider links work without it. |
+| `FCC_APP_CONTACT` | Local monitoring server only | Actual public project/contact URL or application contact address, required to identify MET Norway requests. |
+| `FAL_KEY` | Local image-lab server only | Paid image editing through fal. Add `FAL_KEY=your_fal_api_key` to `.env` or `.env.local` and restart. Never use a `VITE_` prefix. |
 
 Variables prefixed with `VITE_` are embedded in the client bundle. Treat them as public and restrict them as described below.
+
+The image lab requires the local dev/preview server; static hosting has no inference or imagery proxy. Picking a Greece landscape needs no key and makes no fal call. The EOX imagery is a historical 2020 mosaic for non-commercial use, not live imagery. Analysis is separately consented and capped at four 1K submissions. See [Image lab setup and limitations](IMAGE_LAB.md) for licensing, models, privacy, exports, and production-backend requirements.
 
 The map HUD names the active basemap. Select **Satellite** to use Google/ion imagery; the clean **Outline** default intentionally uses the local DEM, even when credentials are configured. `getStageCapabilities()` reports configured credentials, not successful provider access.
 
@@ -83,9 +90,9 @@ Billing is required even for usage inside the free caps. The old $200 monthly cr
 
 Terms that matter for the demo: Google and data-provider attribution must stay visible on the stage (the console renders it); root tileset sessions last about 3 hours; the default quota is about 10,000 root tileset requests per day; tiles must not be cached or exported outside the terms.
 
-## 6. The console
+## 6. The legacy replay console
 
-Open `http://localhost:5173/console.html`. Mati loads from `/data/mati/`; choose Caldor to load `/data/caldor/`. The scenario menu reloads the console and clears the selected demo beat. The theme toggle persists locally; `?theme=team|fcc` overrides it for that page. Press `T` to switch themes.
+Open `http://localhost:5173/console.html?mode=replay`. Mati loads from `/data/mati/`; choose Caldor to load `/data/caldor/`. The scenario menu reloads the console and clears the selected demo beat. The theme toggle persists locally; `?theme=team|fcc` overrides it for that page. Press `T` to switch themes in legacy replay.
 
 Rebuild Mati with `node scripts/fetch-data.mjs --scenario mati` and check the reconstruction with `node scripts/check-mati.mjs`. The latter checks fitted historical consistency, not prediction accuracy. See `public/data/mati/README.md` for sources and limitations.
 
@@ -115,7 +122,7 @@ The Demo Director plays a scripted three-minute tour for judges, with scenario-s
 
 Captions, speed, autonomy and hold layout are controls in the command strip. Bindings are defined in `src/console/ui/**`; if one does not respond, check there.
 
-For an offline basemap test, use `?tokens=0` (even with local credentials configured). `?tokens=ion` selects ion without Google. Google 3D rendering over Mati was verified on 2026-11-15 after a key was supplied. Prediction assumptions and limitations are in `src/console/orchestrator/PROJECTION.md`: archived future weather, reconstructed initial fire, no spotting, and substantial underprediction of Mati's speed.
+For an offline basemap test, use `?tokens=0` (even with local credentials configured). `?tokens=ion` selects ion without Google. Google 3D rendering over Mati was verified on 2026-11-15 after a key was supplied. Prediction assumptions and limitations are in `src/console/orchestrator/PROJECTION.md`: archived future weather, reconstructed initial fire, no spotting, and on Mati a late head (about 20 min at Marathonos Ave and the coast from detection) with less than half the reconstructed area.
 
 ## 7. Rebuilding the scenario pack
 

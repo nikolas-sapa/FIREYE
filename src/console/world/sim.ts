@@ -48,6 +48,9 @@ export interface UnitMeta {
   /** Moves in straight lines over water (boats). */
   marine?: boolean;
   helmetCam?: boolean;
+  /** Stable loiter centre for a fixed-wing hold, rather than stopping in mid-air. */
+  loiterCenter?: Geo;
+  turnRate?: number;
 }
 
 export interface FindingMeta {

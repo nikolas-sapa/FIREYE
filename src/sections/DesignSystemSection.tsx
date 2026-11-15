@@ -1,4 +1,4 @@
-import { GridBg, RegMark, SectionHeader, Serial, iconNames } from '@ds';
+import { GridBg, ImageComparison, TileMosaic, RegMark, SectionHeader, Serial, iconNames } from '@ds';
 import { ColorSpec, Principles, SpaceSpec, TypeSpec } from './ds/Foundations';
 import { IconSpec, MicrographicsSpec } from './ds/Micrographics';
 import { ComponentsSpec } from './ds/Components';
@@ -79,6 +79,16 @@ export default function DesignSystemSection() {
           <MicrographicsSpec />
           <IconSpec />
           <ComponentsSpec />
+          <div className="mb-16 border-t border-line py-8">
+            <h3 className="fcc-label mb-4 text-bone">ImageComparison / uncropped review pair</h3>
+            <p className="mb-4 text-sm text-bone-dim">Source and generated image use independent contain-fit frames. No implied registration or risk score. Empty output shown below.</p>
+            <ImageComparison before="/image-lab/forest.jpg" beforeLabel="Source / CC0 / Geran de Klerk" />
+            <h3 className="fcc-label mb-4 mt-8 text-bone">TileMosaic / exactly four independent cells</h3>
+            <p className="mb-4 text-sm text-bone-dim">Northwest, northeast, southwest, southeast. No seam blending, stretching, or substitution of missing output.</p>
+            <div className="max-w-md">
+              <TileMosaic label="2×2 / empty review state" tiles={['NW', 'NE', 'SW', 'SE'].map(label => ({ label }))} />
+            </div>
+          </div>
           <OrchestratorSpec />
           <ConsoleSpec />
           <MotionSpec />

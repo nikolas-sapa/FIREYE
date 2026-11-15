@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 560px;
+  max-width: 50%;
   pointer-events: auto;
 }
 .fcc-stage-credits .cesium-credit-logoContainer {
@@ -30,9 +30,8 @@
 }
 .fcc-stage-credits .cesium-credit-textContainer {
   display: inline;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
 }
 .fcc-stage-credits a,
 .fcc-stage-credits .cesium-credit-expand-link {
@@ -78,6 +77,11 @@
 .fcc-feed-scan {
   background-image: repeating-linear-gradient(0deg, rgb(var(--bone) / 0.035) 0 1px, transparent 1px 3px);
 }
+
+/* Keep sensor telemetry clear of the console's incident metrics and feed-navigation bar.
+   Standalone feed surfaces keep their original edge-aligned HUD. */
+.fcc-console-stage .fcc-feed-hud-bottom { bottom: 124px; }
+.fcc-console-stage .fcc-feed-hud-model { top: 60px; }
 
 @media (prefers-reduced-motion: reduce) {
   .fcc-stage-pulse { animation: none; opacity: 0.8; }

@@ -79,6 +79,11 @@ export interface ScenarioScript {
   areaUnit: 'acres' | 'ha';
   primary: { match: RegExp; fallback: Place; radiusM?: number };
   timeline(b: { start: Ms; end: Ms; tPrimary: Ms; ignitionT?: Ms }): { T0: Ms; tShift: Ms | null; tDetect: Ms };
+  /**
+   * Optional earlier playable start (before manifest.start) for pre-ignition context. Pack arrival
+   * times stay relative to manifest.start; nothing burns before it.
+   */
+  windowStart?(b: { start: Ms; ignitionT?: Ms }): Ms;
   sites(h: SiteHelpers): Omit<CoreSites, 'primary' | 'ignition' | 'fireCenterT0'> & Record<string, Geo>;
   names?(h: SiteHelpers, sites: Sites): Record<string, string>;
   cams(h: SiteHelpers, sites: Omit<CoreSites, 'primary' | 'ignition' | 'fireCenterT0'> & Record<string, Geo>): RidgeSite[];

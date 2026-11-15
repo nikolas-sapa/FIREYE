@@ -2,9 +2,21 @@
 
 ## REV D integration notes (current work)
 
+FIREYE (2026-11-15): plain `/console.html` now opens FIREYE (`src/console/fireye/`), a simulated Mati 2018 exercise console scrubbable 14:00–22:00 local. Real-data monitoring moved to `?mode=monitoring`; `?mode=replay`, `?scenario=` and `?beat=` keep the legacy replay. The brand is locked to FCC (Team toggle removed, Team tokens unused). The chronicle is a deterministic function of time and user decisions live in a sim-time journal, so scrubbing must always reproduce the same log. Risk and projections must not read future arrival times or perimeters. High-risk actions still need a human click. FIREYE feeds (except satellite) render through World3D with the reconstructed fire at stage time (`src/console/stage3d/feeds/world3d.ts`, opted in by `enableWorld3dFeeds()` in `FireyeApp`); `?feeds=cesium` or a WebGL failure falls back to the Cesium `FeedRenderer`. Per-drone EO/THRM only changes `Feed.fx`. Fleet status unions mirror the exercise bridge verbatim; bridge reader capabilities stay in sessionStorage and no credentials are bundled. See `docs/FIREYE.md`.
+
+World3D (2026-11-15): the six monitoring feeds render a procedural low-poly Mati world in `src/console/world3d/` with `three` (approved dependency, lazy-loaded only for monitoring feeds; owner STAGE). Keep generation deterministic (seeded `Rng`, no `Math.random()`/time in `gen/`), pure modules free of DOM/three.js, `TruthClass` codes additive only, no external assets, and every object labelled as simulated. Vegetation follows land cover and stays off roads, water and buildings. Respect the budgets in `docs/WORLD3D.md` (fullscreen ≤150 draws/≤1.5 M triangles at 30 fps, wall ≤400 k triangles per view, tile generation ≤40 ms in the worker); check with `?world=stats` and `node scripts/bench-world3d.mjs`. `tests/world3d.ts` runs in `npm run test:monitoring`. FIREYE uses it with `{ fire: true }`; legacy replay does not.
+
+Real-data monitoring presentation (2026-11-15): `/console.html?mode=monitoring` (formerly the default) shows Current Attica, Mati 2018 and Attica 2024. The prior default-scenario/simulation rules below apply to legacy replay (`?mode=replay`, existing `?scenario=`/`?beat=` links). Monitoring must not import/mount `ConsoleProvider`/`Runtime`. Its explicit stage `dataMode=monitoring` disables reconstructed fire/smoke/perimeters in main and UAV renderers. Keep camera rights/recording-safe defaults, historical/current separation, bounded local caches and server-only keys. See `docs/MONITORING.md`; run `npm run test:monitoring` in addition to existing checks.
+
 2026-11-15 additions: brand and appearance are separate. Keep Auto appearance tied to the stage's solar functions and actual replay store, not wall-clock time. Preserve manual Light/Dark overrides and reduced-motion behavior. Main globe Outline mode is default; never apply its monochrome treatment or layer visibility to sensor feeds. Globe preferences (`fcc.map`) are display-only, not action/approval state.
 
 PWA: `npm run build` now generates a content-versioned `dist/sw.js` using `scripts/build-pwa.mjs`. `npm run test:pwa` runs after the build. Cache only emitted local app assets, Cesium runtime and local packs; never cache provider traffic, private APIs, environment files or revision archives. Registration is production-only. Keep the manifest standalone, preserve iOS metadata and icons, and do not claim a native Dock installation from manifest checks alone.
+
+Outline cartography: the user rejected the survey grid and approved wider streamed context with local offline fallback. Use quiet current OSM/CARTO vector geography (mandatory attribution), not satellite textures or invented regional features. Keep DEM elevations local, source-bounded and 1×; current context is not historical incident imagery. `?context=0` disables context; `?tokens=0` disables providers unless context is explicitly enabled with `?context=1`. Never precache external tiles. This is an explicit exception to the console's older local-only networking rule, not to the proposal's rules.
+
+Image lab (2026-11-15): proposal `#image-lab` is an explicit opt-in exception to the proposal's no-external-inference rule. `FAL_KEY` is server-only, loaded from `.env`/`.env.local` by a localhost-only Vite dev/preview middleware. Never add a `VITE_` prefix, expose an unauthenticated public proxy, cache provider/API traffic, or automatically submit a paid test. Default endpoint: `google/nano-banana-2.1/edit`. Generated overlays are unvalidated visual hypotheses, never fuel measurements, segmentation truth, or fire-path inputs. The console remains simulated. See `docs/IMAGE_LAB.md`; run `npm run test:image-lab` for mocked, non-billable checks.
+
+Greece-grid mode defaults to exactly 2×2, independent sequential 1K submissions, then local stitching with no fifth generation. Preserve per-scene four-slot reservation/deduplication, including ambiguous submission failures. Picking imagery is distinct from paid analysis. EOX Sentinel-2 cloudless 2020 is historical, approximately 10 m, CC BY-NC-SA 4.0 and a non-commercial public service; show attribution, terms and resolution limits. Never call it current or infer individual bushes/understory/moisture. Keep seams visible, empty cells empty, and manual reviews distinct from accuracy validation.
 
 These notes supersede Caldor-only and single-theme assumptions below. REV C remains available at git tag `rev-c`; frozen REV A/B files must remain untouched.
 
@@ -33,7 +45,7 @@ FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orch
 
 - Vite 5, React 18, TypeScript (strict, `noUnusedLocals`, `noUnusedParameters`), Tailwind CSS 3.4.
 - Fonts: Inter Tight Variable and JetBrains Mono Variable, self-hosted via `@fontsource-variable/*`.
-- REV C adds `cesium` and `vite-plugin-cesium` (wired in `vite.config.ts`) for the console stage. No other runtime dependencies.
+- REV C adds `cesium` and `vite-plugin-cesium` (wired in `vite.config.ts`) for the console stage. `three` renders the monitoring World3D feeds (`docs/WORLD3D.md`). No other runtime dependencies.
 - The proposal site generates its map, terrain and data procedurally in the browser and makes no external requests. The console loads the cached pack from `/data/caldor/`; it streams Cesium ion and Google Photorealistic 3D Tiles only when the optional tokens `VITE_CESIUM_ION_TOKEN` / `VITE_GOOGLE_MAPS_KEY` are set in `.env.local` (see `docs/SETUP.md`). Every path must work without tokens.
 
 ## Commands
@@ -47,7 +59,7 @@ npm run test:pwa     # validate the production PWA after building
 npm run preview      # serve the production build
 ```
 
-Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and open questions), `#dashboard` (04 live ops, REV B concept preview + link to the console), `#system` (05 design system showcase). Console: `/console.html`. Archives: `/rev-b/index.html`, `/rev-a/index.html`.
+Page anchors: `#top` (01 hero), `#architecture` (02), `#stack` (03 vendors and open questions), `#dashboard` (04 live ops, REV B concept preview + link to the console), `#system` (05 design system showcase), `#identity` (06 FIREYE mark and Orchestrator avatar). Console: `/console.html`. Archives: `/rev-b/index.html`, `/rev-a/index.html`.
 
 Scenario data: `node scripts/fetch-data.mjs` (optional `FIRMS_MAP_KEY`) rebuilds `public/data/caldor/`.
 

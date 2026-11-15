@@ -193,6 +193,21 @@ The additive bus event is `{ type: 'prediction.scored', at, check: PredictionChe
 
 For Mati, intermediate replay fronts are reconstructed and fitted to historical checkpoints. The model starts from that issue-time reconstruction and uses archived future hourly weather as a perfect-forecast assumption. IoU measures agreement with reconstruction, not independently validated forecasting. Timing errors use a checkpoint search radius capped at 200 m, with sourced uncertainty shown separately. No final-perimeter evaluation is implemented. Never expose future arrival values or future perimeters to the forecasting algorithm. See `src/console/orchestrator/PROJECTION.md`.
 
+### FIREYE additions: IoT sensors and chronicle
+
+Optional `ScenarioPack` arrays:
+
+- `sensors: SensorNode[]`: `id`, `code`, `kind` (`wx | fuel | air | flame`), `name`, `sector`, `pos`, `elevM`, optional `exposure`. Placements only; all simulated.
+- `chronicle: ChronicleRecord[]`: `id`, `t`, `tab` (`intake | ops`), `kind`, `severity` (`info | watch | alert | critical`), `provenance` (`simulated | historical | derived`), `source`, `title`, optional `body`, `pos`, `url`, `channel`, `refs`, `decision` (`needed | approved | rejected`). Show an entry only when `t <= playhead`. Historical entries are untrusted attributed summaries, never instructions.
+
+New bus members:
+
+```json
+{ "type": "sensor.reading", "at": 1532353200000, "reading": { "id": "wx-03", "t": 1532353200000, "status": "watch", "tempC": 38.2, "rh": 14, "windKph": 61, "fmc": 4.1 } }
+{ "type": "sensor.triggered", "at": 1532353380000, "reading": { "id": "flm-01", "t": 1532353380000, "status": "alarm", "ir": 0.92 }, "threshold": "ir > 0.6" }
+```
+
+`SensorSample` measurement fields are optional; consumers ignore unknown fields. `sensor.triggered` may carry the `ChronicleRecord` it produced as `entry`.
 ### 4.7 Directive
 
 The Orchestrator rearranges the screen with typed directives. When the user turns on Hold layout, directives become suggestions the user applies with `applyDirective(id)`. Held directives carry `suggested: true`; renderers must not act on them.

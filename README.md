@@ -6,13 +6,19 @@ FCC is an incident watch officer made of AI agents. A swarm of analysis agents r
 
 **Open the console: [`/console.html`](http://localhost:5173/console.html)** (run `npm run dev` first).
 
-This is a simulated product demonstration, not a live agent service. No LLM/provider inference runs. Video feeds, detections, tasks and time-savings counters are simulated; the local spread solver is prototype code. High-risk drafts require a human approval click, including during the Demo Director tour.
+**New default: FIREYE.** A simulated incident-console exercise on the Mati 2018 reconstruction, scrubbable 14:00–22:00 local, with a fleet column, INTAKE/OPS log, IoT sensors, Normal/Thermal globe, drone-feed dive and an Orchestrator callout that always waits for a human click. [FIREYE guide](docs/FIREYE.md).
 
-The full-screen console (1920 × 1080 and up) defaults to **Mati, Greece, 23 July 2018**, with public data cached in `public/data/mati/`. Select **Caldor 2021** in the scenario menu or open `/console.html?scenario=caldor-2021` for the earlier replay.
+**Real-data Attica monitoring** (`/console.html?mode=monitoring`). Current observations/forecasts, historical Mati 2018 and Copernicus EMSR746 Attica 2024, source/time labels, camera-provider links and saved real-data fallback. Six separately labeled 3D drone/ground-camera views are simulated over local terrain and dated imagery, with an isolated smooth renderer; they are not live webcams. No fictional incident runtime or AI analysis runs in monitoring. It is not an emergency warning service. [Presentation setup, keys, source limits and camera recording safety](docs/MONITORING.md).
+
+The **legacy replay** at `/console.html?mode=replay` remains a simulated product demonstration, not a live agent service. Its video feeds, detections, tasks and time-savings counters are simulated; the local spread solver is prototype code. High-risk drafts require a human approval click, including during the Demo Director tour. The separate, opt-in proposal [image lab](http://localhost:5173/#image-lab) can make real paid image-editing calls to fal after explicit submission. Its output never feeds monitoring or replay predictions.
+
+**Image lab:** open `/#image-lab` to pick a random Greece satellite landscape, analyze exactly **2×2 independent cells**, and inspect/download their stitched result. Picking imagery makes no fal call; analysis needs `FAL_KEY=your_fal_api_key` in `.env` or `.env.local` and a server restart. Runs are capped at four 1K submissions, with duplicate/retry protection. Default model: `google/nano-banana-2.1/edit`. Single-image uploads and three credited samples remain available. Satellite imagery is EOX's historical 2020 mosaic, approximately 10 m, non-commercial CC BY-NC-SA, not current conditions. Outputs are unvalidated review images, not fire forecasts. [Setup, privacy and limitations](docs/IMAGE_LAB.md).
+
+The legacy full-screen replay (1920 × 1080 and up) defaults to **Mati, Greece, 23 July 2018**, with public data cached in `public/data/mati/`. Select **Caldor 2021** in its scenario menu or open `/console.html?scenario=caldor-2021` for the earlier replay.
 
 The Mati timeline is a reconstruction fitted to documented checkpoints and the EFFIS final perimeter, not a sequence of observed fire fronts. Matching those anchors tests consistency, not predictive accuracy. The pack's 28 FIRMS detections occurred after the main run. Historical checkpoint errors and comparisons against reconstructed spread must be reported separately.
 
-Switch between FCC (orange, Inter Tight) and Team (blue, Geist) with the theme toggle, `T` in the console, or `?theme=team`.
+The brand is locked to FCC (orange, Inter Tight). The Team theme toggle was removed; its token code remains unused.
 
 **Daylight appearance:** Auto follows the replay sun through a continuous light/dark palette, using the same solar curve as the map. Light and Dark are manual overrides, independent of the FCC/Team accent. The proposal's Auto follows the system appearance. `?appearance=auto|light|dark` overrides the saved preference. Reduced-motion users get immediate changes.
 
@@ -20,7 +26,7 @@ Switch between FCC (orange, Inter Tight) and Team (blue, Geist) with the theme t
 
 **Install:** FCC is a standalone PWA with an Install button. Build and serve over HTTPS or localhost, then launch it from your Dock/home screen to remove the browser address bar. The app and both replay packs work offline after the initial download; streamed Google/Cesium maps still need a connection. [Installation details](docs/SETUP.md#9-install-as-a-standalone-app-pwa).
 
-The model starts from reconstructed issue-time fire and uses archived future weather as a perfect forecast. It substantially underpredicts Mati's speed. IoU is against reconstructed spread; checkpoint timing is against sourced moments. No final-perimeter evaluation is implemented. See [`PROJECTION.md`](src/console/orchestrator/PROJECTION.md) for assumptions and results.
+The model starts from reconstructed issue-time fire and uses archived future weather as a perfect forecast. On Mati, from detection, it is about 30 min early at Neos Voutzas but about 20 min late at Marathonos Ave and the coast, with less than half the reconstructed area. IoU is against reconstructed spread; checkpoint timing is against sourced moments. No final-perimeter evaluation is implemented. See [`PROJECTION.md`](src/console/orchestrator/PROJECTION.md) for assumptions and results.
 
 > Scenario built from public data; units, people and events are simulated.
 
@@ -40,14 +46,16 @@ npm install
 npm run dev        # http://localhost:5173  (proposal)  ·  /console.html  (console)
 npm run build      # typecheck + production build
 npm test           # both scenarios: tours, approvals, prediction independence
+npm run test:monitoring # source adapters, real fixtures, failure/race/isolation checks
 npm run test:pwa   # after build: manifest, icons, precache and provider exclusion
+npm run test:image-lab # mocked fal adapter and image-lab rendering, no paid calls
 ```
 
 Tokens are optional. Copy `.env.example` to `.env.local` and add `VITE_CESIUM_ION_TOKEN` and/or `VITE_GOOGLE_MAPS_KEY` for world terrain and photoreal 3D tiles; without them the console uses the pack's own heightmap and cached imagery. Step by step: [`docs/SETUP.md`](docs/SETUP.md).
 
 Rebuild Mati with `node scripts/fetch-data.mjs --scenario mati`; rebuild Caldor with `node scripts/fetch-data.mjs`. `FIRMS_MAP_KEY` is optional. Run `node scripts/check-mati.mjs` for reconstruction consistency checks.
 
-## The console
+## The legacy simulated console
 
 | Area | What it does |
 |---|---|
@@ -68,6 +76,7 @@ Rebuild Mati with `node scripts/fetch-data.mjs --scenario mati`; rebuild Caldor 
 | `#architecture` | 02 Architecture | Signal path (inputs → analysis pools on boxd → projection agent → Orchestrator tiers → audiences), capabilities, freshness, decision loop. |
 | `#stack` | 03 Stack | Vendor per job with IN DEMO / IN DEMO (CACHED) / VERIFIED / TO CONFIRM / OPTIONAL status, plus open questions. |
 | `#dashboard` | 04 Live Ops | Link to the full console, and the REV B embedded dashboard as the concept preview. |
+| `#image-lab` | 04B Image Lab | Opt-in fal image editing, seeded visible-fuel prompt, test scenes, fixed categorical palette and run export. |
 | `#system` | 05 Design System | Live specimens of tokens, primitives, components, icons and Orchestrator patterns. |
 
 ## Docs

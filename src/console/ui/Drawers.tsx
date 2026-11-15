@@ -312,7 +312,7 @@ const zoneOpts = [{ value: 'all', label: 'All' }, ...(['Z0_INTERRUPT', 'Z2_DECIS
 const clsOpts = [{ value: 'all', label: 'All' }, ...(['life', 'hazard', 'fuel', 'movement', 'projection', 'status'] as const).map((c) => ({ value: c, label: c.slice(0, 4) }))];
 
 const busTone: Record<BusEvent['type'], Tone> = {
-  'prediction.scored': 'telemetry',
+  'prediction.scored': 'telemetry', 'sensor.reading': 'telemetry', 'sensor.triggered': 'warning',
   'source.ingested': 'neutral', 'analysis.job': 'telemetry', 'analysis.finding': 'detection', 'projection.updated': 'warning', 'orchestrator.graded': 'neutral',
   'ui.directive': 'telemetry', 'action.proposed': 'warning', 'action.decided': 'nominal', 'brief.updated': 'neutral', message: 'telemetry', 'ledger.entry': 'nominal',
 };
@@ -343,6 +343,10 @@ function busText(e: BusEvent): string {
       return `${e.entry.agent} · ${e.entry.text}`;
     case 'prediction.scored':
       return `${e.check.horizonMin} min projection · IoU ${e.check.iou == null ? 'unavailable' : `${Math.round(e.check.iou * 100)}%`}`;
+    case 'sensor.reading':
+      return `${e.reading.id} · ${e.reading.status}`;
+    case 'sensor.triggered':
+      return `${e.reading.id} · ${e.threshold}`;
   }
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   AutonomyDial, Brackets, CaptionBar, DecisionCard, DirectiveToast, DraftDocument, GridBg, LedgerCounter, LensSelect, PredictionCheckCard, ProvenanceTag,
-  AppearanceToggle, InstallAppButton, THEMES, ThemeToggle, TimelineScrubber, WhyPopover, ZoneTag, useTheme,
+  AppearanceToggle, FireyeMark, FireyeWordmark, InstallAppButton, OrchestratorAvatar, THEMES, TimelineScrubber, WhyPopover, ZoneTag, useTheme,
   zoneMeta, type ConsoleActionStatus, type ConsoleAutonomy, type ConsoleLens, type ConsoleZone,
 } from '@ds';
 import { GroupTitle, Spec, SubSection } from './Spec';
@@ -310,9 +310,9 @@ export function ConsoleSpec() {
         </div>
 
         <div>
-          <GroupTitle code="C.10">ThemeToggle / FCC and Team themes</GroupTitle>
+          <GroupTitle code="C.10">FireyeMark + FireyeWordmark + OrchestratorAvatar / brand, FCC theme locked</GroupTitle>
           <ThemeDemo />
-          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<ThemeToggle compact hint onChange />  ·  getTheme() setTheme(id) getAccent() onThemeChange(fn) useTheme()'}</code>
+          <code className="mt-2 block font-mono text-micro text-bone-dim">{'<FireyeMark size weight draw state title />  ·  <FireyeWordmark size sub />  ·  <OrchestratorAvatar state size framed />  ·  <AppearanceToggle />  ·  Team tokens retained, not selectable'}</code>
         </div>
 
         <div>
@@ -354,7 +354,13 @@ function ThemeDemo() {
   return (
     <div className="grid grid-cols-1 gap-px border border-line bg-line md:grid-cols-[auto_1fr_1fr]">
       <div className="flex flex-col items-start gap-3 bg-ink-900 p-5">
-        <ThemeToggle />
+        <span className="flex items-center gap-4 text-bone">
+          <FireyeMark size={40} draw />
+          <FireyeWordmark size={22} sub="Incident console" />
+        </span>
+        <span className="flex items-center gap-2">
+          {(['idle', 'listening', 'thinking', 'speaking', 'alert'] as const).map((s) => <OrchestratorAvatar key={s} size={28} framed state={s} />)}
+        </span>
         <AppearanceToggle />
         <InstallAppButton />
         <span className="fcc-micro max-w-48 leading-4">Auto follows map daylight in the console. Install opens a standalone app.</span>
