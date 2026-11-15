@@ -32,15 +32,15 @@ Ctrl-C/SIGINT or SIGTERM closes the owned listener and pending polls, clears bri
 
 Authorized local requests send exact configured Origin plus Bearer capability. `GET /incidents/exercise-local/snapshot` returning200 with matching `run_id` establishes actual HTTP readiness. `GET snapshot?after_revision=N&wait_ms=10000` waits for a newer revision or returns204. A healthy listener is not a healthy producer, inference receipt or frontend acceptance.
 
-Launcher creates three thermal synthetic feed declarations and three finite fixture candidates, zero observations/proposals/commands. Every run gets new `run_id`, Chief/producer IDs and capabilities, incident ID remains`exercise-local`. Declared candidates do not prove physical feasibility/routes, feeds do not prove pixels. No time-driven provider job, simulated motion or producer heartbeat is fabricated. Trusted default UTC/tick derive from monotonic elapsed server seconds, not physics, capture clock or frontend animation time.
+Default bridge-only launcher creates three thermal synthetic feed declarations and three finite fixture candidates, zero observations/proposals/commands. Every run gets new `run_id`, Chief/producer IDs and capabilities, incident ID remains`exercise-local`. Declared candidates do not prove physical feasibility/routes, feeds do not prove pixels. No time-driven provider job, simulated motion or producer heartbeat is fabricated. Trusted default UTC/tick derive from monotonic elapsed server seconds, not physics, capture clock or frontend animation time.
 
 Only designated external fixture producer may POST empty body `/producer-heartbeats`; expected cadence <5s. Timer every250ms checks >5s absence and freezes authority. Readers stay available with last-known facts/`authority_active=false`; late heartbeats cannot revive frozen run. To reset: stop backend and start a **new run**, reacquire role handoff, discard old cached intents/capabilities. This is explicit exercise reset, not reconciled takeover or revival of accepted work.
 
-Orchestration remains separately reviewed dependency, not imported/started in this launcher revision. Bridge/planner/sponsor adapters may exist in source, but standalone launch creates no planner jobs, registered generated routes or provider inference. No orchestration endpoint is advertised.
+Without `--demo`, launcher starts only the bridge, no planner jobs, registered generated courses or provider inference. Optional `node backend/scripts/start-local.ts --demo` starts callable seeded-fixture orchestration with exactly one registered single-drone course and one synthetic telemetry event, not the generic three-asset seed. See [orchestration service runbook](backend-service.md) for its objective/review/Chief endpoints and fixture limits. Neither mode starts a frontend or genuine provider inference.
 
 Programmatic `startLocalBackend(config, clock, reviewedFixtureSeed)` accepts an
 optional trusted seed through the existing authority validator. The existing
-coordinator can attach to returned `authority` in the same process. Default/CLI
+coordinator can attach to returned `authority` in the same process. Default startup and CLI without `--demo`
 remain fresh bridge-only runs. This is not a candidate registration API or
 objective HTTP service. [Composition test](../../backend/tests/backend-composition.test.ts)
 proves the pre-reviewed fixture connection, not default application readiness.
