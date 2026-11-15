@@ -1,8 +1,52 @@
-# Fire Command Center
+# FIREYE
 
-**EXERCISE prototype, not an emergency service.** Explore a local wildfire simulator, inspect evidence and uncertainty, review proposed tasks and replay decisions.
+**A wildfire command console that puts drones, cameras, sensors and field reports on one screen, and keeps a human in charge of every consequential decision.**
 
-Fire Command Center combines a visual console with a separate bounded backend for received state, approval and receipts. This guide is for judges and developers understanding or running the prototype. The product end-user direction remains undecided; existing views are not a final civilian/responder strategy.
+Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation. It is not an emergency service.
+
+## For judges: the short version
+
+**The problem.** In the first hour of a fast wildfire, an incident commander gets information from everywhere at once: radio, fixed cameras, drones, weather stations, news and social posts. It arrives late, out of order and with no sense of how old or how reliable it is. Mati showed how fast a wind-driven fire can outrun that.
+
+**What FIREYE does.**
+
+- Shows the fire, six simulated drones (each with a separate visible-light and thermal camera), eight fixed cameras and 24 ground sensors on a 3D map of Attica.
+- An orchestrator sends drones to scout high-risk areas that fixed cameras cannot see, brings them back to recharge, and explains why it chose each task.
+- Raises an alert only when something materially changes: a new fire, a faster spread, or a town newly in reach within the hour.
+- Labels every piece of evidence with its source, its capture time and whether it is simulated. Old evidence never looks fresh.
+- A backend core enforces the rules that matter in a real deployment: only the current human Chief can approve a task, approvals expire, stale or duplicate inputs are rejected, and the whole incident can be replayed exactly as it was known at any moment.
+
+**Who it is for.** Fire chiefs and incident commanders, and the crews who need the same picture they do.
+
+**Try it (about two minutes).**
+
+```sh
+cd proposal/fcc
+npm ci --ignore-scripts
+npm run dev
+```
+
+Open `http://localhost:5173/console.html?mode=fireye`. Press `Space` to play, click a drone to dive into its feed, press `T` for thermal, `/` to open the chat. Other views: Ops (`/console.html`), Crew (`?mode=crew`), Monitoring (`?mode=monitoring`), Replay (`?mode=replay`).
+
+Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
+
+**What is real and what is not.**
+
+| Real | Simulated or not yet connected |
+|---|---|
+| 3D console, drone tasking, battery and recharge logic, alerting rules, thermal and visible feeds as rendered views | All drones, sensors, radio traffic and thermal images are simulated |
+| Historical Mati reconstruction and attributed public sources (EFFIS, ERA5, EEA/CATDAT) | The fire spread is a reconstruction fitted to historical records, not a forecast |
+| Backend approval, receipts and replay, covered by 320 tests (hosted CI green on Node 24 and 26) | Chief/Scout chat replies are scripted, not live model calls |
+| Received-only Crew view reading backend state | A backend-approved command does not yet move a frontend drone |
+| | No public deployment, no real drone control, no real warnings |
+
+Everything below is the detailed engineering reference.
+
+---
+
+## Engineering reference
+
+Fire Command Center (the repository's working name) combines a visual console with a separate bounded backend for received state, approval and receipts. The product end-user direction remains undecided; existing views are not a final civilian/responder strategy.
 
 Current main includes Ops/FIREYE, six simulated drones with distinct EO and thermal channels, monitoring/replay views, historical graphs and local scripted chat. Received-only Crew mode can read backend snapshots without simulator fallback. **Backend-approved command → frontend execution → factual completion remains unconnected**, pending mapping and contract work. No real warnings, drone/crew control or validated evacuation forecasts.
 
@@ -295,7 +339,7 @@ if (!snapshot.ok) throw new Error(`${snapshot.code}: ${snapshot.reason}`);
 ## Repository map
 
 ```text
-fire-command-center/
+FIREYE/
 ├── README.md / TASKBOARD.md / AGENTS.md / SOFTWARE.md
 ├── backend/
 │   ├── protocol/       types.ts, validation.ts, index.ts
@@ -387,7 +431,7 @@ HIT-UAV labels must stay ground truth, not be passed as model answers. NASA even
 
 Prior [wildfire-sweep research](https://github.com/nikolas-sapa/wildfire-sweep/tree/66bb3c9), baseline `66bb3c9`, dated 2026-11-10, predates event work. Frozen outputs remain untouched. Any reuse requires **file-level source + commit + license + attribution**, with visible pre-existing/event-adapted/event-new split. No hidden reuse, masking or backdating. Existing [reference archive](docs/references/operational-clarity-index.md) preserves supplied historical material, not adopted product requirements.
 
-Repository remains private and has no project-wide license grant. Broader publication/open-source licensing is not approved by this documentation task. Open-source-core monetization is a hypothesis, not a decided business model. Linked third-party licenses do not license this repository.
+Repository is public for hackathon review but has no project-wide license grant. Broader publication/open-source licensing is not approved by this documentation task. Open-source-core monetization is a hypothesis, not a decided business model. Linked third-party licenses do not license this repository.
 
 ## Limitations, security and privacy
 
