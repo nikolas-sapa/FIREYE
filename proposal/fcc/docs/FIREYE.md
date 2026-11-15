@@ -7,6 +7,7 @@ FIREYE is the default `/console.html`. It is a simulated command-console exercis
 | URL on `/console.html` | View |
 |---|---|
 | none | FIREYE (Mati exercise) |
+| `?mode=crew` | Isolated received-only exercise reader, no local simulator |
 | `?mode=monitoring` | Real-data monitoring (see `MONITORING.md`) |
 | `?mode=replay`, `?scenario=…`, `?beat=…` | Legacy simulated replay |
 | `?t=HH:MM` | Start FIREYE at a local time |
@@ -31,7 +32,7 @@ Keys: `Space` play/pause, `Esc` exit dive, close a panel, chat or selection, `T`
 - `sensors.ts`: 24 seeded IoT nodes (weather, fuel moisture, air quality, IR flame) around Daou, Penteli, Neos Voutzas, Mati and Kokkino Limanaki. Readings are pure functions of ERA5 hourly weather, the fire field at `t`, downwind smoke and seeded noise.
 - `risk.ts`: sector ignition-risk index from weather and sensor readings. It never reads future arrival times or perimeters.
 - `comms.ts`: fictional callsigns (Fire Ops Attica, Police East Attica, EKAB EMS, Coast Guard VHF16, Air Ops). No victim content.
-- `fleet.ts`: `FleetSource` with `simFleet` (default, from the runtime) and `BridgeFleetSource`, which long-polls `GET /incidents/:id/snapshot?after_revision&wait_ms=10000` on the exercise bridge (`http://127.0.0.1:8787`). The reader capability is typed at runtime and kept in sessionStorage (`fireye.bridge.reader`). Chief and producer credentials are never bundled. Bridge assets show "position unmapped" because the backend reports `coordinate_frame: null`. Status unions match the backend verbatim.
+- `fleet.ts`: `simFleet` advertises actual registered channel IDs from the runtime. The separate `?mode=crew` page uses the validated GET-only `CrewStore`; the compatibility `BridgeFleetSource` delegates to that same store. Initial reads have no cursor; subsequent reads long-poll `GET /incidents/:id/snapshot?after_revision&wait_ms=10000`. The reader capability is typed at runtime and kept in memory, never storage or the URL. Chief and producer credentials are never bundled or requested. Positions remain unmapped because the backend reports `coordinate_frame: null`. Media is unavailable, not a local simulated fallback. Status unions match the backend verbatim.
 
 The wire shapes are in `contracts.ts` (`SensorNode`, `SensorSample`, `ChronicleRecord`, bus `sensor.reading` / `sensor.triggered`) and in `BACKEND_CONTRACT.md`.
 
@@ -43,7 +44,7 @@ FIREYE mounts the existing `StageView` and adds:
 - `stage3d/sensors-layer.ts`: IoT and trail-camera glyphs.
 - `stage3d/camera-ops.ts`: zoom, tilt, heading, north-up, home, 2D/3D, orbit and `diveTo(feedPose)`.
 
-The dive sequence locks brackets onto the target (about 200 ms), flies the main camera to the drone sensor pose (about 1.8 s), runs a 350 ms scanline wipe, then suspends globe rendering behind the full feed. Exit reverses it. Reduced motion uses a crossfade. Per-drone EO/THRM changes only the feed's `fx` data. The feed renderer under `stage3d/feeds/**` belongs to another owner and is not edited from FIREYE.
+The dive sequence locks brackets onto the target (about 200 ms), flies the main camera to the drone sensor pose (about 1.8 s), runs a 350 ms scanline wipe, then suspends globe rendering behind the full feed. Exit reverses it. Reduced motion uses a crossfade. Every drone has distinct EO and thermal channels in the feed deck. EO FX/IR FX changes only display palette, never channel ID, label or source modality. The full-feed HUD identifies source modality separately and offers opt-in local PNG/metadata capture after a successful fresh render. Captures reject stale, disconnected, mismatched-transform and truth-overlay surfaces; they contain no detector labels or truth masks. See `BACKEND_CONTRACT.md` for the local-only format and `FRONTEND_ISSUES.md` for remaining acceptance gates.
 
 ## Orchestrator callout
 
@@ -55,4 +56,4 @@ Auto follows the replay sun at the incident centre and turns dark around 20:32 l
 
 ## Tests
 
-`npm test` includes `tests/fireye.ts` (log identity after scrubbing, no future reads, deterministic sensors, tab classification, backend unions, bridge adapter against a fixture, contract assignability) and `tests/appearance-sync.ts`.
+`npm test` includes `tests/fireye.ts` (log identity after scrubbing, no future reads, deterministic sensors, tab classification, backend unions, bridge adapter against a fixture, contract assignability), `tests/appearance-sync.ts`, thermal metadata/capture tests and crew-store regressions. `npm run test:crew` checks dependency isolation and two readers against actual exported backend code over loopback HTTP. It is a finite fixture integration test, not the ten-minute real-producer acceptance run.

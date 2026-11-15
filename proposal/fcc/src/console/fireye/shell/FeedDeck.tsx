@@ -15,14 +15,14 @@ const KIND: Record<Feed['kind'], string> = {
 function SensorToggle({ feed, compact }: { feed: Feed; compact?: boolean }) {
   const s = sensorOf(feed);
   return (
-    <div role="group" aria-label={`${feed.label} sensor`} className="flex border border-line-strong bg-ink-950/90" onClick={(e) => e.stopPropagation()}>
+    <div role="group" aria-label={`${feed.label} display palette, not source modality`} className="flex border border-line-strong bg-ink-950/90" onClick={(e) => e.stopPropagation()}>
       {(['eo', 'thermal'] as const).map((m) => (
-        <button key={m} type="button" aria-pressed={s === m} title={m === 'thermal' ? 'Simulated thermal, not radiometric' : 'Electro-optical'}
+        <button key={m} type="button" aria-pressed={s === m} title={`Display palette only; source channel remains ${feed.modality ?? 'unknown'}`}
           onClick={(e) => { e.stopPropagation(); if (s !== m) fireyeUi.toggleFx(feed.id, s); }}
           className={cn('font-mono uppercase leading-none tracking-[0.1em] transition-colors duration-quick ease-servo',
             compact ? 'px-1 py-0.5 text-micro' : 'px-1.5 py-1 text-micro', m === 'thermal' && 'border-l border-line',
             s === m ? 'bg-ink-700 text-bone' : 'text-bone-mute hover:text-bone-dim')}>
-          {m === 'eo' ? 'EO' : 'THRM'}
+          {m === 'eo' ? 'EO FX' : 'IR FX'}
         </button>
       ))}
     </div>

@@ -30,6 +30,12 @@ function retrievalContext(): SourceContext {
   const ctx = context();
   return { ...ctx, permissions: ctx.permissions.map(p => ({ ...p, retrieval: true })) };
 }
+function firecrawlBody(bytes: number): string {
+  const json = JSON.stringify({ success: true, data: { markdown: 'article', metadata: { sourceURL: packet().url, statusCode: 200 } } });
+  const body = json + ' '.repeat(bytes - Buffer.byteLength(json));
+  assert.equal(Buffer.byteLength(body), bytes);
+  return body;
+}
 
 test('SO01 10 source packets preserve provenance/hash/unknown clocks, 0 confirmed claims', () => {
   for (let n = 0; n < 10; n++) {
@@ -137,13 +143,61 @@ test('SO03 one Firecrawl fixture attempt, fixed native schema/provenance, no fak
   assert.equal((await createFirecrawlClient(config()).retrieve(packet(), context())).ok, false);
 });
 
-test('SO02 3 redirect/declared/stream oversize responses reject, 0 retries', async () => {
+test('SO18-01 1 redirect returns REDIRECT, 1 attempt/0 retries', async () => {
   let calls = 0;
-  for (const response of [new Response(null, { status: 302 }), new Response('{}', { headers: { 'content-length': '262145' } }), new Response('x'.repeat(262145))]) {
-    const result = await createFirecrawlClient(config({ transport: async () => { calls++; return response; } })).retrieve(packet(), retrievalContext());
-    assert.equal(result.ok, false);
+  const result = await createFirecrawlClient(config({ transport: async () => { calls++; return new Response(null, { status: 302 }); } })).retrieve(packet(), retrievalContext());
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'REDIRECT');
+  assert.equal(result.receipt?.attempts, 1);
+  assert.equal(calls, 1);
+});
+
+test('SO18-01 declared JSON length 262145 returns OVERSIZE, 1 attempt/0 retries', async () => {
+  let calls = 0;
+  const response = new Response('{}', { headers: { 'Content-Type': 'application/json', 'Content-Length': '262145' } });
+  const result = await createFirecrawlClient(config({ transport: async () => { calls++; return response; } })).retrieve(packet(), retrievalContext());
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'OVERSIZE');
+  assert.equal(result.receipt?.attempts, 1);
+  assert.equal(calls, 1);
+});
+
+test('SO18-01 streamed JSON 262144+1 bytes returns OVERSIZE, 2 reads/1 cancel/0 retries', async () => {
+  let calls = 0;
+  let reads = 0;
+  let cancellations = 0;
+  const body = new TextEncoder().encode(firecrawlBody(262145));
+  const response = new Response(new ReadableStream<Uint8Array>({
+    pull(controller) {
+      reads++;
+      if (reads === 1) controller.enqueue(body.subarray(0, 262144));
+      else if (reads === 2) controller.enqueue(body.subarray(262144));
+      else controller.close();
+    },
+    cancel() { cancellations++; }
+  }, { highWaterMark: 0 }), { headers: { 'Content-Type': 'application/json' } });
+  assert.equal(response.headers.get('content-length'), null);
+  const result = await createFirecrawlClient(config({ transport: async () => { calls++; return response; } })).retrieve(packet(), retrievalContext());
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'OVERSIZE');
+  assert.equal(result.receipt?.attempts, 1);
+  assert.equal(calls, 1);
+  assert.equal(reads, 2);
+  assert.equal(cancellations, 1);
+});
+
+test('SO18-01 exact 262144-byte valid JSON accepts short markdown, 1 attempt/0 retries', async () => {
+  let calls = 0;
+  const response = new Response(firecrawlBody(262144), { headers: { 'Content-Type': 'application/json' } });
+  assert.equal(response.headers.get('content-length'), null);
+  const result = await createFirecrawlClient(config({ transport: async () => { calls++; return response; } })).retrieve(packet(), retrievalContext());
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.content, 'article');
+    assert.equal(result.value.content_hash, hash('article'));
   }
-  assert.equal(calls, 3);
+  assert.equal(result.receipt?.attempts, 1);
+  assert.equal(calls, 1);
 });
 
 test('SO02 10ms deadline rejects, stale return/10,001ms config issue 0 accepted results', async () => {
