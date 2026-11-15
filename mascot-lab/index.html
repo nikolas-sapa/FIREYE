@@ -4,22 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="description" content="Six original pixel companions. A local character and dashboard-placement study for Fire Command Center." />
-    <title>Mascot lab · Fire Command Center</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171717'/%3E%3Cpath fill='%23ededed' d='M8 9h16v14H8z'/%3E%3Cpath fill='%23171717' d='M11 13h3v4h-3zm7 0h3v4h-3z'/%3E%3C/svg%3E" />
+    <meta name="description" content="A tiny fire Chief, a ground crew and three helpful drones. Original pixel character studies for Fire Command Center, local preview only." />
+    <title>The fire crew · Fire Command Center</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171717'/%3E%3Cpath fill='%23ededed' d='M8 13V9l3-4h10l3 4v4h3v4H5v-4zm3 8h10v6H11z'/%3E%3Cpath fill='%23171717' d='M14 8h4v5h-4z'/%3E%3C/svg%3E" />
     <link rel="preload" href="./assets/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./app.mjs"></script>
   </head>
-  <body data-theme="dark" data-selected="scout" data-state="idle" data-paused="false" data-scale="4">
+  <body data-theme="dark" data-selected="chief" data-state="idle" data-paused="false" data-scale="6" data-kind="ground">
     <a class="skip-link" href="#main-content">Skip to mascot preview</a>
     <header class="site-header">
       <div class="shell header-inner">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <svg class="brand-mark" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M12 2.5 20 6v6.5c0 4-4.5 7-8 9-3.5-2-8-5-8-9V6z" /><path d="M9 10h6M12 7v6" /></svg>
           <span>Fire Command Center</span>
           <span class="brand-divider" aria-hidden="true">/</span>
-          <span class="brand-section">Mascot lab</span>
+          <span class="brand-section">Crew studies</span>
         </div>
         <div class="header-tools">
           <span class="local-label"><span aria-hidden="true"></span>Local preview</span>
@@ -37,24 +37,31 @@
     <main class="shell" id="main-content" tabindex="-1">
       <section class="intro" aria-labelledby="page-title">
         <div>
-          <p class="eyebrow">Original characters / 001</p>
-          <h1 id="page-title">Small crew.<br />Big personality.</h1>
+          <p class="eyebrow">Fire Command Center / Character study 02</p>
+          <h1 id="page-title">Your tiny fire crew.</h1>
         </div>
-        <p class="intro-copy">Six tiny companions. Four expressive states.<br />Find the face that feels right for your team.</p>
+        <p class="intro-copy">A steady Chief. A close-knit ground crew.<br />Three little drones with a helping hand.</p>
       </section>
 
       <section class="preview" aria-label="Selected mascot preview">
         <div class="sprite-stage">
           <div class="stage-topline">
-            <span class="eyebrow">Character preview</span>
+            <span class="eyebrow">The station / Portrait</span>
             <span class="stage-index" id="selected-index">01 / 06</span>
           </div>
           <div class="sprite-field">
+            <div class="station-bay" aria-hidden="true"><span></span><span></span><span></span></div>
             <span class="corner corner-tl" aria-hidden="true"></span>
             <span class="corner corner-tr" aria-hidden="true"></span>
             <span class="corner corner-bl" aria-hidden="true"></span>
             <span class="corner corner-br" aria-hidden="true"></span>
-            <canvas id="hero-sprite" width="128" height="128" role="img" aria-label="Selected pixel mascot"></canvas>
+            <span class="portrait-label" id="portrait-label">01 / Ground crew</span>
+            <canvas id="hero-sprite" width="192" height="192" role="img" aria-label="Chief, original pixel firefighter"></canvas>
+            <span class="portrait-baseline" aria-hidden="true"></span>
+          </div>
+          <div class="support-line">
+            <div class="support-companion"><canvas id="buddy-sprite" width="32" height="32" aria-hidden="true"></canvas><div><span class="support-caption" id="buddy-kind">A little air support</span><p id="buddy-name">Scout / Camera drone</p></div></div>
+            <span class="support-size">32 px</span>
           </div>
           <div class="stage-bottomline">
             <span>32 × 32 original pixel art</span>
@@ -64,10 +71,11 @@
 
         <div class="preview-details">
           <div class="character-heading">
-            <p class="eyebrow" id="selected-role">Companion</p>
-            <h2 id="selected-name">Scout</h2>
-            <p class="character-tagline" id="selected-tagline">A little curiosity goes a long way.</p>
-            <p class="character-description" id="selected-description">Choose a character to inspect its expression and silhouette.</p>
+            <p class="eyebrow" id="selected-role">Fire chief</p>
+            <div class="character-title"><h2 id="selected-name">Chief</h2><span class="role-badge" id="selected-kind">Crew lead</span></div>
+            <p class="character-tagline" id="selected-tagline">A calm face at command.</p>
+            <p class="character-description" id="selected-description">White helmet, front shield, reflective turnout bands and a little radio. The familiar face of a tiny fire crew.</p>
+            <dl class="identity-details"><div><dt>Signature gear</dt><dd id="selected-gear">White helmet · shield · radio</dd></div><div><dt>Pixel palette</dt><dd class="character-palette" id="selected-palette" aria-label="Character costume colors"></dd></div></dl>
           </div>
 
           <div class="preview-controls">
@@ -82,11 +90,11 @@
               <p class="state-description" id="state-description">A quiet blink. No hurry.</p>
             </fieldset>
             <fieldset class="control-block scale-block">
-              <legend>Preview size <span id="size-label">128 px</span></legend>
+              <legend>Preview size <span id="size-label">192 px</span></legend>
               <div class="segmented scale-controls" role="radiogroup" aria-label="Mascot preview size">
                 <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scale="2" aria-label="2 times size, 64 pixels">2×</button>
-                <button type="button" role="radio" aria-checked="true" tabindex="0" data-scale="4" aria-label="4 times size, 128 pixels">4×</button>
-                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scale="6" aria-label="6 times size, 192 pixels">6×</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scale="4" aria-label="4 times size, 128 pixels">4×</button>
+                <button type="button" role="radio" aria-checked="true" tabindex="0" data-scale="6" aria-label="6 times size, 192 pixels">6×</button>
               </div>
             </fieldset>
             <div class="action-row">
@@ -107,46 +115,49 @@
 
       <section class="crew-section" id="crew" aria-labelledby="crew-title">
         <div class="section-heading">
-          <h2 id="crew-title">Meet the small crew</h2>
-          <p>Six originals. Pick your companion.</p>
+          <h2 id="crew-title">One crew. Ground and air.</h2>
+          <p>Six originals. Select a portrait.</p>
         </div>
-        <div class="specimen-strip" id="bot-selectors" role="radiogroup" aria-label="Choose a mascot"></div>
+        <div class="specimen-strip" id="bot-selectors" role="radiogroup" aria-label="Choose a fire crew mascot">
+          <div class="specimen-family" role="group" aria-labelledby="ground-title"><div class="family-heading"><h3 id="ground-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M12 2.5 20 6v6.5c0 4-4.5 7-8 9-3.5-2-8-5-8-9V6z" /></svg>Ground crew</h3><span>01–03</span></div><div class="specimen-row" id="ground-selectors"></div></div>
+          <div class="specimen-family" role="group" aria-labelledby="air-title"><div class="family-heading"><h3 id="air-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><rect x="9.5" y="9.5" width="5" height="5" /><path d="M9.5 9.5 7 7M14.5 9.5 17 7M9.5 14.5 7 17M14.5 14.5 17 17" /><circle cx="5" cy="5" r="2.75" /><circle cx="19" cy="5" r="2.75" /><circle cx="5" cy="19" r="2.75" /><circle cx="19" cy="19" r="2.75" /></svg>Helping drones</h3><span>04–06</span></div><div class="specimen-row" id="air-selectors"></div></div>
+        </div>
         <div class="catalog-note">
-          <p>Same grid. Different personalities.</p>
+          <p>Turnout gear and helpful hardware.</p>
           <p id="pixel-details">Original 32 × 32 sprites</p>
         </div>
       </section>
 
       <section class="placements-section" aria-labelledby="placements-title">
         <div class="section-heading">
-          <h2 id="placements-title">A little presence, anywhere</h2>
+          <h2 id="placements-title">At home in the command center</h2>
           <p>Dashboard placement sketches, not live status.</p>
         </div>
         <div class="placements-grid">
           <article class="placement">
-            <div class="placement-caption"><span>01 / Chat presence</span><span>32 px</span></div>
+            <div class="placement-caption"><span>01 / Command companion</span><span>32 px</span></div>
             <div class="placement-demo chat-demo">
-              <div class="demo-topline"><span>Orchestrator</span><span class="demo-label">Sketch</span></div>
+              <div class="demo-topline"><span>The command desk</span><span class="demo-label">Sketch</span></div>
               <div class="chat-message">
                 <div class="chat-avatar"><canvas id="chat-sprite" width="32" height="32" aria-hidden="true"></canvas></div>
-                <div><p class="demo-character-name" data-selected-name>Scout</p><p class="chat-copy" id="chat-copy">Ready for your next question.</p></div>
+                <div><p class="demo-character-name" data-selected-name>Chief</p><p class="chat-copy" id="chat-copy">A little company at the command desk.</p></div>
               </div>
-              <button class="button button-ghost demo-button" type="button" data-action="preview-thinking">Preview thinking <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></button>
+              <button class="button button-ghost demo-button" type="button" data-action="preview-thinking">Try thinking pose <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></button>
             </div>
           </article>
           <article class="placement">
-            <div class="placement-caption"><span>02 / Agent roster</span><span>32 px</span></div>
+            <div class="placement-caption"><span>02 / Ground &amp; air roster</span><span>32 px</span></div>
             <div class="placement-demo roster-demo">
-              <div class="demo-topline"><span>Companions</span><span class="demo-label">Sketch</span></div>
+              <div class="demo-topline"><span>Crew &amp; helping drones</span><span class="demo-label">Sketch</span></div>
               <ul class="roster" id="roster"></ul>
             </div>
           </article>
           <article class="placement">
-            <div class="placement-caption"><span>03 / Empty-state corner</span><span>64 px</span></div>
+            <div class="placement-caption"><span>03 / Quiet standby</span><span>64 px</span></div>
             <div class="placement-demo empty-demo">
-              <div class="demo-topline"><span>Your workspace</span><span class="demo-label">Sketch</span></div>
-              <div class="empty-copy"><h3>Nothing queued.</h3><p>A quiet corner can still have company.</p></div>
-              <a class="button button-ghost demo-button" href="#crew">Compare companions <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></a>
+              <div class="demo-topline"><span>A quiet station corner</span><span class="demo-label">Sketch</span></div>
+              <div class="empty-copy"><h3>A moment of calm.</h3><p>A familiar face for an empty workspace.</p></div>
+              <a class="button button-ghost demo-button" href="#crew">Meet the crew <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></a>
               <canvas id="empty-sprite" width="64" height="64" aria-hidden="true"></canvas>
             </div>
           </article>

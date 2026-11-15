@@ -17,6 +17,7 @@ const frameInterval = 1000 / 8;
 const downloadUrls = new Set();
 const thumbnails = [];
 const rosterTargets = [];
+const buddyCanvas = document.querySelector('#buddy-sprite');
 const presenceTargets = [
   { canvas: document.querySelector('#chat-sprite'), scale: 1 },
   { canvas: document.querySelector('#empty-sprite'), scale: 2 },
@@ -24,18 +25,35 @@ const presenceTargets = [
 
 let selectedBot = bots[0];
 let state = STATES[0];
-let scale = 4;
+let scale = 6;
 let frame = 0;
 let userPaused = false;
 let animationId = null;
 let lastFrameAt = 0;
 
 const stateCopy = {
-  idle: { description: 'A quiet blink. No hurry.', chat: 'Ready for your next question.' },
-  thinking: { description: 'Curiosity, one pixel at a time.', chat: 'A thoughtful pose, just for this preview.' },
-  working: { description: 'Little movements. Focused energy.', chat: 'A busy expression, not a real task.' },
-  alert: { description: 'Eyes up. Something caught its attention.', chat: 'An attentive pose, not an incident alert.' },
+  idle: { description: 'Steady eyes. A quiet moment.', chat: 'A little company at the command desk.' },
+  thinking: { description: 'A thoughtful pause. A tiny head tilt.', chat: 'A thoughtful expression, just for this sketch.' },
+  working: { description: 'Focused energy, one pixel at a time.', chat: 'A focused pose. No real task or dispatch.' },
+  alert: { description: 'Heads up. An attentive expression.', chat: 'An attentive pose, not an incident alert.' },
 };
+
+const identity = {
+  chief: { badge: 'Crew lead', gear: 'White helmet · shield · radio', shortRole: 'Fire chief' },
+  ranger: { badge: 'Ground crew', gear: 'Red helmet · hose · side tank', shortRole: 'Firefighter' },
+  rescue: { badge: 'Ground crew', gear: 'Headlamp · mittens · support pack', shortRole: 'Rescue specialist' },
+  scout: { badge: 'Air support', gear: 'Rotors · camera · blue optics', shortRole: 'Camera drone' },
+  relay: { badge: 'Air support', gear: 'Antenna · signal payload', shortRole: 'Signal drone' },
+  tender: { badge: 'Air support', gear: 'Lift rotors · support payload', shortRole: 'Support drone' },
+};
+
+function isGround(bot) {
+  return primaryBots.some((member) => member.id === bot.id);
+}
+
+function buddy() {
+  return isGround(selectedBot) ? alternateBots[0] : primaryBots[0];
+}
 
 function announce(message) {
   statusMessage.textContent = message;
@@ -54,6 +72,7 @@ function paintSprites() {
   heroCanvas.setAttribute('aria-label', `${selectedBot.name}, ${state} pixel mascot, ${32 * scale} pixels`);
   thumbnails.forEach(({ canvas, bot }) => drawSprite(canvas, bot, { state, frame, scale: 2 }));
   presenceTargets.forEach((target) => drawSprite(target.canvas, selectedBot, { state, frame, scale: target.scale }));
+  drawSprite(buddyCanvas, buddy(), { state: 'idle', frame, scale: 1 });
   rosterTargets.forEach(({ canvas, bot }) => {
     drawSprite(canvas, bot, { state: bot.id === selectedBot.id ? state : 'idle', frame, scale: 1 });
   });
@@ -95,7 +114,8 @@ function updateMotion() {
 function buildRoster() {
   roster.replaceChildren();
   rosterTargets.length = 0;
-  const visibleBots = [selectedBot, ...bots.filter((bot) => bot.id !== selectedBot.id)].slice(0, 3);
+  const family = isGround(selectedBot) ? primaryBots : alternateBots;
+  const visibleBots = [selectedBot, family.find((bot) => bot.id !== selectedBot.id), buddy()];
   visibleBots.forEach((bot) => {
     const row = document.createElement('li');
     row.className = 'roster-row';
@@ -103,13 +123,19 @@ function buildRoster() {
     canvas.width = 32;
     canvas.height = 32;
     canvas.setAttribute('aria-hidden', 'true');
+    const details = document.createElement('span');
+    details.className = 'roster-details';
     const name = document.createElement('span');
     name.className = 'roster-name';
     name.textContent = bot.name;
+    const role = document.createElement('span');
+    role.className = 'roster-role';
+    role.textContent = `${isGround(bot) ? 'Ground' : 'Air'} / ${identity[bot.id].shortRole}`;
+    details.append(name, role);
     const status = document.createElement('span');
     status.className = 'roster-state';
-    status.textContent = `${bot.id === selectedBot.id ? state : 'idle'} demo`;
-    row.append(canvas, name, status);
+    status.textContent = `${bot.id === selectedBot.id ? state : 'idle'} pose`;
+    row.append(canvas, details, status);
     roster.append(row);
     rosterTargets.push({ canvas, bot });
   });
@@ -119,23 +145,45 @@ function updateDetails() {
   document.querySelector('#selected-index').textContent = `${String(bots.indexOf(selectedBot) + 1).padStart(2, '0')} / 06`;
   document.querySelector('#selected-name').textContent = selectedBot.name;
   document.querySelector('#selected-role').textContent = selectedBot.role;
+  document.querySelector('#selected-kind').textContent = identity[selectedBot.id].badge;
+  document.querySelector('#selected-gear').textContent = identity[selectedBot.id].gear;
   document.querySelector('#selected-tagline').textContent = selectedBot.tagline;
   document.querySelector('#selected-description').textContent = selectedBot.description;
   document.querySelectorAll('[data-selected-name]').forEach((name) => { name.textContent = selectedBot.name; });
+  document.querySelector('#portrait-label').textContent = `${String(bots.indexOf(selectedBot) + 1).padStart(2, '0')} / ${isGround(selectedBot) ? 'Ground crew' : 'Air support'}`;
+  document.querySelector('#buddy-kind').textContent = isGround(selectedBot) ? 'A little air support' : 'Alongside the Chief';
+  document.querySelector('#buddy-name').textContent = `${buddy().name} / ${identity[buddy().id].shortRole}`;
+  const palette = document.querySelector('#selected-palette');
+  palette.replaceChildren();
+  const usedSymbols = new Set(selectedBot.pixels.join('').replaceAll('.', ''));
+  const materialSymbols = ['o', 'n', 'd', 'p', 'h', 'r', 'c', 'b', 'u'].filter((symbol) => usedSymbols.has(symbol) && selectedBot.palette[symbol]);
+  const accentSymbol = materialSymbols.find((symbol) => symbol === 'r' || symbol === 'c') || materialSymbols.find((symbol) => symbol === 'b' || symbol === 'u');
+  const materialColors = [...new Set([...materialSymbols.filter((symbol) => symbol !== accentSymbol), ...usedSymbols].map((symbol) => selectedBot.palette[symbol]).filter(Boolean))];
+  const accentColor = selectedBot.palette[accentSymbol];
+  const colors = accentColor ? [...materialColors.filter((color) => color !== accentColor).slice(0, 5), accentColor] : materialColors.slice(0, 6);
+  colors.forEach((color) => {
+    const swatch = document.createElement('span');
+    swatch.style.backgroundColor = color;
+    swatch.title = color;
+    swatch.setAttribute('aria-hidden', 'true');
+    palette.append(swatch);
+  });
   const basePixels = frameFor(selectedBot, 'idle', 0).reduce((count, row) => count + [...row].filter((pixel) => pixel !== '.').length, 0);
-  document.querySelector('#pixel-details').textContent = `${selectedBot.silhouette} · ${basePixels} painted pixels`;
+  document.querySelector('#pixel-details').textContent = `32 × 32 grid · ${basePixels} painted pixels · ${selectedBot.name}`;
   document.querySelector('#state-description').textContent = stateCopy[state].description;
   document.querySelector('#chat-copy').textContent = stateCopy[state].chat;
   document.querySelector('#size-label').textContent = `${32 * scale} px`;
   body.dataset.selected = selectedBot.id;
   body.dataset.state = state;
   body.dataset.scale = String(scale);
+  body.dataset.kind = isGround(selectedBot) ? 'ground' : 'air';
   buildRoster();
 }
 
 bots.forEach((bot, index) => {
   const button = createButton({ label: `${bot.name}, ${bot.role}`, variant: 'ghost', className: 'specimen' });
   button.dataset.botId = bot.id;
+  button.dataset.kind = isGround(bot) ? 'ground' : 'air';
   const number = document.createElement('span');
   number.className = 'specimen-number';
   number.textContent = String(index + 1).padStart(2, '0');
@@ -152,9 +200,9 @@ bots.forEach((bot, index) => {
   name.textContent = bot.name;
   const role = document.createElement('span');
   role.className = 'specimen-role';
-  role.textContent = bot.role;
+  role.textContent = identity[bot.id].shortRole;
   button.append(number, indicator, canvas, name, role);
-  selectorGroup.append(button);
+  document.querySelector(isGround(bot) ? '#ground-selectors' : '#air-selectors').append(button);
   thumbnails.push({ canvas, bot });
 });
 

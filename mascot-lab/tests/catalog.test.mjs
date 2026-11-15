@@ -35,6 +35,26 @@ test('ML01 exactly six original, valid, distinct 32x32 silhouettes', () => {
   }
 });
 
+test('MC01 a Chief-first firefighter crew with three supporting drones', () => {
+  assert.deepEqual(primaryBots.map(({ id }) => id), ['chief', 'ranger', 'rescue']);
+  assert.deepEqual(alternateBots.map(({ id }) => id), ['scout', 'relay', 'tender']);
+  for (const bot of bots) {
+    assert.ok(bot.pixels.join('').replaceAll('.', '').length >= 120, bot.id);
+    assert.ok(new Set(bot.pixels.join('').replaceAll('.', '')).size >= 4, bot.id);
+  }
+  for (const bot of primaryBots) {
+    assert.match(bot.description, /helmet/i);
+    assert.match(bot.description, /coat|turnout|reflective/i);
+  }
+  for (const bot of alternateBots) assert.match(bot.description, /drone|rotor/i);
+  assert.match(primaryBots[0].description, /shield|badge/i);
+  const pale = new Set(Object.entries(primaryBots[0].palette).filter(([, color]) => {
+    const rgb = color.slice(1).match(/../g).map((value) => Number.parseInt(value, 16));
+    return Math.min(...rgb) >= 190;
+  }).map(([symbol]) => symbol));
+  assert.ok(primaryBots[0].pixels.slice(0, 12).join('').split('').filter((symbol) => pale.has(symbol)).length >= 25, 'Chief has a visibly pale helmet');
+});
+
 test('ML02 every state has multiple valid frames, originals unchanged', () => {
   assert.deepEqual(STATES, ['idle', 'thinking', 'working', 'alert']);
   for (const bot of bots) {
