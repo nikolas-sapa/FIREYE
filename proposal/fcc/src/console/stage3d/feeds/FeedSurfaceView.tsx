@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { cn, fmtLat, fmtLon, pad, zulu } from '@ds';
+import { Button, cn, fmtLat, fmtLon, pad, zulu } from '@ds';
 import type { Feed } from '../../contracts';
 import { MODEL_LABEL, modelFor } from '../fx';
 import { stageWorld, useStageWorld } from '../world';
@@ -7,6 +7,7 @@ import { asDemoFeed, fireyePose, getWorld3D, markWorld3dFailed, thermalOf, world
 import { FeedRenderer, FULL_H, FULL_W, THUMB_H, THUMB_W, type Detection, type FeedFrame } from './FeedRenderer';
 import { fitFeedFrame } from './dynamics';
 import { ArchiveCamera } from './ArchiveCamera';
+import { captureFrame, frameStatus, renderedFrame, type FrameMetadata } from '../../world/frame-capture';
 import '../stage.css';
 
 export interface FeedSurfaceProps {
@@ -27,11 +28,20 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
   const [viewport, setViewport] = useState<ReturnType<typeof fitFeedFrame> | null>(null);
   const [frame, setFrame] = useState<FeedFrame | null>(null);
   const [failed, setFailed] = useState(false);
+  const metadata = useRef<FrameMetadata | null>(null);
+  const [, setNow] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [captureError, setCaptureError] = useState('');
   const feed = useStageWorld((s) => s.feeds.find((f) => f.id === feedId));
   const t = useStageWorld((s) => s.t);
   const pack = useStageWorld((s) => s.pack);
   const paused = useStageWorld((s) => s.paused);
   const hasFeed = !!feed;
+  useEffect(() => {
+    if (hud === 'none') return;
+    const timer = window.setInterval(() => setNow(performance.now()), 500);
+    return () => window.clearInterval(timer);
+  }, [hud]);
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -52,13 +62,15 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
     if (!canvas || !hasFeed) return;
     let dead = false, dispose: (() => void) | undefined;
     setFrame(null);
+    metadata.current = null;
+    setCaptureError('');
     setFailed(false);
     canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
     const cesium = () => {
       const r = FeedRenderer.get();
       if (!r) { setFailed(true); return; }
-      dispose = r.register({ feedId, variant, canvas, onFrame: (f) => { setFrame(f); setFailed(false); },
-        onError: () => { setFrame(null); setFailed(true); } });
+      dispose = r.register({ feedId, variant, canvas, onFrame: (f) => { metadata.current = f.capture ?? null; setFrame(f); setFailed(false); },
+        onError: () => { metadata.current = null; setFrame(null); setFailed(true); } });
     };
     const s0 = stageWorld.get(), f0 = s0.feeds.find((f) => f.id === feedId), pack0 = s0.pack;
     if (f0 && pack0 && world3dEligible(f0, pack0)) {
@@ -69,9 +81,14 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
         const reg = w.register({ feed: asDemoFeed(f0), canvas, full: variant === 'full', active: true, visible: true, moving: true, frozen: false,
           lead, thermal: thermalOf(f0), pose: fireyePose(feedId, f0, pack0),
           onReady: () => {},
+          onPixels: (renderedThermal) => {
+            const s = stageWorld.get(), f = s.feeds.find(f => f.id === feedId);
+            metadata.current = f && thermalOf(f) === renderedThermal ? renderedFrame(f, canvas, s.t, performance.now()) ?? null : null;
+          },
           onError: () => {
             if (failedOnce || dead) return;
             failedOnce = true;
+            metadata.current = null;
             markWorld3dFailed();
             queueMicrotask(() => { if (dead) return; dispose?.(); worldHandle.current = null; setFrame(null); cesium(); });
           },
@@ -102,6 +119,30 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
   const full = variant === 'full';
   const showHud = hud !== 'none';
   const currentFrame = hasFeed && frame?.feedId === feedId ? frame : null;
+  const eligible = canvasRef.current?.dataset.truthOverlay !== 'true' && metadata.current?.display_transform === feed?.fx;
+  const status = frameStatus(metadata.current, { simTime: t, nowMs: performance.now(), connected: !!feed?.live && !failed && eligible });
+  const transformed = !!feed?.modality && (feed.modality === 'thermal') !== !!feed?.fx.startsWith('ir');
+  const save = async () => {
+    const canvas = canvasRef.current, meta = metadata.current;
+    const state = stageWorld.get(), source = state.feeds.find(f => f.id === feedId);
+    if (!canvas || !meta || !source || saving || meta.feed_id !== feedId || canvas.dataset.truthOverlay === 'true'
+      || meta.display_transform !== source.fx || frameStatus(meta, { simTime: state.t, nowMs: performance.now(), connected: source.live }) !== 'available') return;
+    setSaving(true); setCaptureError('');
+    try {
+      const capture = await captureFrame(canvas, meta);
+      const bytes = new Uint8Array(await capture.pixels.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      const url = URL.createObjectURL(new Blob([JSON.stringify({
+        metadata: capture.metadata, content_hash: capture.content_hash, mime_type: capture.pixels.type,
+        byte_length: capture.pixels.size, pixels_base64: btoa(binary),
+        note: 'Local simulated rendered pixels, not shared evidence, measured temperature, or backend receipt.',
+      })], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'fcc-simulated-frame.json'; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setCaptureError('Frame capture unavailable'); }
+    finally { setSaving(false); }
+  };
 
   return (
     <div ref={hostRef} className={cn('fcc-sensor relative h-full w-full overflow-hidden bg-void', className)}>
@@ -119,6 +160,12 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
             seed={feed.id.split('').reduce((n, c) => n + c.charCodeAt(0), 0) % 7} variant={variant} playing={!paused} />
         : <Acquiring failed={failed || !feed} full={full} label={feed?.label} />)}
       {currentFrame && showHud && feed && (full ? <FullHud feed={feed} frame={currentFrame} t={t} /> : <ThumbHud feed={feed} frame={currentFrame} />)}
+      {showHud && feed?.modality && <div className={cn('absolute left-2 flex max-w-[90%] flex-wrap items-center gap-2 bg-void/80 px-2 py-1 font-mono text-micro uppercase text-bone-dim', full ? 'top-20' : 'top-6')} role="status">
+        <span>{feed.modality} source · simulated · non-radiometric · {status}</span>
+        {transformed && <span>Display transform only</span>}
+        {full && <><span>Receipt unknown</span><Button size="sm" variant="ghost" disabled={saving || status !== 'available'} onClick={() => { void save(); }}>{saving ? 'Encoding' : 'Save local frame'}</Button></>}
+        {captureError && <span className="text-amber">{captureError}</span>}
+      </div>}
       </div>
     </div>
   );

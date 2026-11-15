@@ -196,6 +196,12 @@ export interface Feed {
   /** Orchestrator relevance 0..100 (orders the feed strip; top feed is enlarged). */
   relevance: number;
   findingIds: string[]; // detections currently in view
+  /** Source channel, independent of the display-only fx palette. */
+  modality?: 'thermal' | 'eo';
+  sourceKind?: 'simulated' | 'uploaded' | 'live';
+  synthetic?: boolean;
+  radiometric?: boolean | 'unknown';
+  calibration?: null;
 }
 
 /* ------------------------------------------------------------------ the Orchestrator attention model */

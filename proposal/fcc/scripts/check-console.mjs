@@ -1,7 +1,7 @@
 // Uses the esbuild bundled with Vite. No additional test dependency.
 import { build } from 'esbuild';
 try {
-  for (const test of ['console', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye']) {
+  for (const test of ['thermal', 'crew-store', 'console', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye']) {
     const result = await build({
       entryPoints: [new URL(`../tests/${test}.ts`, import.meta.url).pathname],
       bundle: true, platform: 'node', format: 'esm', write: false,
