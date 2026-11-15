@@ -1,0 +1,76 @@
+/* FIREYE console motion. Every animation here is disabled by the global reduced-motion rule in src/index.css. */
+
+.fireye-enter {
+  animation: fireye-enter 520ms var(--ease-settle) both;
+  animation-delay: calc(var(--i, 0) * 70ms + var(--fireye-enter-base, 0ms));
+}
+@keyframes fireye-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.fireye-enter-left { animation: fireye-left 560ms var(--ease-settle) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.fireye-enter-right { animation: fireye-right 560ms var(--ease-settle) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.fireye-enter-up { animation: fireye-up 560ms var(--ease-settle) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes fireye-left { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes fireye-right { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes fireye-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* Fresh log rows slide in with a highlight that fades. */
+.fireye-row-in { animation: fireye-row 900ms var(--ease-settle) both; }
+@keyframes fireye-row {
+  0% { opacity: 0; transform: translateX(10px); background-color: rgb(var(--bone) / 0.08); }
+  30% { opacity: 1; transform: none; }
+  100% { background-color: transparent; }
+}
+
+.fireye-seg-mark { animation: fireye-seg 220ms var(--ease-servo) both; transform-origin: center; }
+@keyframes fireye-seg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.fireye-fade { animation: fireye-fade 420ms var(--ease-servo) both; }
+@keyframes fireye-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.fireye-pop { animation: fireye-pop 220ms var(--ease-servo) both; transform-origin: top; }
+@keyframes fireye-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Number ticker: a short vertical nudge when the value changes (keyed remount). */
+.fireye-tick { display: inline-block; animation: fireye-tick 260ms var(--ease-servo) both; }
+@keyframes fireye-tick { from { opacity: 0.2; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+/* Corner brackets drawing on: each corner grows from its own corner. */
+.fireye-brackets > span { animation: fireye-corner 260ms var(--ease-snap) both; }
+.fireye-brackets > span:nth-child(2) { animation-delay: 40ms; }
+.fireye-brackets > span:nth-child(3) { animation-delay: 80ms; }
+.fireye-brackets > span:nth-child(4) { animation-delay: 120ms; }
+@keyframes fireye-corner { from { opacity: 0; transform: scale(1.6); } to { opacity: 1; transform: none; } }
+
+/* Dive: target lock that snaps in from a wide frame. */
+.fireye-lock { animation: fireye-lock 220ms var(--ease-snap) both; }
+@keyframes fireye-lock { from { opacity: 0; transform: scale(2.2); } to { opacity: 1; transform: none; } }
+
+/* Dive hand-off: a bright scanline sweeps down and reveals the feed above it. */
+.fireye-reveal { animation: fireye-reveal 350ms var(--ease-snap) both; }
+.fireye-unwipe { animation: fireye-reveal 350ms var(--ease-snap) reverse both; }
+@keyframes fireye-reveal { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+.fireye-scan {
+  position: absolute; left: 0; right: 0; height: 2px; pointer-events: none; background: rgb(var(--bone) / 0.9);
+  box-shadow: 0 0 18px 2px rgb(var(--bone) / 0.35);
+  animation: fireye-scan 350ms var(--ease-snap) both;
+}
+@keyframes fireye-scan { from { top: 0; opacity: 1; } 90% { opacity: 1; } to { top: calc(100% - 2px); opacity: 0; } }
+.fireye-dim { transition: opacity 220ms var(--ease-servo), filter 220ms var(--ease-servo); }
+.fireye-dim[data-dim='true'] { opacity: 0.38; filter: saturate(0.4); }
+
+/* Boot */
+.fireye-boot-icon { animation: fireye-boot-icon 240ms var(--ease-servo) both; }
+@keyframes fireye-boot-icon { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fireye-boot-out { animation: fireye-boot-out 320ms var(--ease-servo) 300ms both; }
+@keyframes fireye-boot-out { to { opacity: 0; } }
+
+.fireye-resize { touch-action: none; }
+.fireye-resize::after { content: ''; position: absolute; background: rgb(var(--bone-dim)); opacity: 0; transition: opacity 140ms var(--ease-servo); }
+.fireye-resize[data-axis='x']::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+.fireye-resize[data-axis='y']::after { left: 0; right: 0; top: 50%; height: 1px; }
+.fireye-resize:hover::after, .fireye-resize:focus-visible::after, .fireye-resize[data-drag='true']::after { opacity: 0.7; }
+
+.fireye-panel-anim { transition: width 220ms var(--ease-servo), height 220ms var(--ease-servo); }
+.fireye-panel-anim[data-dragging='true'] { transition: none; }

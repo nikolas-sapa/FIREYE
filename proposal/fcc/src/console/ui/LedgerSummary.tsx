@@ -6,6 +6,7 @@ import { fmtDuration } from './format';
 import { meanAbsError, usePredictions } from './Prediction';
 import { scenarioName } from './scenarios';
 import { useUi } from './UiContext';
+import { WildfireFatalityChart } from './WildfireFatalityChart';
 
 /** Full-screen end card for the Demo Director: the useful work the agents did. */
 export function LedgerSummary() {
@@ -63,7 +64,7 @@ export function LedgerSummary() {
       <RegMark className="absolute right-6 top-6" />
       <RegMark className="absolute bottom-6 left-6" />
       <RegMark className="absolute bottom-6 right-6" />
-      <div className="relative w-full max-w-[1180px] animate-rise border border-line-strong bg-ink-900 shadow-lift">
+      <div className="relative max-h-full min-w-0 w-full max-w-[1180px] animate-rise overflow-y-auto border border-line-strong bg-ink-900 shadow-lift">
         <Brackets size={12} tone="bone" inset={-6} />
         <header className="flex h-12 items-center gap-3 border-b border-line px-5">
           <FccMark size={20} />
@@ -143,6 +144,7 @@ export function LedgerSummary() {
             </div>
           </section>
         )}
+        {pack?.manifest.id === 'mati-2018' && <WildfireFatalityChart />}
         <footer className="flex h-11 items-center justify-between border-t border-line px-5">
           <span className="font-mono text-micro uppercase text-bone-mute">FCC // Fire Command Center // incident watch officer made of agents</span>
           <div className="flex items-center gap-2">

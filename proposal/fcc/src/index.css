@@ -60,3 +60,23 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }
+
+/* FIREYE mark: stroke-in (draw) and Orchestrator avatar states. Every keyframe ends at rest so reduced motion lands on the static mark. */
+.fireye-lids, .fireye-pupil, .fireye-ring { transform-box: view-box; transform-origin: 16px 16px; }
+.fireye-draw .fireye-lid { stroke-dasharray: 1; stroke-dashoffset: 1; animation: fireye-stroke 760ms var(--ease-servo) forwards; }
+.fireye-draw .fireye-lid + .fireye-lid { animation-delay: 90ms; }
+.fireye-draw .fireye-pupil { opacity: 0; animation: fireye-pupil 280ms var(--ease-snap) 640ms forwards; }
+@keyframes fireye-stroke { to { stroke-dashoffset: 0; } }
+@keyframes fireye-pupil { from { opacity: 0; transform: scale(0.3) rotate(-45deg); } to { opacity: 1; transform: none; } }
+.fireye-avatar .fireye-lids { transition: transform var(--dur-base, 200ms) var(--ease-servo); }
+.fireye-avatar .fireye-pupil { transition: transform var(--dur-base, 200ms) var(--ease-servo); }
+.fireye-avatar[data-state='idle'] .fireye-lids { animation: fireye-blink 7s var(--ease-servo) 2s infinite; }
+.fireye-avatar[data-state='listening'] .fireye-lids { transform: scaleY(0.72); }
+.fireye-avatar[data-state='thinking'] .fireye-lids { transform: scaleY(0.84); }
+.fireye-avatar[data-state='thinking'] .fireye-pupil { animation: fireye-scan 1.6s var(--ease-servo) infinite; }
+.fireye-avatar[data-state='speaking'] .fireye-pupil { animation: fireye-speak 0.9s var(--ease-servo) infinite; }
+.fireye-avatar[data-state='alert'] .fireye-ring { animation: fireye-ring 1.4s var(--ease-servo) infinite; }
+@keyframes fireye-blink { 0%, 95%, 100% { transform: none; } 97% { transform: scaleY(0.06); } }
+@keyframes fireye-scan { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes fireye-speak { 0%, 100% { transform: none; } 45% { transform: scale(1.32); } }
+@keyframes fireye-ring { 0% { opacity: 0.9; transform: scale(0.7); } 80% { opacity: 0; transform: scale(1.25); } 100% { opacity: 0; transform: scale(1.25); } }

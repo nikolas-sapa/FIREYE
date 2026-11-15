@@ -951,7 +951,12 @@ Honest scoring of one projection run against what happened (contract `Prediction
 
 ### ThemeToggle (REV D)
 
-`{ compact?; hint?: string; onChange?(theme) }` in `src/design-system/components/theme.tsx`. Two segments, FCC and Team, each with a swatch of its own accent; the active segment is `bg-ink-700 text-bone`. Persists to localStorage `fcc.theme`. `hint` prints a keyboard hint (the console uses `T`). Placed in the proposal Nav and the console command strip.
+`{ compact?; hint?: string; onChange?(theme) }` in `src/design-system/components/theme.tsx`. Two segments, FCC and Team, each with a swatch of its own accent; the active segment is `bg-ink-700 text-bone`. Persists to localStorage `fcc.theme`. `hint` prints a keyboard hint. Retired: the brand is now locked to FCC and the toggle is no longer mounted anywhere.
+
+### FireyeMark, FireyeWordmark, OrchestratorAvatar (FIREYE)
+
+`FireyeMark { size? = 24; weight? /* rendered px, default 1.5 (1.25 at ≥ 64) */; draw? = false; state?: OrchestratorState; title? = 'FIREYE' }`, `FireyeWordmark { size? = 20; className?; sub? }`, `OrchestratorAvatar { state? = 'idle'; size? = 20; framed? = false; title? }` in `src/design-system/components/brand.tsx`. Geometry is exported as `FIREYE_GEOMETRY` (32-unit grid): two hairline lids meeting at the canthi (2.5 / 29.5, apex 7.5 / 24.5) and an 8-unit diamond pupil, the only fill, in `signal`. Lid strokes keep the same rendered weight at every size. The Orchestrator avatar is the same drawing with state: `idle` (slow blink), `listening` (lids narrowed), `thinking` (pupil scans), `speaking` (pupil pulses), `alert` (signal ring, Z0 only). Every keyframe ends at rest, so reduced motion shows the static mark. `draw` strokes the lids in (boot). Specimen C.10 and proposal section 06 (`#identity`). PWA icons in `public/icons/fireye*`.
+
 ---
 
 ## 12. Domain patterns

@@ -95,8 +95,8 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 export function buildContext(pack: ScenarioPack): ScenarioContext {
   const script = scriptFor(pack.manifest.id);
   const m = pack.manifest as ScenarioManifest & { tzOffsetMin?: number; ignition?: { t: Ms; pos: Geo } };
-  const start = m.start;
   const end = m.end;
+  const start = Math.min(m.start, script.windowStart?.({ start: m.start, ignitionT: m.ignition?.t }) ?? m.start);
   const tzOffsetMin = m.tzOffsetMin ?? script.tzOffsetMin;
   const places: Place[] = m.places.slice();
   const find = (re: RegExp): Place | undefined => places.find((p) => re.test(p.id) || re.test(p.name));
@@ -277,7 +277,7 @@ export function buildContext(pack: ScenarioPack): ScenarioContext {
     return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
   };
   const areaAt = (t: Ms): number => {
-    const rel = t - start;
+    const rel = t - m.start;
     let lo = 0;
     let hi = finite.length;
     while (lo < hi) {

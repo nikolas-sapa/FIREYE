@@ -17,6 +17,7 @@ import { stageWorld, unitHeading, unitPos } from '../world';
 import { CameraFilter, FeedCadence } from './dynamics';
 import { feedPose, type FeedPose } from './poses';
 import { drawSatScene, pickSatScene, satProject, type SatScene } from './satellite';
+import { renderedFrame, type FrameMetadata } from '../../world/frame-capture';
 
 export const FULL_W = 960;
 export const FULL_H = 540;
@@ -44,6 +45,7 @@ export interface FeedFrame {
   frame: number;
   renderedAt: number;
   model: CameraModel;
+  capture?: FrameMetadata;
   /** Thermal core is running a non-uniformity correction (image briefly freezes flat). */
   nuc?: boolean;
   /** Phone footage: the frame is a 9:16 portrait crop centred in the landscape surface. */
@@ -668,7 +670,9 @@ export class FeedRenderer {
       g.drawImage(src, 0, 0, sw, sh, 0, 0, W, H);
     }
     s.lastFrameAt = performance.now();
-    s.onFrame?.(frame);
+    s.canvas.dataset.truthOverlay = 'false';
+    const feed = this.feedById(frame.feedId);
+    s.onFrame?.({ ...frame, capture: feed ? renderedFrame(feed, s.canvas, stageWorld.get().t, s.lastFrameAt) : undefined });
   }
 
   private detect(feed: Feed, findings: Finding[]): Detection[] {

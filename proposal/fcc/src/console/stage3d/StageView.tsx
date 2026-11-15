@@ -29,6 +29,8 @@ export interface StageProps {
   hud?: boolean;
   /** Extra classes for the credits container (bottom-left by default). */
   creditsClassName?: string;
+  /** Built-in Outline/Satellite and layer controls, top-right. Default true. */
+  mapControls?: boolean;
 }
 
 
@@ -42,7 +44,7 @@ const FADE_MS = 420;
 
 /** Store-agnostic stage (reads the stage mirror). `Stage` wraps this with the console store. */
 export function StageView({
-  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest, onEngineReady,
+  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest, onEngineReady, mapControls = true,
 }: StageProps & { onFocusRequest?: (g: Geo, rangeM?: number) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export function StageView({
     <div className={cn('fcc-stage relative h-full w-full overflow-hidden bg-void', className)}>
       <div ref={hostRef} className="absolute inset-0" />
       {status.phase === 'ready' && <StageOverlay engineRef={engineRef} />}
-      {status.phase === 'ready' && !feedOn && <MapControls contourM={pack ? getProfile(pack).contourM : 40} />}
+      {status.phase === 'ready' && !feedOn && mapControls && <MapControls contourM={pack ? getProfile(pack).contourM : 40} />}
       {!webgl || status.phase === 'error' ? (
         <StageFallback reason={!webgl ? 'WebGL unavailable' : status.error ?? 'Renderer error'} />
       ) : (

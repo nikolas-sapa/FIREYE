@@ -68,6 +68,62 @@ export interface ScenarioPack {
   reports?: { id: string; t: Ms; kind: 'news' | 'official' | 'agency' | 'social'; publisher: string; summary: string; url: string; lang?: string; pos?: Geo }[];
   /** Sourced facts about the real event for the end card / presentation (e.g. fatalities, homes lost). */
   facts?: { id: string; label: string; value: string; source: string; url: string }[];
+  /**
+   * FIREYE: simulated IoT sensor placements. Readings are not part of the pack; they arrive as
+   * `sensor.reading` / `sensor.triggered` events (or are computed locally from weather and the fire field).
+   */
+  sensors?: SensorNode[];
+  /**
+   * FIREYE: precomputed incident chronicle (INTAKE = outside sources, OPS = our side). Consumers show an
+   * entry only when `t <= playhead`, so the log is identical after any scrub.
+   */
+  chronicle?: ChronicleRecord[];
+}
+
+/* ------------------------------------------------------------------ FIREYE IoT and chronicle (additive) */
+
+export type SensorNodeKind = 'wx' | 'fuel' | 'air' | 'flame';
+export type SensorNodeStatus = 'nominal' | 'watch' | 'alarm' | 'offline';
+
+export interface SensorNode { id: string; code: string; kind: SensorNodeKind; name: string; sector: string; pos: Geo; elevM: number; exposure?: number }
+
+/** One simulated sensor sample. Unknown measurement fields must be ignored. */
+export interface SensorSample {
+  id: string;
+  t: Ms;
+  status: SensorNodeStatus;
+  tempC?: number;
+  rh?: number;
+  windKph?: number;
+  gustKph?: number;
+  windDirDeg?: number;
+  /** Dead fine fuel moisture, percent. */
+  fmc?: number;
+  pm25?: number;
+  co?: number;
+  /** Flame-detector response 0..1, not radiometric. */
+  ir?: number;
+  ffwi?: number;
+  fireDistM?: number | null;
+  battery?: number;
+  link?: number;
+}
+
+export interface ChronicleRecord {
+  id: string;
+  t: Ms;
+  tab: 'intake' | 'ops';
+  kind: string;
+  severity: 'info' | 'watch' | 'alert' | 'critical';
+  provenance: 'simulated' | 'historical' | 'derived';
+  source: string;
+  title: string;
+  body?: string;
+  pos?: Geo;
+  url?: string;
+  channel?: string;
+  refs?: string[];
+  decision?: 'needed' | 'approved' | 'rejected';
 }
 
 export enum FuelClass { None = 0, Water = 1, Rock = 2, Grass = 3, Shrub = 4, TimberLitter = 5, TimberUnderstory = 6, Urban = 7, Agriculture = 8 }
@@ -140,6 +196,12 @@ export interface Feed {
   /** Orchestrator relevance 0..100 (orders the feed strip; top feed is enlarged). */
   relevance: number;
   findingIds: string[]; // detections currently in view
+  /** Source channel, independent of the display-only fx palette. */
+  modality?: 'thermal' | 'eo';
+  sourceKind?: 'simulated' | 'uploaded' | 'live';
+  synthetic?: boolean;
+  radiometric?: boolean | 'unknown';
+  calibration?: null;
 }
 
 /* ------------------------------------------------------------------ the Orchestrator attention model */
@@ -288,7 +350,9 @@ export type BusEvent =
   | { type: 'brief.updated'; at: Ms; brief: Brief }
   | { type: 'message'; at: Ms; message: Message }
   | { type: 'ledger.entry'; at: Ms; entry: Ledger['entries'][number] }
-  | { type: 'prediction.scored'; at: Ms; check: PredictionCheck };
+  | { type: 'prediction.scored'; at: Ms; check: PredictionCheck }
+  | { type: 'sensor.reading'; at: Ms; reading: SensorSample }
+  | { type: 'sensor.triggered'; at: Ms; reading: SensorSample; threshold: string; entry?: ChronicleRecord };
 
 /* ------------------------------------------------------------------ console state (store) */
 

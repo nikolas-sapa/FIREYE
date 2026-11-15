@@ -8,7 +8,7 @@ const META: { label: string; rows: [string, string][] }[] = [
       ['ID', 'FCC-PRP-0001'],
       ['Revision', 'D'],
       ['Date', '2026-11-14'],
-      ['Sheets', '05'],
+      ['Sheets', '06'],
     ],
   },
   {
@@ -37,11 +37,12 @@ const META: { label: string; rows: [string, string][] }[] = [
       ['03', 'Stack'],
       ['04', 'Live ops'],
       ['05', 'Design system'],
+      ['06', 'Identity'],
     ],
   },
 ];
 
-const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '03': '#stack', '04': '#dashboard', '05': '#system' };
+const ANCHORS: Record<string, string> = { '01': '#top', '02': '#architecture', '03': '#stack', '04': '#dashboard', '05': '#system', '06': '#identity' };
 
 const REVISIONS: { rev: string; date: string; note: string; href?: string }[] = [
   { rev: 'A', date: '2026-11-14', note: 'Initial proposal: dashboard-first console, ARGUS core', href: REV_A_HREF },
@@ -64,7 +65,7 @@ export default function Footer() {
           </div>
           <div className="flex items-center gap-2">
             <Serial>FCC-01 / Rev D</Serial>
-            <Serial>Sheet 05/05</Serial>
+            <Serial>Sheet 06/06</Serial>
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import DashboardSection from '@/sections/DashboardSection';
 import DesignSystemSection from '@/sections/DesignSystemSection';
 import Footer from '@/sections/Footer';
 import ImageLabSection from '@/sections/ImageLabSection';
+import IdentitySection from '@/sections/IdentitySection';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <DashboardSection />
         <ImageLabSection />
         <DesignSystemSection />
+        <IdentitySection />
       </main>
       <Footer />
     </div>

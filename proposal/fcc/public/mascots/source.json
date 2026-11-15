@@ -1,0 +1,17 @@
+{
+  "source_commit": "dcb58855d11927a5bd99982c08260f8d7e9f959a",
+  "source_paths": [
+    "mascot-lab/sprite-core.mjs",
+    "mascot-lab/bots-a.mjs",
+    "mascot-lab/bots-b.mjs"
+  ],
+  "selected_ids": ["chief", "ranger", "rescue", "scout"],
+  "grid": 32,
+  "frames": 16,
+  "states": ["idle", "thinking", "working", "alert"],
+  "width": 512,
+  "height": 128,
+  "original_art": true,
+  "generation": "Original frameFor palette rows rendered mechanically on transparent canvas. Columns are frames 0-15; rows are states in listed order. No palette changes or invented frames.",
+  "disclaimer": "Original event-new pixel art, display only, not clinical or real status. Sprite state is supplied by the consumer, not a source, live-data or model-inference guarantee."
+}
