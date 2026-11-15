@@ -5,8 +5,10 @@ import { readLocalDemoConfig } from '../config/local-demo.ts';
 import { startLocalBridge } from '../integration/local-http.ts';
 import type { FixtureSession } from '../integration/local-http.ts';
 import { createBridgeAuthority } from '../integration/session.ts';
-import type { TrustedClock } from '../integration/session.ts';
+import type { BridgeAuthority, TrustedClock } from '../integration/session.ts';
 import { createExerciseCoordinator } from '../orchestration/coordinator.ts';
+import { createQueuedIrisClient } from '../orchestration/queued-iris.ts';
+import type { QueuedIrisClient, QueuedIrisConfig } from '../orchestration/queued-iris.ts';
 import { closed, plainJson } from '../integrations/receipts.ts';
 import type { LocalRole, LocalSetup } from '../scripts/start-local.ts';
 import { createDemoScenario, demoActor, initializeDemoScenario } from './scenario.ts';
@@ -16,6 +18,22 @@ export interface DemoServiceOptions {
   readonly allowed_origin?: string;
   readonly capability_ttl_ms?: number;
   readonly clock?: () => TrustedClock;
+  /** Trusted server composition only. Never accepted through HTTP or env. */
+  readonly queued_iris?: DemoQueuedIrisConfig;
+}
+export type DemoQueuedIrisConfig = Omit<QueuedIrisConfig, 'now' | 'is_current' | 'max_call_micro' | 'deadline_ms'>
+  & Readonly<{ max_call_micro: number; deadline_ms: number }>;
+
+/** Inert construction; actual queued adapter owns admission and transport. */
+export function createServiceQueuedIris(authority: BridgeAuthority, config?: DemoQueuedIrisConfig): QueuedIrisClient {
+  return createQueuedIrisClient({ ...config, now: () => Date.parse(authority.now().received_at),
+    is_current: snapshot => {
+      const expired = authority.expireProducer();
+      if (!expired.ok) return false;
+      const state = authority.read();
+      return state.authority_active && snapshot.incident_id === state.incident_id && snapshot.run_id === state.run_id
+        && snapshot.authority_epoch === state.authority_epoch && snapshot.input_revision === state.input_revision;
+    } });
 }
 const LIMIT = 64 * 1024;
 const failures = new WeakSet<object>();
@@ -43,7 +61,7 @@ async function body(request: IncomingMessage): Promise<unknown> {
   catch { throw failure(400, 'INVALID_SCHEMA', 'Expected valid JSON'); }
 }
 
-/** Inert on import. Explicit fixture startup, providers disabled, no synthetic executor. */
+/** Inert on import. Explicit fixture startup, providers disabled by default, no synthetic executor. */
 export async function startDemoService(options: DemoServiceOptions = {}) {
   const config = readLocalDemoConfig({ FCC_LOCAL_PORT: String(options.port ?? 8787),
     FCC_LOCAL_ORIGIN: options.allowed_origin ?? 'http://localhost:5173',
@@ -60,7 +78,8 @@ export async function startDemoService(options: DemoServiceOptions = {}) {
   if (!real.ok) throw new TypeError('Demo authority invalid');
   const shared = real.value; initializeDemoScenario(shared, scenario); ready = true;
   const coordinator = createExerciseCoordinator(shared, { analyst: demoActor(scenario.seed, 'analyst'),
-    layout: scenario.layout, reviewed_courses: scenario.reviewed_courses });
+    layout: scenario.layout, reviewed_courses: scenario.reviewed_courses,
+    ...(options.queued_iris === undefined ? {} : { iris: createServiceQueuedIris(shared, options.queued_iris) }) });
   const expires_at = new Date(Date.parse(initial.received_at) + config.capability_ttl_ms).toISOString();
   const sessions = new Map<string, FixtureSession>();
   const roles = {} as Record<LocalRole, { principal_id: string; capability: string }>;
