@@ -27,6 +27,8 @@ export function createFeeds(sim: Sim): Feed[] {
       const fx = n === 3 ? 'eo' : n % 2 === 0 ? 'ir-ironbow' : 'eo';
       feeds.push({
         id: `feed-${u.id}`,
+        modality: n % 2 === 0 && n !== 3 ? 'thermal' : 'eo',
+        sourceKind: 'simulated', synthetic: true, radiometric: false, calibration: null,
         unitId: u.id,
         kind: gimbal ? 'uav-oblique' : 'uav-nadir',
         fx,
@@ -35,6 +37,14 @@ export function createFeeds(sim: Sim): Feed[] {
         pose: { mode: 'unit', pitchDeg: gimbal ? -40 : -90, fovDeg: gimbal ? 45 : 60 },
         relevance: 10,
         findingIds: [],
+      });
+      const primary = feeds[feeds.length - 1];
+      const modality = primary.modality === 'thermal' ? 'eo' : 'thermal';
+      feeds.push({
+        ...primary, id: `feed-${u.id}-${modality}`, modality,
+        fx: modality === 'thermal' ? 'ir-whitehot' : 'eo',
+        label: `${u.callsign} · ${modality === 'thermal' ? 'IR' : 'EO'} ${gimbal ? 'GIMBAL' : 'NADIR'}`,
+        pose: { ...primary.pose }, findingIds: [],
       });
     } else if (u.kind === 'engine' || u.kind === 'dozer') {
       feeds.push({ id: `feed-${u.id}`, unitId: u.id, kind: 'dash-cam', fx: 'eo', label: `${u.callsign} · DASH CAM`, live: true, pose: { mode: 'unit', pitchDeg: -6, fovDeg: 75 }, relevance: 8, findingIds: [] });

@@ -36,7 +36,7 @@ async function download(fetcher: typeof fetch, url: string, kind: 'json' | 'png'
   return Buffer.concat(chunks);
 }
 
-/** Minimal 8-bit non-interlaced PNG decoder (same as scripts/fetch-mati.mjs) returning RGB. */
+/** Bounded 8-bit non-interlaced decoder for the source's fixed 256×256 Terrarium tiles. */
 export function decodePng(buf: Buffer): { w: number; h: number; rgb: Uint8Array } {
   if (buf.length < 8 || buf.readUInt32BE(0) !== 0x89504e47) throw new SourceError('not a PNG');
   let off = 8, w = 0, h = 0, depth = 0, ctype = 0, interlace = 0;
@@ -53,13 +53,17 @@ export function decodePng(buf: Buffer): { w: number; h: number; rgb: Uint8Array 
     off += 12 + len;
   }
   const ch = ({ 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 } as Record<number, number>)[ctype];
-  if (depth !== 8 || interlace || !ch || !w || !h || w * h > 4096 * 4096 || (ctype === 3 && !palette)) throw new SourceError('unsupported PNG');
-  const raw = inflateSync(Buffer.concat(idat));
+  if (depth !== 8 || interlace || !ch || w !== 256 || h !== 256 || (ctype === 3 && !palette)) throw new SourceError('unsupported PNG');
   const stride = w * ch;
-  if (raw.length < h * (stride + 1)) throw new SourceError('truncated PNG');
+  const expected = h * (stride + 1);
+  let raw: Buffer;
+  try { raw = inflateSync(Buffer.concat(idat), { maxOutputLength: expected }); }
+  catch { throw new SourceError('invalid or oversized PNG data'); }
+  if (raw.length !== expected) throw new SourceError('truncated PNG');
   const px = Buffer.alloc(h * stride);
   for (let y = 0; y < h; y++) {
     const f = raw[y * (stride + 1)], src = y * (stride + 1) + 1, dst = y * stride;
+    if (f > 4) throw new SourceError('unsupported PNG filter');
     for (let i = 0; i < stride; i++) {
       const a = i >= ch ? px[dst + i - ch] : 0;
       const b = y > 0 ? px[dst - stride + i] : 0;

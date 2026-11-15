@@ -2,6 +2,43 @@
 
 Status: draft for the post-hackathon backend. Source of truth: `src/console/contracts.ts`. This document mirrors it. If the two disagree, the TypeScript file wins and this document must be fixed.
 
+## Current frontend bridge and local-frame addition, 2026-11-15
+
+The legacy bus proposal below is not the current shared backend wire contract.
+`/console.html?mode=crew` consumes the reviewed `backend-protocol.v1` /
+`backend-bridge.v1` received DTO through `bus/crew-view.ts` and `crew-transport.ts`.
+It is GET-only, EXERCISE-only, loopback-only, has no simulator/Director/store,
+and never treats HTTP delivery as execution. Unknown map registration and media
+verification stay `null` and `false`. Reader capabilities live only in memory.
+Source clocks and backend receipt/cutoff clocks remain separate.
+
+Additive optional local `Feed` fields are `modality` (`thermal | eo`),
+`sourceKind` (`simulated | uploaded | live`), `synthetic`, `radiometric` and
+`calibration` (`null`). Each simulated drone registers distinct EO and thermal
+IDs while preserving its previous primary ID. Palette overrides only change
+`fx`, not source modality or channel label.
+
+`world/frame-capture.ts` defines **local** `fcc-local-frame.v1`, not a backend
+`FramePayload` or shared-media registration. It allowlists frame/feed/asset,
+evidence/render-snapshot IDs, local source revision/capture epoch, source flags,
+dimensions, display transform and explicit clocks/unknowns. `captured_at` is UTC
+generation time of the copied simulated pixels; `scenario_time_ms` is the
+historical replay clock. `received_at`, bridge `sim_tick`, source position and
+uncertainty remain null because no producer clock/geographic mapping is agreed.
+Local sequence/epoch values must never be submitted as an agreed producer mapping.
+Unknown acquisition is represented only by `captured_at: null` plus
+`capture_time_status: unknown`. All local captures are synthetic,
+non-radiometric and uncalibrated. No temperatures, confidence, annotations,
+detector labels, truth masks or future simulator state are exported.
+
+The full-feed opt-in download contains allowlisted metadata, PNG bytes as
+`pixels_base64`, MIME type, byte length and SHA-256 of the encoded bytes.
+Limits: 1920×1080, 4 MiB PNG, one physical encode per canvas and a 5-second wait.
+An ambiguous timeout keeps its slot reserved until the native callback finishes.
+Frames older than 3 seconds of wall or replay time, future-seek frames, disconnected
+surfaces and truth overlays are ineligible. This is not shared media transport,
+an operational camera, validated detection, independent evidence or a receipt.
+
 The REV C console (`/console.html`) runs entirely in the browser. A simulated "brain" (`src/console/store.tsx` and `src/console/orchestrator/**`) publishes typed `BusEvent`s onto an in-process bus. The real backend replaces the simulator by publishing the **same events, with the same shapes**, over a WebSocket. Nothing in the UI or the 3D stage should need to change.
 
 Contents

@@ -1,5 +1,6 @@
 import type { ConsoleState, Geo, Ms } from '../../contracts';
 import type { ChronicleEntry } from './types';
+import { CrewStore, type CrewOptions } from '../../bus/crew-transport';
 
 /* ------------------------------------------------------------------ mirrored backend shapes (backend-protocol.v1) */
 
@@ -101,7 +102,7 @@ export interface FleetProvider { id: string; label: string; status: 'simulated' 
 
 export interface FleetSnapshot {
   source: 'sim' | 'bridge';
-  state: 'live' | 'connecting' | 'error' | 'idle';
+  state: 'live' | 'connecting' | 'error' | 'idle' | 'frozen' | 'disconnected';
   mode: 'EXERCISE';
   revision: number;
   receivedAt: string | null;
@@ -154,6 +155,7 @@ export function simFleet(state: Pick<ConsoleState, 'clock' | 'units' | 'feeds' |
   const assets: FleetAsset[] = state.units.filter((u) => u.kind === 'drone').map((u) => {
     const id = ASSET_OF(u.id);
     const feed = state.feeds.find((f) => f.unitId === u.id);
+    const channels = state.feeds.filter(f => f.unitId === u.id && f.modality);
     const ir = !!feed && feed.fx !== 'eo';
     const entry = latest.get(id);
     const cmd = entry ? commandAt(entry, t) : null;
@@ -162,9 +164,9 @@ export function simFleet(state: Pick<ConsoleState, 'clock' | 'units' | 'feeds' |
     return {
       asset_id: id,
       callsign: u.callsign,
-      capabilities: ['thermal', 'eo'],
-      thermal_feed_id: `${id}-thermal`,
-      eo_feed_id: `${id}-eo`,
+      capabilities: [...new Set(channels.map(f => f.modality!))],
+      thermal_feed_id: channels.find(f => f.modality === 'thermal')?.id ?? '',
+      eo_feed_id: channels.find(f => f.modality === 'eo')?.id,
       feedId: feed?.id,
       unitId: u.id,
       feed_status: !feed ? 'unavailable' : rtb ? 'paused' : feed.live ? 'available' : 'stale',
@@ -239,74 +241,41 @@ export function fromBridge(v: BridgeViewLite): FleetSnapshot {
     note: `${p.candidate_ids.length} candidate${p.candidate_ids.length === 1 ? '' : 's'} · Chief approval required`,
   }));
   return {
-    source: 'bridge', state: 'live', mode: 'EXERCISE', revision: v.incident_revision, receivedAt: v.as_of_received_at,
+    source: 'bridge', state: v.authority_active ? 'live' : 'frozen', mode: 'EXERCISE', revision: v.incident_revision, receivedAt: v.as_of_received_at,
     assets, assessments, providers: PROVIDERS.map((p) => ({ ...p, status: 'not connected' as const })),
   };
 }
 
-export const BRIDGE_TOKEN_KEY = 'fireye.bridge.reader';
 export const BRIDGE_DEFAULT_URL = 'http://127.0.0.1:8787';
 
 /**
- * Long-polls the exercise bridge with a reader capability held in sessionStorage. The console only
+ * Long-polls the exercise bridge with a caller-supplied memory-only reader capability. The console only
  * reads; chief and producer credentials are never bundled or requested.
  */
 export class BridgeFleetSource implements FleetSource {
   readonly kind = 'bridge' as const;
   private snap: FleetSnapshot = { source: 'bridge', state: 'idle', mode: 'EXERCISE', revision: 0, receivedAt: null, assets: [], assessments: [], providers: PROVIDERS };
   private listeners = new Set<() => void>();
-  private abort: AbortController | null = null;
-  private running = false;
+  private readonly reader: CrewStore;
 
-  constructor(
-    private readonly opts: { url?: string; incident: string; token: () => string | null; fetchImpl?: typeof fetch; retryMs?: number },
-  ) {}
+  constructor(opts: CrewOptions) {
+    this.reader = new CrewStore(opts);
+    this.reader.subscribe(() => {
+      const received = this.reader.get();
+      this.snap = {
+        ...(received.view ? fromBridge(received.view) : this.snap),
+        state: received.state === 'connected' ? 'live' : received.state,
+        error: received.error,
+      };
+      for (const fn of this.listeners) fn();
+    });
+  }
 
   get = () => this.snap;
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
-  private set(next: FleetSnapshot) { this.snap = next; this.listeners.forEach((fn) => fn()); }
-
-  start() {
-    if (this.running) return;
-    this.running = true;
-    void this.loop();
-  }
-  stop() {
-    this.running = false;
-    this.abort?.abort();
-    this.abort = null;
-  }
+  start() { this.reader.start(); }
+  stop() { this.reader.stop(); }
 
   /** One request. Exposed for tests. Returns false when there was nothing new (204). */
-  async pollOnce(waitMs = 10000): Promise<boolean> {
-    const token = this.opts.token();
-    if (!token) throw new Error('Reader capability required');
-    const f = this.opts.fetchImpl ?? fetch;
-    const base = (this.opts.url ?? BRIDGE_DEFAULT_URL).replace(/\/$/, '');
-    const after = this.snap.state === 'live' ? this.snap.revision : 0;
-    this.abort = new AbortController();
-    const res = await f(`${base}/incidents/${encodeURIComponent(this.opts.incident)}/snapshot?after_revision=${after}&wait_ms=${waitMs}`, {
-      headers: { Authorization: `Bearer ${token}` }, signal: this.abort.signal,
-    });
-    if (res.status === 204) return false;
-    if (!res.ok) throw new Error(`Bridge HTTP ${res.status}`);
-    const body = await res.json() as { data?: BridgeViewLite } | BridgeViewLite;
-    const view = ('data' in body && body.data ? body.data : body) as BridgeViewLite;
-    if (view.mode !== 'EXERCISE' || !Array.isArray(view.feeds)) throw new Error('Unexpected bridge view');
-    this.set(fromBridge(view));
-    return true;
-  }
-
-  private async loop() {
-    if (this.snap.state !== 'live') this.set({ ...this.snap, state: 'connecting', error: undefined });
-    while (this.running) {
-      try {
-        await this.pollOnce();
-      } catch (err) {
-        if (!this.running) break;
-        this.set({ ...this.snap, state: 'error', error: err instanceof Error ? err.message : String(err) });
-        await new Promise((r) => setTimeout(r, this.opts.retryMs ?? 4000));
-      }
-    }
-  }
+  pollOnce(waitMs = 10000) { return this.reader.pollOnce(waitMs); }
 }

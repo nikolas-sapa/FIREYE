@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createImageLabMiddleware } from '../server/image-lab';
-import { gridCells, randomGridScene, imageryUrl, GRID_REGIONS, GRID_SOURCE, type GridScene } from '../src/image-lab/grid';
+import { decodePng, SourceError } from '../server/image-lab-landscape';
+import { gridCells, randomGridScene, imageryUrl, GRID_REGIONS, GRID_SOURCE, GRID_DEFAULT_RETRIES, type GridScene } from '../src/image-lab/grid';
 import { bestAttempt, processGrid, type GridTileRun } from '../src/image-lab/grid-client';
 import { DEFAULT_GRID_PROMPT, LAB_PALETTE } from '../src/image-lab/prompt';
 import { deflateSync } from 'node:zlib';
@@ -51,16 +52,23 @@ let submissions = 0;
 let sourceFail = false;
 const sourceHits: Record<string, number> = {};
 // 256 x 256 Terrarium tile at a constant 500 m: 500 + 32768 = 129 * 256 + 244.
-const terrariumPng = (() => {
+function terrainPng(extra = 0, filter = 0) {
   const chunk = (type: string, data: Buffer) => {
     const head = Buffer.alloc(8); head.writeUInt32BE(data.length, 0); head.write(type, 4, 'ascii');
     return Buffer.concat([head, data, Buffer.alloc(4)]);
   };
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(256, 0); ihdr.writeUInt32BE(256, 4); ihdr[8] = 8; ihdr[9] = 2;
-  const raw = Buffer.alloc(256 * (256 * 3 + 1));
+  const raw = Buffer.alloc(256 * (256 * 3 + 1) + extra);
+  for (let y = 0; y < 256; y++) raw[y * (256 * 3 + 1)] = filter;
   for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const o = y * (256 * 3 + 1) + 1 + x * 3; raw[o] = 129; raw[o + 1] = 244; }
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-})();
+}
+const terrariumPng = terrainPng();
+assert.equal(decodePng(terrariumPng).rgb.length, 256 * 256 * 3);
+const hugeHeader = Buffer.from(terrariumPng); hugeHeader.writeUInt32BE(4096, 16);
+assert.throws(() => decodePng(hugeHeader), SourceError, 'Reject large tile dimensions before decompression');
+assert.throws(() => decodePng(terrainPng(1)), SourceError, 'Bound decompression to the declared scanline bytes');
+assert.throws(() => decodePng(terrainPng(0, 5)), SourceError, 'Never interpret an invalid filter as terrain samples');
 function corine(target: URL) {
   const [w, s, e, n] = target.searchParams.get('geometry')!.split(',').map(Number), mid = (w + e) / 2;
   const box = (a: number, b: number) => [[[a, s], [b, s], [b, n], [a, n], [a, s]]];
@@ -281,7 +289,7 @@ const review = async (index: number, attempt: number): Promise<ReviewCell> => ({
 });
 const run = (list = tiles, signal = new AbortController().signal) => processGrid(scene, list, settings, signal, update, submit, poll, review);
 await run();
-assert.equal(peak, 4, 'All four cells submit concurrently');
+assert.equal(peak, 1, 'Cells submit sequentially, including optional retries');
 assert.deepEqual([...calls].sort(), ['0/0', '1/0', '2/0', '2/1', '3/0', '3/1', '3/2'], 'Only gate-rejected cells are retried, within budget');
 assert.equal(tiles[1].done, undefined);
 assert.equal(tiles[1].attempts[0].jobId, 'job-1-0', 'A retrieval failure must preserve the paid request handle');
@@ -305,4 +313,12 @@ await run();
 assert.equal(tiles[3].error, 'ambiguous');
 await run();
 assert.deepEqual(calls.filter(call => call.startsWith('3/')), ['3/0', '3/1', '3/1', '3/2']);
-console.log('Concurrent client runner, gate-driven retries within budget, best-attempt choice, partial recovery, handle retention, four-tile guard and abort behavior PASS');
+console.log('Sequential client runner, explicitly selected gate-driven retries within budget, best-attempt choice, partial recovery, handle retention, four-tile guard and abort behavior PASS');
+
+tiles = fresh(); calls.length = 0; peak = 0;
+assert.equal(GRID_DEFAULT_RETRIES, 0, 'Default must not authorize paid regenerations');
+await processGrid(scene, tiles, { ...settings, retries: GRID_DEFAULT_RETRIES }, new AbortController().signal, update, submit, poll, review);
+assert.deepEqual(calls, ['0/0', '1/0', '2/0', '3/0'], 'Default submits exactly four ordered calls, even with rejected outputs');
+assert.equal(peak, 1);
+assert.ok(tiles.every(tile => tile.done));
+console.log('Default paid budget: four sequential calls, no fifth generation or automatic retries PASS');

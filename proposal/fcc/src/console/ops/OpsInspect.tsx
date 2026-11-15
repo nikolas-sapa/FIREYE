@@ -6,7 +6,7 @@ import { ago, localTime, packZone } from '../ui/format';
 import type { StageEngine } from '../stage3d/StageEngine';
 import { dive } from '../fireye/shell/Dive';
 import { useDecisions } from '../fireye/shell/OrchestratorCallout';
-import { journal } from '../fireye/data/journal';
+import { applyDecision } from '../fireye/data/decision';
 import { useFireye } from '../fireye/shell/ui';
 import { WEIGHT_KEYS, loadWeights, saveWeights, type Weights } from './opsStore';
 
@@ -39,8 +39,6 @@ function useTick(ms = 1000) {
 }
 
 function UnitCard({ unit, engine }: { unit: Unit; engine: StageEngine | null }) {
-  useTick();
-  const t = useConsoleSelector((s) => s.clock.t);
   const action = useConsoleSelector((s) => s.actions.find((a) => a.id === unit.taskId));
   const feed = useConsoleSelector((s) => s.feeds.find((f) => f.unitId === unit.id));
   return (
@@ -49,8 +47,8 @@ function UnitCard({ unit, engine }: { unit: Unit; engine: StageEngine | null }) 
         <span aria-hidden className="h-2.5 w-3.5 border border-signal bg-signal/30" />
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone">{unit.callsign}</span>
         <span className="font-mono text-micro uppercase text-bone-mute">{unit.kind}</span>
-        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase text-phosphor">
-          <span className="h-1 w-1 animate-pulse bg-phosphor" aria-hidden />Updated {ago(t, t)}
+        <span className="ml-auto font-mono text-micro uppercase text-bone-mute">
+          Simulated state
         </span>
       </header>
       <div className="grid grid-cols-3 gap-px bg-line-faint">
@@ -144,15 +142,13 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
 
   const decide = (decision: 'approved' | 'rejected') => {
     if (!top) return;
-    journal.record({ key: top.key, t, decision, title: top.title, actionKind: top.action?.kind });
-    if (top.action) (decision === 'approved' ? api.approve : api.reject)(top.action.id);
-    else if (top.item) api.acknowledge(top.item.id);
+    applyDecision(top, t, decision, api);
   };
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <section aria-label="Top match" className="border-b border-line px-3 py-3">
-        <p className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">{top ? 'Top match · needs approval' : 'Top priority'}</p>
+        <p className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">{top ? top.action ? 'Top match · needs approval' : 'Top match · review' : 'Top priority'}</p>
         {top ? (
           <div className="mt-2 border border-line-strong border-t-signal bg-ink-900">
             <div className="flex items-start gap-3 px-3 py-2.5">
@@ -166,8 +162,8 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
               <div className="shrink-0"><ScoreMeter score={top.score} size="sm" /></div>
             </div>
             <div className="flex gap-2 border-t border-line px-3 py-2">
-              <Button variant="primary" size="sm" icon="check" onClick={() => decide('approved')}>{top.action || top.origin === 'chronicle' ? 'Approve' : 'Acknowledge'}</Button>
-              <Button variant="secondary" size="sm" icon="close" onClick={() => decide('rejected')}>Reject</Button>
+              <Button variant="primary" size="sm" icon="check" onClick={() => decide('approved')}>{top.action ? 'Approve' : 'Acknowledge'}</Button>
+              <Button variant="secondary" size="sm" icon="close" onClick={() => decide('rejected')}>{top.action ? 'Reject' : 'Dismiss'}</Button>
             </div>
           </div>
         ) : priority ? (

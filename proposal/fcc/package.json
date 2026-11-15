@@ -12,6 +12,8 @@
     "test:pwa": "node scripts/check-pwa.mjs",
     "test:image-lab": "node scripts/check-image-lab.mjs",
     "test:monitoring": "node scripts/check-monitoring.mjs",
+    "test:crew": "node scripts/check-crew-http.mjs",
+    "test:thermal-browser": "node scripts/check-thermal-browser.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { AgentJob } from '../contracts';
+import type { AgentJob, ConsoleState, Finding } from '../contracts';
 import { consoleStore } from '../store';
 
 /* ------------------------------------------------------------------ comm log (derived from real state) */
@@ -29,8 +29,10 @@ let seq = 0;
 const seenJobs = new Map<string, string>(); // jobId -> last emitted status
 const jobStatus = new Map<string, JobStatus>(); // jobId -> latest status (for status dots)
 const seenLedger = new Set<string>();
-const seenMessages = new Set<string>();
+const seenMessages = new Map<string, string>();
 let wired = false;
+let lastClock: number | null = null;
+let lastPack: unknown;
 
 const emittedIds = new Set<string>();
 function emit(row: Omit<CommRow, 'seq'>) {
@@ -43,7 +45,7 @@ function emit(row: Omit<CommRow, 'seq'>) {
   listeners.forEach((fn) => fn());
 }
 
-function jobRow(j: AgentJob): Omit<CommRow, 'seq'> | null {
+function jobRow(j: AgentJob, findings: Finding[]): Omit<CommRow, 'seq'> | null {
   const short = j.input.length > 96 ? `${j.input.slice(0, 96)}…` : j.input;
   const meta = `${j.provider} / ${j.model}`;
   if (j.status === 'queued') {
@@ -52,7 +54,6 @@ function jobRow(j: AgentJob): Omit<CommRow, 'seq'> | null {
   if (j.status === 'running') {
     return { id: `job-${j.id}-r`, lane: 'agent', t: j.startedAt ?? j.queuedAt, from: j.agent, to: 'ORCH', verb: 'ACK', text: 'running', meta, jobId: j.id };
   }
-  const findings = consoleStore.get().findings;
   const labels = j.findingIds.map((id) => findings.find((f) => f.id === id)?.label).filter(Boolean) as string[];
   const suffix = labels.length ? ` · ${labels.length} findings: ${labels.slice(0, 3).join(' | ')}` : ' · 0 findings';
   return { id: `job-${j.id}-d`, lane: 'agent', t: j.finishedAt ?? j.queuedAt, from: j.agent, to: 'ORCH', verb: 'REPORT', text: `${short}${suffix}`, meta, jobId: j.id };
@@ -64,51 +65,92 @@ export function jobStatusOf(jobId: string): JobStatus | undefined {
 }
 
 /** Fold current store state into the derived comm log (dedupe by jobId+status, ledger id, message id). */
-function ingest() {
-  const s = consoleStore.get();
+export function ingestSnapshot(s: ConsoleState) {
+  if (lastClock !== null && (s.clock.t < lastClock || s.pack !== lastPack)) {
+    rows = [];
+    seq = 0;
+    seenJobs.clear();
+    jobStatus.clear();
+    seenLedger.clear();
+    seenMessages.clear();
+    emittedIds.clear();
+    version++;
+    [...listeners].forEach((fn) => fn());
+  }
+  lastClock = s.clock.t;
+  lastPack = s.pack;
   for (const j of s.jobs) {
+    const eventTime = j.status === 'running' ? j.startedAt ?? j.queuedAt : j.status === 'done' ? j.finishedAt ?? j.queuedAt : j.queuedAt;
+    if (eventTime > s.clock.t) continue;
     const prev = seenJobs.get(j.id);
     jobStatus.set(j.id, j.status);
     if (prev === j.status) continue;
     seenJobs.set(j.id, j.status);
-    const row = jobRow(j);
+    const row = jobRow(j, s.findings);
     if (row) emit(row);
   }
   for (const e of s.ledger.entries) {
+    if (e.at > s.clock.t) continue;
     if (seenLedger.has(e.id)) continue;
     seenLedger.add(e.id);
     emit({ id: `led-${e.id}`, lane: 'system', t: e.at, from: e.agent, verb: 'ENTRY', text: e.text, meta: `+${Math.round(e.minutesSaved)}m saved` });
   }
   for (const m of s.messages) {
-    if (seenMessages.has(m.id)) continue;
-    seenMessages.add(m.id);
-    emit({ id: `msg-${m.id}`, lane: 'operator', t: m.at, from: m.role === 'user' ? 'OPERATOR' : 'ORCH', text: m.thinking ? '…' : m.text });
+    if (m.at > s.clock.t) continue;
+    const signature = JSON.stringify([m.at, m.role, m.text, !!m.thinking]);
+    if (seenMessages.get(m.id) === signature) continue;
+    seenMessages.set(m.id, signature);
+    const row = { id: `msg-${m.id}`, lane: 'operator' as const, t: m.at, from: m.role === 'user' ? 'OPERATOR' : 'ORCH', text: m.thinking ? '…' : m.text };
+    const index = rows.findIndex((entry) => entry.id === row.id);
+    if (index < 0) {
+      emit(row);
+      continue;
+    }
+    rows = rows.map((entry, i) => i === index ? { ...entry, t: row.t, from: row.from, text: row.text } : entry);
+    version++;
+    [...listeners].forEach((fn) => fn());
   }
 }
 
 export function wireComms() {
   if (wired) return;
   wired = true;
-  ingest();
-  consoleStore.subscribe(ingest);
+  ingestSnapshot(consoleStore.get());
+  consoleStore.subscribe(() => ingestSnapshot(consoleStore.get()));
+}
+
+export function filterCommRows(source: CommRow[], lane: 'all' | CommLane, opts: { agent?: string | null; showAcks?: boolean }, clock: number): CommRow[] {
+  let out = source.filter((r) => r.t <= clock);
+  if (!opts.showAcks) out = out.filter((r) => r.verb !== 'ACK');
+  if (lane !== 'all') out = out.filter((r) => r.lane === lane);
+  if (opts.agent) {
+    const a = opts.agent.toUpperCase();
+    out = out.filter((r) => r.from.toUpperCase().includes(a) || r.to?.toUpperCase().includes(a));
+  }
+  return [...out].sort((x, y) => x.t - y.t || x.seq - y.seq);
+}
+
+export function getCommRows(lane: 'all' | CommLane, opts: { agent?: string | null; showAcks?: boolean } = {}, clock = consoleStore.get().clock.t): CommRow[] {
+  return filterCommRows(rows, lane, opts, clock);
+}
+
+export function subscribeCommRows(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+export function commVersion() {
+  return version;
 }
 
 export function useCommRows(lane: 'all' | CommLane, opts: { agent?: string | null; showAcks?: boolean } = {}): CommRow[] {
   const v = useSyncExternalStore(
-    (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; },
+    subscribeCommRows,
     () => version,
     () => version,
   );
   void v;
-  const { agent, showAcks } = opts;
-  let out = rows;
-  if (!showAcks) out = out.filter((r) => r.verb !== 'ACK');
-  if (lane !== 'all') out = out.filter((r) => r.lane === lane);
-  if (agent) {
-    const a = agent.toUpperCase();
-    out = out.filter((r) => r.lane === 'operator' || r.from.toUpperCase().includes(a) || r.to?.toUpperCase().includes(a));
-  }
-  return [...out].sort((x, y) => x.t - y.t || x.seq - y.seq);
+  return getCommRows(lane, opts);
 }
 
 /** Local operator line, timestamped in scenario time so it sorts with the rest of the feed. */
