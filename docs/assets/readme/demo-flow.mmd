@@ -1,26 +1,27 @@
-%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":18,"themeVariables":{"background":"#ffffff","primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#8f8f8f","lineColor":"#4d4d4d","secondaryColor":"#ffffff","tertiaryColor":"#fafafa","clusterBkg":"#fafafa","clusterBorder":"#c9c9c9","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":32,"rankSpacing":44,"padding":20}}}%%
+%%{init: {"theme":"base","fontFamily":"Geist Sans","fontSize":22,"themeVariables":{"primaryColor":"#fafafa","primaryTextColor":"#171717","primaryBorderColor":"#c9c9c9","lineColor":"#4d4d4d","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":40,"rankSpacing":56}}}%%
 graph TD
-  accTitle: Proposed twenty-second scan-area demonstration, not a working-demo receipt
-  accDescr: Proposed storyboard only, not measured runtime or an operational result. A human Chief approves scanning an area. Three simulated drones collect visible pixels from an open vantage. Every drone would have a synthetic thermal feed with optional EO. Analysis flags a possible person, explicitly unverified. The crew shares an evidence pin, reviews it, and may approve a revised simulated task. No through-wall vision, calibrated temperatures, confirmed identification, or lives-saved claim.
-
-  subgraph COLLECTION["PROPOSED collection"]
-    direction LR
-    REQUEST["Crew request<br/>Scan this area"]
-    REVIEW["Chief approves<br/>Finite scope"]
-    DRONES["Three sim drones<br/>Open vantage"]
-    FRAME["Exercise frame<br/>Synthetic thermal"]
-    REQUEST --> REVIEW --> DRONES --> FRAME
-  end
-  subgraph REVIEW_STAGE["PROPOSED review"]
-    direction LR
-    FINDING["Possible person<br/>Unverified"]
-    MAP["Exercise map marker<br/>Source + clocks"]
-    HUMAN["Crew reviews<br/>Chief revises scope"]
-    FINDING --> MAP --> HUMAN
-  end
-  COLLECTION --> REVIEW_STAGE
-
-  classDef proposed fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:2 4,color:#171717;
-  class REQUEST,REVIEW,DRONES,FRAME,FINDING,MAP,HUMAN proposed;
-  style COLLECTION fill:#ffffff,stroke:#7d7d7d,stroke-dasharray:2 4
-  style REVIEW_STAGE fill:#ffffff,stroke:#7d7d7d,stroke-dasharray:2 4
+  accTitle: Evidence to human-reviewed simulation.
+  accDescr: Local exercise review and received-state sharing are separate implemented paths. Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept. No public alerts / calls. Local simulation is not shared-backend command execution. Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use. 2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt.
+  SIM["Local exercise simulator<br/>6 simulated drones<br/>Distinct EO / thermal<br/>Rendered terrain cameras<br/>Local simulator executor"]
+  EVIDENCE["Evidence review<br/>Synthetic / non-radiometric<br/>Source / clocks / uncertainty"]
+  FORECAST["Prototype forecast<br/>Relative exercise spread<br/>Not operational"]
+  HUMAN["Human Chief review<br/>Human approval authority<br/>Not Chief mascot / chat"]
+  OUTCOME["Local simulated task outcome<br/>Human-approved LOCAL action"]
+  BRIDGE["Shared backend bridge<br/>Received state / approval<br/>Immutable command<br/>Supplied factual receipt stages"]
+  CREW["Received-only Crew view<br/>Received DTO only<br/>No Runtime fallback"]
+  SIM -- "LOCAL / FIXTURE" --> EVIDENCE
+  SIM -- "LOCAL / FIXTURE" --> FORECAST
+  EVIDENCE -- "LOCAL / FIXTURE" --> HUMAN
+  FORECAST -- "LOCAL / FIXTURE" --> HUMAN
+  HUMAN -- "LOCAL / FIXTURE" --> OUTCOME
+  BRIDGE -- "LOCAL / FIXTURE" --> CREW
+  BRIDGE -. "NOT CONNECTED / mapping pending" .-> SIM
+  LEGEND["Solid arrows: implemented LOCAL / FIXTURE paths. Dashed arrows: missing / dormant / concept."]
+  BOUNDARY["No public alerts / calls. Local simulation is not shared-backend command execution.<br/>Exercise prototype. Simulated feeds. Prototype forecasts. No operational emergency-response use.<br/>2026-11-15 / source c98415b snapshot. Not a fresh provider or deployment receipt."]
+  classDef local fill:#fafafa,stroke:#c9c9c9,stroke-width:1.5px,color:#171717;
+  classDef authority fill:#fafafa,stroke:#006bff,stroke-width:1.5px,color:#171717;
+  classDef pending fill:#fafafa,stroke:#7d7d7d,stroke-width:1.5px,stroke-dasharray:7 6,color:#171717;
+  classDef note fill:#ffffff,stroke:#ebebeb,color:#4d4d4d;
+  class SIM,EVIDENCE,FORECAST,HUMAN,OUTCOME,BRIDGE,CREW local;
+  class HUMAN authority;
+  class LEGEND,BOUNDARY note;
