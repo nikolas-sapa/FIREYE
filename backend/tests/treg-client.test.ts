@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTregClient, safeSourceUrl } from '../integrations/treg/client.ts';
 import { createHash } from 'node:crypto';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
+import type { AddressInfo } from 'node:net';
 import { SponsorBudget } from '../integrations/receipts.ts';
+import { createProviderSetup } from '../setup/provider-config.ts';
+import { createSmokeSession } from '../scripts/sponsor-smoke.ts';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { ClientConfig, Snapshot, Transport } from '../integrations/receipts.ts';
 
@@ -96,4 +101,100 @@ test('SP05 <=10s cap, 10ms deadline, physical transport held until settled, 0 re
   assert.equal(budget.inFlight(), 0);
   assert.equal((await createTregClient(config(async () => { calls++; return Response.json({}); }, { deadline_ms: 10_001 })).analyze(input())).ok, false);
   assert.equal(calls, 1);
+});
+
+const exactCaps = [...Array.from({ length: 20 }, (_, n) => Number.MAX_SAFE_INTEGER - n),
+  1, 9, 99, 999999, 1000000, 1000001, 100, 100000000];
+for (const cap of exactCaps) {
+  test(`TC-CAP-EXACT ${cap} micro, six decimals, 1 reservation, 0 over/under/native calls`, async t => {
+    const nativeFetch = t.mock.method(globalThis, 'fetch', () => { throw new Error('Native provider call forbidden'); });
+    const request = input();
+    const budget = new SponsorBudget(1, cap);
+    let calls = 0;
+    let header = '';
+    const client = createTregClient(config(async outgoing => {
+      calls++;
+      assert.equal(outgoing.url, 'https://treg.to/call/treg.web.search');
+      assert.equal(outgoing.headers['X-Treg-Route-Waterfall'], '0');
+      assert.equal(outgoing.headers['X-Treg-Token'], undefined);
+      assert.equal(outgoing.redirect, 'error');
+      header = outgoing.headers['X-Treg-Route-Max-Cost'];
+      return Response.json({ output: { results: [] } });
+    }, { max_call_micro: cap, budget, now: () => request.snapshot.received_cutoff_ms }));
+    const result = await client.analyze(request);
+    assert.equal(result.ok, true);
+    assert.equal(result.receipt?.reserved_micro, cap);
+    assert.equal(result.receipt?.provenance, 'fixture');
+    assert.equal(result.receipt?.fresh_provider_call, false);
+    assert.equal(calls, 1);
+    assert.deepEqual(budget.usage(), { calls: 1, reserved_micro: cap });
+    assert.equal(budget.inFlight(), 0);
+    assert.equal(nativeFetch.mock.calls.length, 0);
+    assert.match(header, /^\d+\.\d{6}$/);
+    const [whole, fraction] = header.split('.');
+    assert.equal(BigInt(whole) * 1_000_000n + BigInt(fraction), BigInt(cap));
+  });
+}
+
+test('TC-CAP-SETUP max-safe setup/smoke/client -> 1 localhost request/reservation, 0 native calls', async t => {
+  const localFetch = globalThis.fetch;
+  const nativeFetch = t.mock.method(globalThis, 'fetch', () => { throw new Error('Native provider call forbidden'); });
+  let requests = 0;
+  let capHeader: string | string[] | undefined;
+  let waterfall: string | string[] | undefined;
+  let credential: string | string[] | undefined;
+  let body = '';
+  const server = createServer((request, response) => {
+    requests++;
+    capHeader = request.headers['x-treg-route-max-cost'];
+    waterfall = request.headers['x-treg-route-waterfall'];
+    credential = request.headers['x-treg-token'];
+    request.setEncoding('utf8');
+    request.on('data', chunk => { body += chunk; });
+    request.on('end', () => {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'X-Treg-Cost-Micro': '50', 'X-Treg-Call-Id': 'cap1' });
+      response.end(JSON.stringify({ output: { results: [] } }));
+    });
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const localUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const request = input();
+    const now = request.snapshot.received_cutoff_ms;
+    const cap = Number.MAX_SAFE_INTEGER;
+    const setup = createProviderSetup({ TREG_TOKEN: 'fixture-only' }, {
+      authorization_id: 'auth-cap', expires_at_ms: now + 1000, max_calls: 1, max_total_micro: cap,
+      adapters: [{ adapter: 'treg', model: 'treg.web.search', task_version: 'source-v1', rights_manifest_ids: ['rights1'], max_call_micro: cap, deadline_ms: 1000 }],
+    }, () => now);
+    assert.equal(setup.approval()?.max_total_micro, cap);
+    let calls = 0;
+    const session = createSmokeSession(setup, { now: () => now, is_current: () => true, transport_mode: 'local-http', transport: outgoing => {
+      calls++;
+      assert.equal(outgoing.url, 'https://treg.to/call/treg.web.search');
+      assert.equal(outgoing.redirect, 'error');
+      return localFetch(localUrl, { method: outgoing.method, headers: outgoing.headers, body: outgoing.body, signal: outgoing.signal, redirect: outgoing.redirect });
+    } });
+    const result = await session.submit({ job_id: 'job-cap', adapter: 'treg', model: 'treg.web.search', task_version: 'source-v1',
+      snapshot: request.snapshot, deadline_at_ms: now + 1000, max_call_micro: cap, task_input: { query: request.query } });
+    assert.equal(result.ok, true);
+    assert.equal(result.receipt?.reserved_micro, cap);
+    assert.equal(result.receipt?.provenance, 'local-http');
+    assert.equal(result.receipt?.fresh_provider_call, false);
+    assert.equal(result.receipt?.invocation_id, 'cap1');
+    assert.equal(result.receipt?.cost_micro, 50);
+    assert.equal(calls, 1);
+    assert.equal(requests, 1);
+    assert.deepEqual(session.usage(), { calls: 1, reserved_micro: cap });
+    assert.equal(nativeFetch.mock.calls.length, 0);
+    assert.deepEqual(JSON.parse(body), { q: request.query, limit: 5, contents: false });
+    assert.equal(waterfall, '0');
+    assert.equal(credential, undefined);
+    assert.equal(capHeader, '9007199254.740991');
+    assert.ok(typeof capHeader === 'string');
+    const [whole, fraction] = capHeader.split('.');
+    assert.equal(BigInt(whole) * 1_000_000n + BigInt(fraction), BigInt(cap));
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
