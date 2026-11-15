@@ -27,9 +27,10 @@ export function createTregClient(options: TregConfig = {}): TregClient {
     const snapshot = freeze(structuredClone(input.snapshot));
     if (!snapshot.evidence.every(e => e.modality === 'text' && e.source_kind === 'public-link')) return fail('INVALID_INPUT');
     const body: TregSearchRequest = { q: input.query, limit: 5, contents: false };
+    const maxCallMicro = BigInt(config.max_call_micro!);
     return perform('treg', snapshot, input, config, {
       url: 'https://treg.to/call/treg.web.search', model: null,
-      headers: { 'X-Treg-Route-Waterfall': '0', 'X-Treg-Route-Max-Cost': (config.max_call_micro! / 1_000_000).toFixed(6),
+      headers: { 'X-Treg-Route-Waterfall': '0', 'X-Treg-Route-Max-Cost': `${maxCallMicro / 1_000_000n}.${(maxCallMicro % 1_000_000n).toString().padStart(6, '0')}`,
         ...(config.transport ? {} : { 'X-Treg-Token': config.credential ?? '' }) }, body,
     }, (response, http) => {
       if (!record(response) || !record(response.output) || !Array.isArray(response.output.results) || response.output.results.length > 100) return null;
