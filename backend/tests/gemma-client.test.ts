@@ -30,14 +30,18 @@ test('G402 post-race Gemma microtask supersession delivers 0 successful results'
 
 test('G402 post-race Gemma microtask expiry delivers 0 successes at deadline', async () => {
   let checks = 0;
-  let wall = Date.now();
-  const result = await createGemmaClient(config(async () => Response.json(reply()), {
+  let calls = 0;
+  const value = input();
+  let wall = value.snapshot.received_cutoff_ms;
+  const result = await createGemmaClient(config(async () => { calls++; return Response.json(reply()); }, {
     now: () => wall, deadline_ms: 1000,
     is_current: () => {
       if (++checks === 2) queueMicrotask(() => { wall += 1000; });
       return true;
     },
-  })).analyze(input());
+  })).analyze(value);
+  assert.equal(calls, 1);
+  assert.equal(wall, value.snapshot.received_cutoff_ms + 1000);
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.code, 'DEADLINE');
   assert.equal(result.receipt?.status, 'DEADLINE');
