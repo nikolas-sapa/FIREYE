@@ -1,0 +1,1885 @@
+{
+  "schema_version": "greece-public-camera-catalog.v1",
+  "purpose": "Research only, not source activation or an ingestion allowlist.",
+  "issue_url": "https://github.com/nikolas-sapa/fire-command-center/issues/23",
+  "authoritative_issue_updated_at_utc": "2026-11-15T04:06:29Z",
+  "claim": "SW23",
+  "branch": "task/swarm-20261115-issue-23",
+  "source_baseline_sha": "db15588f40e2c7bb26de3322d06d99f51235b32d",
+  "prepared_at_utc": "2026-11-15T06:40:38.028Z",
+  "activation_authorized": false,
+  "test_plan": [
+    {
+      "id": "GC01",
+      "criterion": "At least10 inspected candidates; every retained record has official publisher/operator status, geography/uncertainty, published access/schema-or-unknown, reuse status and check UTC."
+    },
+    {
+      "id": "GC02",
+      "criterion": "Every claimed playable/live source has at least1 permitted actual timestamped playback/API proof plus media type/currentness. Iframe alone proves0."
+    },
+    {
+      "id": "GC03",
+      "criterion": "0 private/unauthorized CCTV, auth bypass, host/stream enumeration, credentials, recordings, provider spend, automatic ingest or activation."
+    },
+    {
+      "id": "GC04",
+      "criterion": "At least1 official catalog/API positive control or explicit failure. Compare publication/capture/check clocks and uncertainty for100% retained entries."
+    }
+  ],
+  "non_goals": [
+    "media/player/stream/API activation",
+    "private CCTV discovery or auth bypass",
+    "recording, person/plate identification",
+    "continuous monitoring/bulk downloads",
+    "provider/account/credential/spend actions",
+    "thermal/radiometric/incident-detection claims",
+    "source/frontend/runtime/package/CI changes",
+    "vault/frozen wildfire-sweep writes",
+    "deployment, merge, issue closure"
+  ],
+  "counts": {
+    "candidate_pages_inspected": 13,
+    "retained_entries": 13,
+    "unique_official_candidate_urls": 13,
+    "publisher_networks": 5,
+    "regional_catalogs": 8,
+    "municipal_catalogs": 1,
+    "resort_catalogs": 1,
+    "operator_camera_pages": 2,
+    "api_documentation_candidates": 1,
+    "eligible_for_ingestion": 0,
+    "claimed_playable": 0,
+    "claimed_live": 0,
+    "playback_attempts": 0,
+    "playback_proofs": 0,
+    "camera_api_responses": 0,
+    "metadata_control_responses": 8
+  },
+  "retrieval_limits": {
+    "per_request_timeout_ms": 25000,
+    "html_body_ceiling_bytes": 1250000,
+    "redirect_policy": "No automatic redirects",
+    "auth": "No account/key/cookie supplied",
+    "media_requests": 0,
+    "subresource_requests": 0,
+    "raw_bodies_saved": 0,
+    "checked_urls": "Exact official URLs only, NOA regional URLs from its published navigation; no guessed hosts/streams.",
+    "receipt_hash_scope": "SHA-256 of received HTML body, not a retained media hash. Raw bodies discarded.",
+    "repeat_checks": "Some early metadata reads repeated in final consistent pass; no continuous camera polling. Only final candidate receipts counted."
+  },
+  "operation_counts": {
+    "private_or_unauthorized_endpoints": 0,
+    "auth_bypasses": 0,
+    "host_or_stream_enumeration": 0,
+    "credentials_requested_or_used": 0,
+    "media_or_recording_downloads": 0,
+    "provider_spend_usd": 0,
+    "automatic_ingest": 0,
+    "source_activation": 0,
+    "person_identification": 0,
+    "provider_inference_or_paid_retrieval": 0
+  },
+  "prior_reconciliation": {
+    "status": "Prior unmerged issue23 drafts read-only, not copied or treated as fresh evidence.",
+    "prior_artifacts": [
+      {
+        "path": "docs/data/greece-public-cameras.md",
+        "bytes": 14658,
+        "sha256": "27c1cda1f4fe24d7d433fde85e53be9cfcacab80474792cc04207eeb35f177ff"
+      },
+      {
+        "path": "docs/data/greece-camera-catalog.json",
+        "bytes": 80133,
+        "sha256": "2c41c6a46612a685f39173f3f613c56a8d72c2a869e867941325b3f3ac5b0e1f"
+      }
+    ],
+    "prior_claimed_counts": {
+      "entries": 15,
+      "candidate_urls": 10,
+      "eligible_ingest": 0,
+      "playback_proofs": 0
+    },
+    "changes": "Fresh pass authors13 distinct candidate pages. Excludes Skyline and webcameras.gr; does not inflate count with repeated individual camera labels.",
+    "caveats": [
+      {
+        "operator": "SkylineWebcams",
+        "source_url": "https://www.skylinewebcams.com/en/webcam/ellada/atiki/athina/acropolis.html",
+        "terms_url": "https://www.skylinewebcams.com/en/terms-of-use.html",
+        "prior_initial_metadata_read_utc": "2026-11-15T05:27:20.274Z",
+        "prior_terms_read_utc": "2026-11-15T05:29:26.404Z",
+        "reported_terms_updated_date": "2026-11-04",
+        "evidence_status": "Inherited prior-worker report, not freshly reverified.",
+        "finding": "Prior initial HTML read preceded restrictive terms. Draft reports written authorization required for automated extraction/outside-player access and recording/copy/screenshots; personal official-player viewing/provided unmodified embed only.",
+        "action": "Excluded. No Skyline request in this pass. Exclusion does not erase historical terms-ordering concern; overall prior conformance not certified."
+      },
+      {
+        "operator": "Windy",
+        "source_url": "https://account.windy.com/agreements/windy-webcams-api-terms-of-use",
+        "prior_429_at_utc": "2026-11-15T05:31:52.491Z",
+        "evidence_status": "Inherited rate-limit receipt, not fresh outage proof.",
+        "finding": "Prior worker stopped after429. This pass got public terms200 at2026-11-15T06:19:27.684Z; no account/API/limit bypass."
+      }
+    ],
+    "clock_boundary": "Prior check clocks remain prior. Fresh HTML checks never substitute for image capture or playback."
+  },
+  "rights_profiles": [
+    {
+      "id": "NOA",
+      "publisher": "National Observatory of Athens / meteo.gr",
+      "camera_operator": null,
+      "operator_status": "Official catalog publisher verified. Actual camera operators/rightsholders unresolved; NOA explicitly does not own listed cameras.",
+      "official_identity_url": "https://www.meteo.gr/about-meteo.cfm",
+      "terms_urls": [
+        "https://www.meteo.gr/terms.cfm"
+      ],
+      "rights_evidence_ids": [
+        "GC-R-NOA",
+        "GC-O-NOA"
+      ],
+      "license": null,
+      "reuse_status": "unknown_individual_owner_permission_required",
+      "human_viewing": "Public weather/landscape catalog, not a downstream license.",
+      "embedding": "unknown",
+      "automated_sampling": "unknown",
+      "retained_media": "unknown",
+      "model_use": "unknown",
+      "redistribution": "NOA consent/source attribution and separate camera-owner authority not established.",
+      "attribution": "National Observatory of Athens / meteo.gr plus individually cleared owner.",
+      "notice": "Catalog footer assigns rights to camera owners; selects weather/landscape views, disclaims intended people/plates/personal-data processing. Site reproduction requires consent. This research is a linked factual shortlist, not reproduced imagery/database.",
+      "privacy_gate": "No person/plate analysis; operator's notice is not independent legal/privacy certification."
+    },
+    {
+      "id": "KOS",
+      "publisher": "Municipality of Kos",
+      "camera_operator": null,
+      "operator_status": "Official municipal catalog verified; actual sensor/footage operator not identified.",
+      "official_identity_url": "https://kos.gov.gr/en/kos-live-streaming/",
+      "terms_urls": [
+        "https://kos.gov.gr/en/terms-of-use/"
+      ],
+      "rights_evidence_ids": [
+        "GC-R-KOS",
+        "GC-M-KOS-CATALOG"
+      ],
+      "license": null,
+      "reuse_status": "unknown_no_substantive_media_grant",
+      "human_viewing": "Public municipal page. One published iframe, player not opened.",
+      "embedding": "unknown, published iframe does not grant application use",
+      "automated_sampling": "unknown",
+      "retained_media": "unknown",
+      "model_use": "unknown",
+      "redistribution": "unknown",
+      "attribution": "Municipality of Kos plus separately cleared footage owner.",
+      "notice": "English terms page had no substantive camera license in inspected text; footer reserves rights. Municipal status is not public domain.",
+      "privacy_gate": "Harbor imagery may contain people/vehicles; no footage or identifying data acquired."
+    },
+    {
+      "id": "METEOCAM",
+      "publisher": "MeteoCam / Cybex SA",
+      "camera_operator": null,
+      "operator_status": "Publisher/footer verified; exact camera owner unresolved. Schinias historical station identifies Cybex, not a separately granted camera license.",
+      "official_identity_url": "https://www.meteocam.gr/schiniasfirecam",
+      "terms_urls": [
+        "https://www.meteocam.gr/eviamarmari",
+        "https://www.meteocam.gr/schiniasfirecam"
+      ],
+      "rights_evidence_ids": [
+        "GC-M-METEOCAM-MARMARI",
+        "GC-M-METEOCAM-SCHINIAS"
+      ],
+      "license": null,
+      "reuse_status": "unknown_informational_notice_not_media_license",
+      "human_viewing": "Publisher says informational/weather monitoring only.",
+      "embedding": "unknown",
+      "automated_sampling": "unknown",
+      "retained_media": "unknown",
+      "model_use": "unknown",
+      "redistribution": "unknown",
+      "attribution": "MeteoCam / Cybex SA plus separately cleared camera owner.",
+      "notice": "Live-only/not-stored unless stated describes operator practice, not our retention permission. Weewx GPLv3 is weather-software license, not camera-media license.",
+      "privacy_gate": "No-intentional-personal-data wording does not authorize downstream identification or prove footage anonymized."
+    },
+    {
+      "id": "KALAVRITA",
+      "publisher": "Kalavrita Ski Resort",
+      "camera_operator": null,
+      "operator_status": "Official resort camera/weather page verified; exact sensor operator unresolved.",
+      "official_identity_url": "https://kalavritaski.gr/en/live-cameras/",
+      "terms_urls": [
+        "https://kalavritaski.gr/en/live-cameras/"
+      ],
+      "rights_evidence_ids": [
+        "GC-M-KALAVRITA"
+      ],
+      "license": null,
+      "reuse_status": "all_rights_reserved_no_media_clearance_found",
+      "human_viewing": "Official camera/weather tabs and player placeholders, not opened.",
+      "embedding": "unknown",
+      "automated_sampling": "unknown",
+      "retained_media": "unknown",
+      "model_use": "unknown",
+      "redistribution": "unknown",
+      "attribution": "Kalavrita Ski Resort plus separately cleared media owner.",
+      "notice": "Camera page footer reserves rights. Facilities/e-shop terms were not reviewed as media licenses.",
+      "privacy_gate": "No player/frame read; scenic/ski-camera labels are not proof of privacy-safe footage."
+    },
+    {
+      "id": "WINDY",
+      "publisher": "Windyty, SE / Windy",
+      "camera_operator": null,
+      "operator_status": "Official API operator and contract verified; no Greek webcam operator/result selected.",
+      "official_identity_url": "https://account.windy.com/agreements/windy-webcams-api-terms-of-use",
+      "terms_urls": [
+        "https://api.windy.com/webcams/terms",
+        "https://account.windy.com/agreements/windy-webcams-api-terms-of-use"
+      ],
+      "rights_evidence_ids": [
+        "GC-R-WINDY",
+        "GC-R-WINDY-FULL",
+        "GC-M-WINDY-DOCS"
+      ],
+      "license": null,
+      "reuse_status": "conditional_api_contract_not_activated",
+      "human_viewing": "Certain app-image use documented, API registration/key still required and not used.",
+      "embedding": "Conditional provided image URL/source-player linkage and Windy acknowledgment.",
+      "automated_sampling": "Significant continuous scanning/history download and intensive automated endpoint use forbidden; numerical safe request rate not found.",
+      "retained_media": "unknown for retained evidence/dataset",
+      "model_use": "unknown",
+      "redistribution": "Content/data redistribution and graphics publication restricted.",
+      "attribution": "Webcams provided by windy.com - add new webcam, with required links and supplied source/player references.",
+      "notice": "IP remains Windy/suppliers. Active means updated within last 24h, not continuous live video. Terms state no availability/count/image-quality guarantee.",
+      "privacy_gate": "Attempts to discover identities of people in recordings expressly forbidden."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "GC-R-NOA",
+      "role": "rights",
+      "url": "https://www.meteo.gr/terms.cfm",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:19:26.243Z",
+      "checked_at_utc": "2026-11-15T06:19:27.341Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 118640,
+      "response_sha256": "5198e83067af322a93e28d8692ec7c5c3755109fab080dd237ca56012f366caa",
+      "http_date": "Sun, 15 Nov 2026 06:19:27 GMT",
+      "http_last_modified": null,
+      "facts": "Site-information reproduction requires NOA consent and source attribution; no media reuse grant.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-O-NOA",
+      "role": "operator",
+      "url": "https://www.meteo.gr/about-meteo.cfm",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:18:47.366Z",
+      "checked_at_utc": "2026-11-15T06:18:48.508Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 123450,
+      "response_sha256": "dc5c3e06a9e7aacc9d243695b96db72ba1743a2a00cdb92a4a30eea1ecfe560d",
+      "http_date": "Sun, 15 Nov 2026 06:18:48 GMT",
+      "http_last_modified": null,
+      "facts": "Official About page identifies National Observatory of Athens/meteo.gr publisher.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-R-KOS",
+      "role": "rights",
+      "url": "https://kos.gov.gr/en/terms-of-use/",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:18:47.366Z",
+      "checked_at_utc": "2026-11-15T06:18:48.625Z",
+      "status": 200,
+      "response_type": "text/html; charset=UTF-8",
+      "response_bytes": 263134,
+      "response_sha256": "0962c7bc17d8646656960a15e91eacc78120e46eb281345301b671362ae18f68",
+      "http_date": "Sun, 15 Nov 2026 06:18:47 GMT",
+      "http_last_modified": null,
+      "facts": "English terms page returns a title/shell and all-rights-reserved footer; no substantive camera reuse grant found.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-R-WINDY",
+      "role": "rights",
+      "url": "https://api.windy.com/webcams/terms",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:18:47.367Z",
+      "checked_at_utc": "2026-11-15T06:18:47.650Z",
+      "status": 200,
+      "response_type": "text/html",
+      "response_bytes": 52249,
+      "response_sha256": "c26936562e31a232de74688cebd35686ab8bb22b1d4c9b2e539ee6428ab30754",
+      "http_date": "Sun, 15 Nov 2026 06:18:47 GMT",
+      "http_last_modified": null,
+      "facts": "Use supplied image URLs, link original webcam page/player and acknowledge Windy; full terms linked.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-R-WINDY-FULL",
+      "role": "rights",
+      "url": "https://account.windy.com/agreements/windy-webcams-api-terms-of-use",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:19:27.341Z",
+      "checked_at_utc": "2026-11-15T06:19:27.684Z",
+      "status": 200,
+      "response_type": "text/html",
+      "response_bytes": 54149,
+      "response_sha256": "7047121e6afbc2c076a3db2c6744f5c800b109be09dba1d323dba9d716b1db70",
+      "http_date": "Sun, 15 Nov 2026 06:19:27 GMT",
+      "http_last_modified": null,
+      "facts": "API key requires registration; app-image contract forbids significant continuous scanning/history downloads, intensive automated endpoint use, identifying people, graphics publication and redistribution; latest stated update effective 2023-09-01.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-CENTRAL",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=5",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:32:57.652Z",
+      "checked_at_utc": "2026-11-15T06:32:58.771Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 128497,
+      "response_sha256": "b53e8612d2deaf3d365545bd27dddd23e82c8d05464d240fbb7391fd4bd40ba4",
+      "http_date": "Sun, 15 Nov 2026 06:32:58 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Karystos, Evia; Paximada Karystou, Evia; Oreoi, Evia and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-ATTICA",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=12",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:32:58.772Z",
+      "checked_at_utc": "2026-11-15T06:33:00.141Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 126868,
+      "response_sha256": "efcd524cb8dee5501090b720b2f42e27984c997940f012724b1b59d2eba743c3",
+      "http_date": "Sun, 15 Nov 2026 06:33:00 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Penteli dome; Penteli toward SW Athens; Penteli toward Parnitha and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-MACEDONIA",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=2",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:00.141Z",
+      "checked_at_utc": "2026-11-15T06:33:01.206Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 130427,
+      "response_sha256": "aecd113510056b7a030098bfa85e8bd56f2ba04b41ce5183a72bdb5861468d21",
+      "http_date": "Sun, 15 Nov 2026 06:33:01 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Thessaloniki Noesis; Olympus, Giosos Apostolidis and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-THRACE",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=1",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:01.206Z",
+      "checked_at_utc": "2026-11-15T06:33:02.249Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 123000,
+      "response_sha256": "9b15b66824f25fbb1c265df99ae017a5e528e7247c5b834946cd1b53a46fade3",
+      "http_date": "Sun, 15 Nov 2026 06:33:02 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Alexandroupoli port; Didymoteicho 1 and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-EPIRUS",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=3",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:02.249Z",
+      "checked_at_utc": "2026-11-15T06:33:03.311Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 128454,
+      "response_sha256": "3dcb83d00cb603f2ab5d42e67c59cfb5eed2a52b02849e32687bca40ad4cd2fa",
+      "http_date": "Sun, 15 Nov 2026 06:33:03 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Metsovo; Papigko; Parga 1 and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-THESSALY",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=4",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:03.312Z",
+      "checked_at_utc": "2026-11-15T06:33:04.372Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 130933,
+      "response_sha256": "b48e1b2356e1712f7d8166c1bb75d37aefce5c79cca10e5976e7d0bc262d7a8a",
+      "http_date": "Sun, 15 Nov 2026 06:33:04 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Volos 1; Kalambaka panorama; Pertouli 1 and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-PELOPONNESE",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=7",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:04.372Z",
+      "checked_at_utc": "2026-11-15T06:33:05.435Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 130270,
+      "response_sha256": "572c03c364687c57198852b6a1840da7356b27886e24f895f3a2ca8933cddf94",
+      "http_date": "Sun, 15 Nov 2026 06:33:05 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Kalamata beach; Mystra; Patra Romanos and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-NOA-IONIAN",
+      "role": "candidate_catalog",
+      "url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=6",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:05.436Z",
+      "checked_at_utc": "2026-11-15T06:33:06.491Z",
+      "status": 200,
+      "response_type": "text/html;charset=UTF-8",
+      "response_bytes": 123607,
+      "response_sha256": "1051d2415eefda0f42546226a72e7a9a07fa667ff5ea8a1abee392621ee25484",
+      "http_date": "Sun, 15 Nov 2026 06:33:06 GMT",
+      "http_last_modified": null,
+      "facts": "Official regional HTML catalog publishes Marathias Zakynthos; Petaleia Corfu and the individual-owner camera-rights notice. No image pointer requested.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-METEOCAM-MARMARI",
+      "role": "candidate_operator_page",
+      "url": "https://www.meteocam.gr/eviamarmari",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:29.812Z",
+      "checked_at_utc": "2026-11-15T06:33:30.214Z",
+      "status": 200,
+      "response_type": "text/html; charset=UTF-8",
+      "response_bytes": 79563,
+      "response_sha256": "2603973cead2f42e5f7abce46544b7d645e86a15058c21dc392ef64a8dbe46a1",
+      "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+      "http_last_modified": null,
+      "facts": "Official camera page describes Marmari harbor, informational/weather-only use and operator live-only/no-storage practice. Published map parameters retained as uncalibrated, not camera position.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-METEOCAM-SCHINIAS",
+      "role": "candidate_operator_page",
+      "url": "https://www.meteocam.gr/schiniasfirecam",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:30.214Z",
+      "checked_at_utc": "2026-11-15T06:33:30.607Z",
+      "status": 200,
+      "response_type": "text/html; charset=UTF-8",
+      "response_bytes": 80838,
+      "response_sha256": "54fd66ad7c01f791d60996c8448005b0600e0f6ae90138a7634df4a924f130da",
+      "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+      "http_last_modified": null,
+      "facts": "Official Schinias Fire Cam page has informational/weather notice and historical Mati weather text dated 23/7/2018. Name is not thermal/current-fire/detection proof.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-KALAVRITA",
+      "role": "candidate_operator_page",
+      "url": "https://kalavritaski.gr/en/live-cameras/",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:33:30.607Z",
+      "checked_at_utc": "2026-11-15T06:33:30.910Z",
+      "status": 200,
+      "response_type": "text/html; charset=UTF-8",
+      "response_bytes": 476787,
+      "response_sha256": "0057897a7ac11de238beddefa230a968633e4e47eb0cf2076dd3ff26d4182984",
+      "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+      "http_last_modified": "Fri, 13 Nov 2026 08:14:07 GMT",
+      "facts": "Official resort page names Chalet 1700m/Park 1860m and camera tabs, all-rights-reserved footer; April 2026 weather text despite November HTML modification, not capture evidence.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-KOS-CATALOG",
+      "role": "candidate_catalog",
+      "url": "https://kos.gov.gr/en/kos-live-streaming/",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:34:11.914Z",
+      "checked_at_utc": "2026-11-15T06:34:13.118Z",
+      "status": 200,
+      "response_type": "text/html; charset=UTF-8",
+      "response_bytes": 267353,
+      "response_sha256": "4ba47608fe9316b8de8331ab74c6a36ac93483398ddb2829b20a82d91fd544b4",
+      "http_date": "Sun, 15 Nov 2026 06:34:12 GMT",
+      "http_last_modified": null,
+      "facts": "Municipal page lists Main Port of Kos 1 and 2; one initial HTML iframe pointer. No distinct second stream, player response or capture verified.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    },
+    {
+      "id": "GC-M-WINDY-DOCS",
+      "role": "candidate_api_documentation",
+      "url": "https://api.windy.com/webcams/docs",
+      "method": "GET",
+      "mode": "anonymous HTML only, no subresources; body discarded after bounded metadata analysis",
+      "started_at_utc": "2026-11-15T06:34:13.118Z",
+      "checked_at_utc": "2026-11-15T06:34:13.396Z",
+      "status": 200,
+      "response_type": "text/html;charset=utf-8",
+      "response_bytes": 76813,
+      "response_sha256": "957c34bd1b2ba69c855c340f86effeb4bd4b628c94a94f29a9454f074718699f",
+      "http_date": "Sun, 15 Nov 2026 06:34:13 GMT",
+      "http_last_modified": "Thu, 12 Nov 2026 09:45:30 GMT",
+      "facts": "Official inline OpenAPI 3.0.0 publishes key-required list/detail camera endpoints, filters and response schema. Documentation HTML only; no API called/Greece result received.",
+      "camera_api_response": false,
+      "playback_response": false,
+      "media_requests": 0
+    }
+  ],
+  "controls": [
+    {
+      "id": "GC-C-NOA-CENTRAL",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-CENTRAL",
+      "checked_at_utc": "2026-11-15T06:32:58.771Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-ATTICA",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-ATTICA",
+      "checked_at_utc": "2026-11-15T06:33:00.141Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-MACEDONIA",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-MACEDONIA",
+      "checked_at_utc": "2026-11-15T06:33:01.206Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-THRACE",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-THRACE",
+      "checked_at_utc": "2026-11-15T06:33:02.249Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-EPIRUS",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-EPIRUS",
+      "checked_at_utc": "2026-11-15T06:33:03.311Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-THESSALY",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-THESSALY",
+      "checked_at_utc": "2026-11-15T06:33:04.372Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-PELOPONNESE",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-PELOPONNESE",
+      "checked_at_utc": "2026-11-15T06:33:05.435Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    },
+    {
+      "id": "GC-C-NOA-IONIAN",
+      "kind": "official_catalog_html",
+      "result": "positive_metadata_only",
+      "evidence_id": "GC-M-NOA-IONIAN",
+      "checked_at_utc": "2026-11-15T06:33:06.491Z",
+      "observed": "HTTP200 text/html;charset=UTF-8, published regional candidate labels.",
+      "proves": "Public catalog metadata access only. Zero API playback/current capture/owner permission inferred."
+    }
+  ],
+  "entries": [
+    {
+      "id": "GR-NOA-CENTRAL",
+      "name": "NOA Central Greece / Evia public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=5",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Central Greece / Evia",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=5",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:32:58.771Z",
+        "http_date": "Sun, 15 Nov 2026 06:32:58 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-CENTRAL",
+      "sample_published_labels": [
+        "Karystos, Evia",
+        "Paximada Karystou, Evia",
+        "Oreoi, Evia"
+      ]
+    },
+    {
+      "id": "GR-NOA-ATTICA",
+      "name": "NOA Attica public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=12",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Attica",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=12",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:00.141Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:00 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-ATTICA",
+      "sample_published_labels": [
+        "Penteli dome",
+        "Penteli toward SW Athens",
+        "Penteli toward Parnitha"
+      ]
+    },
+    {
+      "id": "GR-NOA-MACEDONIA",
+      "name": "NOA Macedonia public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=2",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Macedonia",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=2",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:01.206Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:01 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-MACEDONIA",
+      "sample_published_labels": [
+        "Thessaloniki Noesis",
+        "Olympus, Giosos Apostolidis"
+      ]
+    },
+    {
+      "id": "GR-NOA-THRACE",
+      "name": "NOA Thrace public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=1",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Thrace",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=1",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:02.249Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:02 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-THRACE",
+      "sample_published_labels": [
+        "Alexandroupoli port",
+        "Didymoteicho 1"
+      ]
+    },
+    {
+      "id": "GR-NOA-EPIRUS",
+      "name": "NOA Epirus public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=3",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Epirus",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=3",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:03.311Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:03 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-EPIRUS",
+      "sample_published_labels": [
+        "Metsovo",
+        "Papigko",
+        "Parga 1"
+      ]
+    },
+    {
+      "id": "GR-NOA-THESSALY",
+      "name": "NOA Thessaly public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=4",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Thessaly",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=4",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:04.372Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:04 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-THESSALY",
+      "sample_published_labels": [
+        "Volos 1",
+        "Kalambaka panorama",
+        "Pertouli 1"
+      ]
+    },
+    {
+      "id": "GR-NOA-PELOPONNESE",
+      "name": "NOA Peloponnese public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=7",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Peloponnese",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=7",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:05.435Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:05 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-PELOPONNESE",
+      "sample_published_labels": [
+        "Kalamata beach",
+        "Mystra",
+        "Patra Romanos"
+      ]
+    },
+    {
+      "id": "GR-NOA-IONIAN",
+      "name": "NOA Ionian Islands public camera catalog",
+      "kind": "regional_catalog",
+      "official_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=6",
+      "operator": {
+        "publisher": "National Observatory of Athens / meteo.gr",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Ionian Islands",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Regional catalog labels only; sampled localities are not sensor positions or calibrated footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML regional catalog with named camera entries and published image pointers; images not requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteo.gr/webcameras.cfm?ProvinceID=6",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "NOA",
+        "license": null,
+        "reuse_status": "unknown_individual_owner_permission_required",
+        "evidence_ids": [
+          "GC-R-NOA",
+          "GC-O-NOA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:06.491Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:06 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-NOA-IONIAN",
+      "sample_published_labels": [
+        "Marathias Zakynthos",
+        "Petaleia Corfu"
+      ]
+    },
+    {
+      "id": "GR-METEOCAM-MARMARI",
+      "name": "MeteoCam Marmari harbor",
+      "kind": "operator_camera_page",
+      "official_url": "https://www.meteocam.gr/eviamarmari",
+      "operator": {
+        "publisher": "MeteoCam / Cybex SA",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Central Greece / Evia",
+        "locality": "Marmari harbor",
+        "published_map_parameters": {
+          "latitude": 38.049314,
+          "longitude": 24.31719,
+          "source_url": "https://www.meteocam.gr/eviamarmari",
+          "field": "camera-page map xlat/xlon parameters",
+          "semantics": "Uncalibrated webpage map anchor; not proven sensor position/target point."
+        },
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Camera page publishes a map anchor, but CRS/accuracy/pin semantics and camera footprint unknown. Not valid georegistration."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "Official camera/weather page with descriptive labels and page-level notice; no player/media requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteocam.gr/eviamarmari",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "METEOCAM",
+        "license": null,
+        "reuse_status": "unknown_informational_notice_not_media_license",
+        "evidence_ids": [
+          "GC-M-METEOCAM-MARMARI",
+          "GC-M-METEOCAM-SCHINIAS"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:30.214Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-METEOCAM-MARMARI"
+    },
+    {
+      "id": "GR-METEOCAM-SCHINIAS",
+      "name": "MeteoCam Schinias Fire Cam (publisher name only)",
+      "kind": "operator_camera_page",
+      "official_url": "https://www.meteocam.gr/schiniasfirecam",
+      "operator": {
+        "publisher": "MeteoCam / Cybex SA",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Attica",
+        "locality": "Schinias, Marathon",
+        "published_map_parameters": {
+          "latitude": 38.157,
+          "longitude": 24.00747,
+          "source_url": "https://www.meteocam.gr/schiniasfirecam",
+          "field": "camera-page map xlat/xlon parameters",
+          "semantics": "Uncalibrated webpage map anchor; not proven sensor position/target point."
+        },
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Camera page publishes a map anchor, but CRS/accuracy/pin semantics and camera footprint unknown. Not valid georegistration."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "Official camera/weather page with descriptive labels and page-level notice; no player/media requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://www.meteocam.gr/schiniasfirecam",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "METEOCAM",
+        "license": null,
+        "reuse_status": "unknown_informational_notice_not_media_license",
+        "evidence_ids": [
+          "GC-M-METEOCAM-MARMARI",
+          "GC-M-METEOCAM-SCHINIAS"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:30.607Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": [
+          {
+            "value": "2018-07-23",
+            "meaning": "Historical Mati weather table, not acquisition or current fire."
+          }
+        ]
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-METEOCAM-SCHINIAS"
+    },
+    {
+      "id": "GR-KALAVRITA",
+      "name": "Kalavrita Ski Resort camera/weather catalog",
+      "kind": "resort_catalog",
+      "official_url": "https://kalavritaski.gr/en/live-cameras/",
+      "operator": {
+        "publisher": "Kalavrita Ski Resort",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Achaea / Helmos",
+        "locality": "Kalavrita Ski Resort",
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Publisher locality labels only. Sensor position, footprint and metric uncertainty unresolved."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "Official camera/weather page with descriptive labels and page-level notice; no player/media requested.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://kalavritaski.gr/en/live-cameras/",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "KALAVRITA",
+        "license": null,
+        "reuse_status": "all_rights_reserved_no_media_clearance_found",
+        "evidence_ids": [
+          "GC-M-KALAVRITA"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:33:30.910Z",
+        "http_date": "Sun, 15 Nov 2026 06:33:30 GMT",
+        "http_last_modified": "Fri, 13 Nov 2026 08:14:07 GMT",
+        "comparison": "HTML Last-Modified 2026-11-13T08:14:07Z precedes check, but weather text says April 2026. Neither dates the camera media; publication/capture unknown.",
+        "context_dates": [
+          {
+            "value": "19/4/2026",
+            "meaning": "Visible weather text, not camera acquisition."
+          },
+          {
+            "value": "20/4/2/2026",
+            "meaning": "Malformed visible weather text, preserved uninterpreted."
+          }
+        ]
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-KALAVRITA",
+      "sample_published_labels": [
+        "Chalet (1700m)",
+        "Park (1860m)"
+      ]
+    },
+    {
+      "id": "GR-KOS-CATALOG",
+      "name": "Municipality of Kos public port camera page",
+      "kind": "municipal_catalog",
+      "official_url": "https://kos.gov.gr/en/kos-live-streaming/",
+      "operator": {
+        "publisher": "Municipality of Kos",
+        "camera_operator": null,
+        "status": "Publisher verified; individual camera operator/rightsholder unknown."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Dodecanese",
+        "locality": "Main Port of Kos",
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Two locality selector labels only, not two independently verified streams or camera footprints."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "HTML location selectors Main Port of Kos 1/2, one YouTube iframe pointer, not opened.",
+        "camera_api": {
+          "status": "unknown_no_camera_api_documented_in_inspected_page",
+          "documentation_url": "https://kos.gov.gr/en/kos-live-streaming/",
+          "schema": null,
+          "request_rate_limit": null
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "KOS",
+        "license": null,
+        "reuse_status": "unknown_no_substantive_media_grant",
+        "evidence_ids": [
+          "GC-R-KOS",
+          "GC-M-KOS-CATALOG"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:34:13.118Z",
+        "http_date": "Sun, 15 Nov 2026 06:34:12 GMT",
+        "http_last_modified": null,
+        "comparison": "Publication/capture unknown. HTTP Date and check are response/retrieval clocks, not source acquisition; evidence age cannot be calculated.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Exact owner/use/retention/model authority and permitted current playback not established.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-KOS-CATALOG",
+      "sample_published_labels": [
+        "Main Port of Kos 1",
+        "Main Port of Kos 2 (selector label only)"
+      ]
+    },
+    {
+      "id": "GR-WINDY-DOCS",
+      "name": "Windy Webcams v3, Greece-capable catalog API docs",
+      "kind": "api_catalog_documentation",
+      "official_url": "https://api.windy.com/webcams/docs",
+      "operator": {
+        "publisher": "Windyty, SE / Windy",
+        "camera_operator": null,
+        "status": "Official API operator verified; no specific Greek webcam selected."
+      },
+      "geography": {
+        "country_code": "GR",
+        "region": "Greece-capable country filter",
+        "locality": null,
+        "published_map_parameters": null,
+        "crs": null,
+        "position": null,
+        "uncertainty_m": null,
+        "footprint": null,
+        "georegistration": "unverified",
+        "uncertainty_notes": "Greece-capable filtering documented, but zero Greek API results. Coverage/count/camera positions unknown."
+      },
+      "access": {
+        "metadata_status": "available_at_check",
+        "page_auth": "Anonymous public HTML; no key/account/cookie supplied.",
+        "published_access": "Public inline OpenAPI documentation. Camera API requires registered x-windy-api-key; no key/account/API call.",
+        "camera_api": {
+          "status": "documented_not_invoked",
+          "documentation_url": "https://api.windy.com/webcams/docs",
+          "schema": {
+            "openapi_version": "3.0.0",
+            "methods": [
+              "GET"
+            ],
+            "paths": [
+              "/webcams/api/v3/webcams",
+              "/webcams/api/v3/webcams/{webcamId}"
+            ],
+            "header": "x-windy-api-key",
+            "filters": [
+              "countries",
+              "bbox",
+              "nearby",
+              "include",
+              "limit",
+              "offset"
+            ],
+            "list_required": [
+              "total",
+              "webcams"
+            ],
+            "webcam_required": [
+              "webcamId",
+              "title",
+              "status",
+              "viewCount",
+              "lastUpdatedOn"
+            ],
+            "lastUpdatedOn": "ISO 8601 most recent webcam update, not authenticated capture.",
+            "limit_range": [
+              0,
+              50
+            ],
+            "bbox_order": [
+              "north_latitude",
+              "east_longitude",
+              "south_latitude",
+              "west_longitude"
+            ]
+          },
+          "request_rate_limit": null,
+          "notes": "0–50 is page size, not rate permission. Image URL tokens expire in 10min free/24h professional and return401; expiry is not capture/currentness."
+        },
+        "media_urls": [],
+        "media_url_note": "Pointers not retained as runnable fetch targets; no endpoint guessing or request.",
+        "runtime_permission": "not_established"
+      },
+      "rights": {
+        "profile_id": "WINDY",
+        "license": null,
+        "reuse_status": "conditional_api_contract_not_activated",
+        "evidence_ids": [
+          "GC-R-WINDY",
+          "GC-R-WINDY-FULL",
+          "GC-M-WINDY-DOCS"
+        ]
+      },
+      "sensing": {
+        "modality": "unknown_no_pixels_inspected",
+        "thermal_evidence": false,
+        "radiometric_evidence": false,
+        "calibration": null,
+        "incident_detection_claim": false
+      },
+      "availability": {
+        "media_status": "not_checked_permission_gate",
+        "playable_claim": false,
+        "live_claim": false,
+        "playback_attempts": 0,
+        "playback_proofs": 0,
+        "camera_api_responses": 0,
+        "playback_response_type": null,
+        "playback_checked_at_utc": null,
+        "currentness": "unknown_no_capture_or_playback"
+      },
+      "clocks": {
+        "published_at_utc": null,
+        "publication_status": "unknown",
+        "captured_at_utc": null,
+        "capture_status": "unknown",
+        "checked_at_utc": "2026-11-15T06:34:13.396Z",
+        "http_date": "Sun, 15 Nov 2026 06:34:13 GMT",
+        "http_last_modified": "Thu, 12 Nov 2026 09:45:30 GMT",
+        "comparison": "Documentation HTML Last-Modified 2026-11-12T09:45:30Z precedes check. No webcam lastUpdatedOn/publication/capture value received.",
+        "context_dates": []
+      },
+      "eligibility": {
+        "ingest": false,
+        "record": false,
+        "model_input": false,
+        "activation": false,
+        "reason": "Registration/API contract not activated; no Greek result and no retained-evidence/model-use/current playback clearance.",
+        "next_gate": "Separate owner/rights/privacy review and authorized bounded playback, then explicit integration claim."
+      },
+      "metadata_evidence_id": "GC-M-WINDY-DOCS"
+    }
+  ],
+  "acceptance_status": {
+    "GC01": "13/13 documented fields and13 unique candidate URLs; independent review pending.",
+    "GC02": "0 eligible/claimed playable,0 playback proofs. Positive playback not demonstrated; permission-gated skip, not unavailable-media claim.",
+    "GC03": "Current-pass prohibited operation counts0. Prior Skyline terms-ordering caveat disclosed; no blanket certification of prior work or legal permission.",
+    "GC04": "8 actual official catalog HTML positive controls;13/13 explicit unknown publication/capture and check clocks/uncertainty.",
+    "issue": "Partial research deliverable. Leave open until human/source-rights acceptance; catalog never activates source."
+  }
+}
