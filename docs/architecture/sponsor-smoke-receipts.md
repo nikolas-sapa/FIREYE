@@ -4,6 +4,8 @@
 
 ## Observed RED/GREEN
 
+Review correction receipt, after baseline `2155c52`: two real-client cache regressions RED 0/2 (stale cached success, c2 closure got cached c1); two provenance/array regressions RED 0/2 (array-coerced enum accepted, null-prototype array threw). Fixed required exact `task_input`, callback-owned input, receipt hash/model matching, cache currentness before lookup and Promise reads, strict enums/dense array descriptors. Added 7 tests. Current GREEN: 32 focused sponsor tests, 103/103 combined (71 unchanged core +32 sponsor), typecheck/diff checks exit0, 485.831125ms combined, Node26.11.1. Real Iris cache becomes STALE with 0 extra calls; changed candidate task gets c2 in separate invocation; late Promise read becomes STALE; closure-mismatched actual client receipt rejects. Query/evidence inputs retain four distinct identities. Provenance arrays/malformed arrays reject with 0 calls/traps. Opaque single-use reservation and issued receipt preservation remain intact. `live_calls=0`.
+
 - RED: three initial native suites exited 1, 0/3 passed, missing actual Iris/shared/Treg modules, before implementation.
 - GREEN: 25 focused tests, 25 passed, 0 failed, 0 skipped; TypeScript `npm run typecheck` exit 0. Four exported adapter functions each traversed actual loopback `node:http` and native fetch with official-schema fixtures, provenance `local-http`, no public provider transport.
 - Combined `npm test`: 96 tests, 96 passed, 0 failed/skipped, 461.409084ms; 71 unchanged protocol/state tests plus 25 sponsor tests. `git diff --check` exit 0. Existing package/lock/core unchanged. Node 24 floor unrun.
