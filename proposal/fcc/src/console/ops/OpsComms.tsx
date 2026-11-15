@@ -3,6 +3,8 @@ import { Icon, cn } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { localTime, packZone } from '../ui/format';
 import { jobStatusOf, replyFromAgent, sendLocal, useCommRows, type CommLane } from './opsStore';
+import { Character } from './characters/Character';
+import { characterForAgent } from './characters/cast';
 
 type LaneFilter = 'all' | CommLane;
 const LANES: { id: LaneFilter; label: string }[] = [
@@ -18,6 +20,7 @@ export function OpsComms({ agent, onClearAgent, composerRef }: {
   const api = useConsoleApi();
   const pack = useConsoleSelector((s) => s.pack);
   const agents = useConsoleSelector((s) => [...new Set(s.jobs.map((j) => j.agent).filter((a) => a !== 'ORCH'))].sort());
+  const orchThinking = useConsoleSelector((s) => s.messages.some((m) => m.thinking));
   const tz = packZone(pack).label;
   const [lane, setLane] = useState<LaneFilter>('all');
   const [acks, setAcks] = useState(false);
@@ -72,12 +75,12 @@ export function OpsComms({ agent, onClearAgent, composerRef }: {
       <div ref={list} aria-live="polite" onScroll={(e) => {
         const el = e.currentTarget;
         pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-      }} className="min-h-0 flex-1 overflow-y-auto px-2 py-1">
+      }} className="min-h-0 flex-1 overflow-y-auto px-3 py-1">
         {rows.map((r) => {
           const status = r.jobId ? jobStatusOf(r.jobId) : undefined;
           return (
             <div key={r.id} data-t={r.t} data-verb={r.verb ?? ''} title={`${r.from}${r.to ? ` → ${r.to}` : ''}${r.verb ? ` · ${r.verb}` : ''}\n${r.text}${r.meta ? `\n${r.meta}` : ''}`}
-              className={cn('fireye-tick grid grid-cols-[44px_40px_minmax(0,1fr)] items-baseline gap-x-2 border-b border-l-2 border-line-faint py-1 font-mono text-micro leading-4 last:border-0',
+              className={cn('fireye-tick grid grid-cols-[40px_84px_minmax(0,1fr)] items-baseline gap-x-2 border-b border-l-2 border-line-faint py-1 font-mono text-micro leading-4 last:border-0',
                 r.lane === 'operator' ? 'border-l-signal' : r.lane === 'agent' ? 'border-l-ice' : 'border-l-line')}>
               <span className="fcc-num pl-1.5 text-bone-mute">{localTime(r.t, tz)}</span>
               <span className="flex items-center gap-1">
@@ -86,6 +89,12 @@ export function OpsComms({ agent, onClearAgent, composerRef }: {
                 {r.sim && <span className="border border-line px-1 uppercase text-bone-mute">SIM</span>}
               </span>
               <span className="min-w-0">
+                {(r.lane === 'agent' || r.from === 'ORCH') && (
+                  <span className="mr-1 inline-block align-middle">
+                    <Character id={characterForAgent(r.from)} size={r.from === 'ORCH' ? 32 : 16}
+                      state={r.from === 'ORCH' && orchThinking ? 'thinking' : 'idle'} title={r.from} />
+                  </span>
+                )}
                 <span className="uppercase">
                   <span className={r.lane === 'operator' ? 'text-bone' : 'text-ice'}>{r.from}</span>
                   {r.to && <span className="text-bone-mute"> → <span className="text-ice">{r.to}</span></span>}

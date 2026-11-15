@@ -5,8 +5,10 @@ import { consoleStore, useConsoleApi } from '../store';
 import { localTime, packZone } from '../ui/format';
 import { counters, placeAlerts, routeRoads, STAGE_RANK, useAlertVersion, type EscapeRoute } from './alerts';
 import { opsView } from './view';
+import { Character } from './characters/Character';
+import type { CharacterId } from './characters/sprites';
 
-export interface Caption { id: number; title: string; sub?: string; t: number }
+export interface Caption { id: number; title: string; sub?: string; t: number; kind?: CharacterId }
 
 let capSeq = 0;
 const listeners = new Set<() => void>();
@@ -20,8 +22,8 @@ let offStore: (() => void) | null = null;
 
 const bump = () => { snapshot = { on: presenting, caption }; listeners.forEach((f) => f()); };
 
-function showCaption(title: string, sub?: string) {
-  caption = { id: ++capSeq, title, sub, t: Date.now() };
+function showCaption(title: string, sub: string | undefined, kind: CharacterId) {
+  caption = { id: ++capSeq, title, sub, t: Date.now(), kind };
   bump();
   if (capTimer) window.clearTimeout(capTimer);
   capTimer = window.setTimeout(() => { caption = null; bump(); }, 7000);
@@ -39,10 +41,10 @@ export function startPresenter(opts: { api: ReturnType<typeof useConsoleApi>; sw
   opts.api.setSpeed(180);
   bump();
 
-  const slow = (key: string, title: string, sub?: string) => {
+  const slow = (key: string, kind: CharacterId, title: string, sub?: string) => {
     if (seenKeys.has(key)) return;
     seenKeys.add(key);
-    showCaption(title, sub);
+    showCaption(title, sub, kind);
     if (slowTimer) window.clearTimeout(slowTimer);
     opts.api.setSpeed(10);
     slowTimer = window.setTimeout(() => { if (presenting) opts.api.setSpeed(180); }, 7000);
@@ -53,11 +55,11 @@ export function startPresenter(opts: { api: ReturnType<typeof useConsoleApi>; sw
     if (!s.pack) return;
     const z = packZone(s.pack).label;
     const firstFinding = s.findings[0];
-    if (firstFinding && !seenKeys.has('finding')) slow('finding', 'Detection', firstFinding.label);
+    if (firstFinding && !seenKeys.has('finding')) slow('finding', 'scout', 'Detection', firstFinding.label);
     if (s.projection && !seenKeys.has('proj')) {
       const firstEta = Object.entries(s.projection.etaToPlaces).sort((a, b) => a[1] - b[1])[0];
       const name = firstEta ? (s.pack.manifest.places.find((p) => p.id === firstEta[0])?.name ?? firstEta[0]) : null;
-      slow('proj', 'Projection', name ? `Fire reaches ${name} by ${localTime(firstEta![1], z)}` : 'Spread forecast issued');
+      slow('proj', 'tender', 'Projection', name ? `Fire reaches ${name} by ${localTime(firstEta![1], z)}` : 'Spread forecast issued');
     }
     // ETA moved earlier by >10 min vs the previous seen revision.
     if (s.projection) {
@@ -67,21 +69,21 @@ export function startPresenter(opts: { api: ReturnType<typeof useConsoleApi>; sw
         prevEtas.set(id, eta);
         if (prev != null && prev - eta > 10 * 60000 && !seenKeys.has(key)) {
           const name = s.pack.manifest.places.find((p) => p.id === id)?.name ?? id;
-          slow(key, 'Wind shift', `ETA for ${name} moved earlier · now ${localTime(eta, z)}`);
+          slow(key, 'tender', 'Wind shift', `ETA for ${name} moved earlier · now ${localTime(eta, z)}`);
         }
       }
     }
     for (const p of placeAlerts(s.pack, s.clock.t)) {
-      if (p.stage === 'prepare' && !seenKeys.has(`prep:${p.id}`)) slow(`prep:${p.id}`, 'Alert', `${p.name} · PREPARE TO LEAVE · SMS + calls to ~${p.residents}`);
+      if (p.stage === 'prepare' && !seenKeys.has(`prep:${p.id}`)) slow(`prep:${p.id}`, 'rescue', 'Alert', `${p.name} · PREPARE TO LEAVE · SMS + calls to ~${p.residents}`);
       if (STAGE_RANK[p.stage] >= 2 && !seenKeys.has(`leave:${p.id}`)) {
-        slow(`leave:${p.id}`, 'LEAVE NOW', `${p.name} · SMS + calls to ~${p.residents} residents`);
+        slow(`leave:${p.id}`, 'rescue', 'LEAVE NOW', `${p.name} · SMS + calls to ~${p.residents} residents`);
         if (opts.switchView && opsView.get() !== 'civilian') opsView.set('civilian');
       }
     }
     const proposed = s.actions.find((a) => a.status === 'proposed');
-    if (proposed && !seenKeys.has('action')) slow('action', 'Orchestrator proposes', proposed.title);
+    if (proposed && !seenKeys.has('action')) slow('action', 'chief', 'Orchestrator proposes', proposed.title);
     const r = lastRoute;
-    if (r && !seenKeys.has('route')) slow('route', 'Route out', `${r.exit.label} via ${routeRoads(r).slice(0, 2).join(' → ')}`);
+    if (r && !seenKeys.has('route')) slow('route', 'relay', 'Route out', `${r.exit.label} via ${routeRoads(r).slice(0, 2).join(' → ')}`);
   };
   offStore = consoleStore.subscribe(check);
 }
@@ -116,9 +118,12 @@ export function PresenterCaption() {
   return (
     <div aria-live="polite" className={cn('pointer-events-none absolute inset-x-0 bottom-8 z-[4] flex justify-center transition-opacity duration-base ease-servo', caption ? 'opacity-100' : 'opacity-0')}>
       {caption && (
-        <div className="border border-line-strong bg-ink-950/90 px-6 py-3 text-center shadow-panel">
+        <div className="flex items-center gap-4 border border-line-strong bg-ink-950/90 px-5 py-3 text-left shadow-panel">
+          {caption.kind && <Character id={caption.kind} size={64} />}
+          <div>
           <div className="text-2xl font-semibold tracking-tight text-bone">{caption.title}</div>
           {caption.sub && <div className="mt-1 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim">{caption.sub}</div>}
+          </div>
         </div>
       )}
     </div>

@@ -7,6 +7,8 @@ import type { StageEngine } from '../stage3d/StageEngine';
 import { fireyeUi, useFireye, VIS_GROUPS, type VisGroup, type VisPreset } from '../fireye/shell/ui';
 import { useOverlayOpts, overlayOpts, type OverlayOpts } from './view';
 import { HOME_OPTIONS, setHome, useHome } from './CivilianPanel';
+import { Character } from './characters/Character';
+import { characterForAgent, stateForPool } from './characters/cast';
 
 export type RailTab = 'layers' | 'objects' | 'agents';
 const NO_PLACES: { id: string; name: string }[] = [];
@@ -166,15 +168,15 @@ function ObjectsTab({ engine }: { engine: StageEngine | null }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 border-b border-line px-2 py-1.5">
-        <div className="flex h-7 items-center gap-2 border border-line-strong bg-ink-900 px-2">
+        <div className="flex h-8 items-center gap-2 border border-line-strong bg-ink-900 px-2">
           <Icon name="search" size={11} className="text-bone-mute" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search objects · ⌘K" aria-label="Search objects"
             className="min-w-0 flex-1 bg-transparent text-xs text-bone placeholder:text-bone-mute focus:outline-none" />
         </div>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-nowrap gap-1 overflow-x-auto">
           {FILTERS.map((f) => (
             <button key={f.id} type="button" aria-pressed={chips.has(f.id)} onClick={() => toggle(f.id)}
-              className={cn('h-5 border px-1.5 font-mono text-micro uppercase tracking-[0.1em]', chips.has(f.id) ? 'border-signal bg-signal/15 text-bone' : 'border-line text-bone-mute hover:text-bone-dim')}>
+              className={cn('h-6 shrink-0 border px-2 text-[11px] uppercase', chips.has(f.id) ? 'border-signal bg-signal/15 text-bone' : 'border-line text-bone-mute hover:text-bone-dim')}>
               {f.label}
             </button>
           ))}
@@ -236,9 +238,10 @@ function AgentsTab({ onOpenThread, thread }: { onOpenThread: (agent: string) => 
         const live = p.workers > 0;
         return (
           <li key={p.id}>
-            <button type="button" onClick={() => onOpenThread(prefix)} title={`${prefix} · ${p.provider} · ${p.model} · open thread`}
+            <button type="button" onClick={() => onOpenThread(prefix)} title={`${prefix} · ${p.label} · ${p.provider} · ${p.model} · open thread`}
               className={cn('flex w-full flex-col gap-1 border-b border-l-2 border-line-faint px-3 py-2 text-left transition-colors duration-base hover:bg-ink-900', (flash === p.id || thread === prefix) ? 'border-l-signal bg-ink-800' : 'border-l-transparent')}>
               <span className="flex items-center gap-2">
+                <Character id={characterForAgent(prefix)} state={stateForPool(p)} size={32} title={`${prefix} · ${p.label}`} />
                 <span className={cn('h-1.5 w-1.5 shrink-0', live ? 'animate-pulse bg-signal' : 'bg-line-strong')} aria-hidden />
                 <span className="font-mono text-micro uppercase tracking-[0.14em] text-bone">{prefix}-{String(i + 1).padStart(2, '0')}</span>
                 <span className="truncate text-xs text-bone-dim">{p.label}</span>
