@@ -8,7 +8,7 @@ import { startLocalBridge } from '../integration/local-http.ts';
 import type { FixtureSession } from '../integration/local-http.ts';
 import { createBridgeAuthority } from '../integration/session.ts';
 import type { BridgeAuthority, TrustedClock } from '../integration/session.ts';
-import type { ActorContext } from '../protocol/types.ts';
+import type { ActorContext, IncidentSeed } from '../protocol/types.ts';
 
 export type LocalRole = 'reader' | 'chief' | 'analyst' | 'producer';
 export interface LocalRoleSetup {
@@ -34,12 +34,11 @@ export interface LocalBackend {
 
 /** Importing this module never opens a listener, writes files or starts work. */
 export async function startLocalBackend(config: LocalDemoConfig = readLocalDemoConfig(),
-  clock?: () => TrustedClock): Promise<LocalBackend> {
+  clock?: () => TrustedClock, seed: IncidentSeed = createLocalDemoSeed()): Promise<LocalBackend> {
   // Revalidate programmatic configuration before any listener or capability creation.
   const valid = readLocalDemoConfig({ FCC_LOCAL_MODE: config.mode, FCC_LOCAL_PROVIDERS: config.providers,
     FCC_LOCAL_PORT: String(config.port), FCC_LOCAL_ORIGIN: config.allowed_origin,
     FCC_LOCAL_CAPABILITY_TTL_MS: String(config.capability_ttl_ms) });
-  const seed = createLocalDemoSeed();
   const epoch = Date.now(); const started = performance.now();
   const trustedClock = clock ?? (() => {
     const elapsed = Math.floor(performance.now() - started);

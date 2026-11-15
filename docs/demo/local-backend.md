@@ -38,6 +38,13 @@ Only designated external fixture producer may POST empty body `/producer-heartbe
 
 Orchestration remains separately reviewed dependency, not imported/started in this launcher revision. Bridge/planner/sponsor adapters may exist in source, but standalone launch creates no planner jobs, registered generated routes or provider inference. No orchestration endpoint is advertised.
 
+Programmatic `startLocalBackend(config, clock, reviewedFixtureSeed)` accepts an
+optional trusted seed through the existing authority validator. The existing
+coordinator can attach to returned `authority` in the same process. Default/CLI
+remain fresh bridge-only runs. This is not a candidate registration API or
+objective HTTP service. [Composition test](../../backend/tests/backend-composition.test.ts)
+proves the pre-reviewed fixture connection, not default application readiness.
+
 ## Documented current-Chief fixture cycle
 
 Synthetic native tests implement this cycle through actual HTTP, never startup autoapproval:
