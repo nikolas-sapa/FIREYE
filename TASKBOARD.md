@@ -1,5 +1,15 @@
 # Fire Command Center shared taskboard
 
+## MASCOT-01, owner-requested local pixel mascot bench
+
+2026-11-15. User requested original Grok-like pixel mini agents, parallel subagents and a localhost test gallery. Coordinator `/root`, branch `task/pixel-mascot-lab`, base `b1e5572b3c2be25ad46630805ae713fa2d6abca9`. Bounded standalone `mascot-lab/` only, never edits or launches teammate `proposal/fcc/**`. No production deploy, provider calls or dashboard integration.
+
+Exact ownership: root owns `mascot-lab/README.md`, `.impeccable.md`, `server.mjs`, `tests/catalog.test.mjs`, `tests/server.test.mjs`, `tests/browser.mjs`, `assets/geist-latin.woff2`, `assets/OFL.txt`, and this MASCOT-01 claim/receipt. Core-character worker owns `mascot-lab/sprite-core.mjs`, `bots-a.mjs`; alternate-character worker owns `mascot-lab/bots-b.mjs`; frontend worker owns `mascot-lab/index.html`, `styles.css`, `app.mjs`, `ui-controls.mjs`. All workers use GPT-6.1 Sol, keep other workers' edits, and do not stage/commit/push/deploy. Root performs explicit-path reviewed branch delivery.
+
+Numeric test plan and non-goals precede implementation in [mascot bench](mascot-lab/README.md). Six original 32x32 silhouettes, four animated display states, keyboard-accessible selection, scale/theme/pause/export controls, compact dashboard placement specimens. Dependency-free native JS/canvas, Node >=24 loopback-only static server; Geist font retained with license. Local demo display states never indicate genuine running agents, incident findings or mission authority. Status: claimed, tests/design contract first.
+
+MASCOT-01 local verification: six originals Scout/Relay/Pilot/Wisp/Rook/Orbit; native7/7, failures/skips0, realChromium156.0.8078.4 sixselectors/fourstates/threesizes/twothemes/pause/PNG/keyboard/reducedmotionPASS. Viewports375/768/1440 overflow0, pageerrors0, externalrequests0. Root inspected dark/mobile/light screenshots, fixed light-theme interpolation thenreran. IndependentJSreview0findings/1,920boundedrendererchecks, local securityreview0exploitablefindings/11extraHTTPchecks. Node26.11.1/macOSarm64; Safari/Firefox/hostedlabCIunrun, TSnotapplicable, unchangedbackend/frontendsuitesunrun. Staticloopback127.0.0.1:5184running; proposal/backend/CI/package/lockdelta0, paid/provider/deploy/integration0. Ownedfilesfrozenforcoordinatorfeaturebranchdelivery, noautomaticmerge. FullreceiptinlabREADME.
+
 ## PR38-CI-2026-11-15, headless frontend verification
 
 Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.

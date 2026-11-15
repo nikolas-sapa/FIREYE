@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Six original pixel companions. A local character and dashboard-placement study for Fire Command Center." />
+    <title>Mascot lab · Fire Command Center</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171717'/%3E%3Cpath fill='%23ededed' d='M8 9h16v14H8z'/%3E%3Cpath fill='%23171717' d='M11 13h3v4h-3zm7 0h3v4h-3z'/%3E%3C/svg%3E" />
+    <link rel="preload" href="./assets/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.mjs"></script>
+  </head>
+  <body data-theme="dark" data-selected="scout" data-state="idle" data-paused="false" data-scale="4">
+    <a class="skip-link" href="#main-content">Skip to mascot preview</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span>Fire Command Center</span>
+          <span class="brand-divider" aria-hidden="true">/</span>
+          <span class="brand-section">Mascot lab</span>
+        </div>
+        <div class="header-tools">
+          <span class="local-label"><span aria-hidden="true"></span>Local preview</span>
+          <button class="button button-ghost theme-button" type="button" data-action="theme" aria-label="Switch to light theme">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5" />
+            </svg>
+            <span data-theme-label>Light mode</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell" id="main-content" tabindex="-1">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Original characters / 001</p>
+          <h1 id="page-title">Small crew.<br />Big personality.</h1>
+        </div>
+        <p class="intro-copy">Six tiny companions. Four expressive states.<br />Find the face that feels right for your team.</p>
+      </section>
+
+      <section class="preview" aria-label="Selected mascot preview">
+        <div class="sprite-stage">
+          <div class="stage-topline">
+            <span class="eyebrow">Character preview</span>
+            <span class="stage-index" id="selected-index">01 / 06</span>
+          </div>
+          <div class="sprite-field">
+            <span class="corner corner-tl" aria-hidden="true"></span>
+            <span class="corner corner-tr" aria-hidden="true"></span>
+            <span class="corner corner-bl" aria-hidden="true"></span>
+            <span class="corner corner-br" aria-hidden="true"></span>
+            <canvas id="hero-sprite" width="128" height="128" role="img" aria-label="Selected pixel mascot"></canvas>
+          </div>
+          <div class="stage-bottomline">
+            <span>32 × 32 original pixel art</span>
+            <span id="motion-label">8 fps</span>
+          </div>
+        </div>
+
+        <div class="preview-details">
+          <div class="character-heading">
+            <p class="eyebrow" id="selected-role">Companion</p>
+            <h2 id="selected-name">Scout</h2>
+            <p class="character-tagline" id="selected-tagline">A little curiosity goes a long way.</p>
+            <p class="character-description" id="selected-description">Choose a character to inspect its expression and silhouette.</p>
+          </div>
+
+          <div class="preview-controls">
+            <fieldset class="control-block">
+              <legend>Display state <span>Visual demo only</span></legend>
+              <div class="segmented state-controls" role="radiogroup" aria-label="Mascot display state">
+                <button type="button" role="radio" aria-checked="true" tabindex="0" data-state="idle">Idle</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-state="thinking">Thinking</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-state="working">Working</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-state="alert">Alert</button>
+              </div>
+              <p class="state-description" id="state-description">A quiet blink. No hurry.</p>
+            </fieldset>
+            <fieldset class="control-block scale-block">
+              <legend>Preview size <span id="size-label">128 px</span></legend>
+              <div class="segmented scale-controls" role="radiogroup" aria-label="Mascot preview size">
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scale="2" aria-label="2 times size, 64 pixels">2×</button>
+                <button type="button" role="radio" aria-checked="true" tabindex="0" data-scale="4" aria-label="4 times size, 128 pixels">4×</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scale="6" aria-label="6 times size, 192 pixels">6×</button>
+              </div>
+            </fieldset>
+            <div class="action-row">
+              <button class="button button-secondary" type="button" data-action="pause" aria-pressed="false">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path data-pause-path d="M8.5 5v14M15.5 5v14" /></svg>
+                <span data-pause-label>Pause</span>
+              </button>
+              <button class="button button-primary" type="button" data-action="export">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 16v5h16v-5" /></svg>
+                <span data-export-label>Export PNG</span>
+              </button>
+            </div>
+            <p class="export-note">Transparent background. Current pose and size.</p>
+          </div>
+          <p class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Local visual demo. No connected agents.</p>
+        </div>
+      </section>
+
+      <section class="crew-section" id="crew" aria-labelledby="crew-title">
+        <div class="section-heading">
+          <h2 id="crew-title">Meet the small crew</h2>
+          <p>Six originals. Pick your companion.</p>
+        </div>
+        <div class="specimen-strip" id="bot-selectors" role="radiogroup" aria-label="Choose a mascot"></div>
+        <div class="catalog-note">
+          <p>Same grid. Different personalities.</p>
+          <p id="pixel-details">Original 32 × 32 sprites</p>
+        </div>
+      </section>
+
+      <section class="placements-section" aria-labelledby="placements-title">
+        <div class="section-heading">
+          <h2 id="placements-title">A little presence, anywhere</h2>
+          <p>Dashboard placement sketches, not live status.</p>
+        </div>
+        <div class="placements-grid">
+          <article class="placement">
+            <div class="placement-caption"><span>01 / Chat presence</span><span>32 px</span></div>
+            <div class="placement-demo chat-demo">
+              <div class="demo-topline"><span>Orchestrator</span><span class="demo-label">Sketch</span></div>
+              <div class="chat-message">
+                <div class="chat-avatar"><canvas id="chat-sprite" width="32" height="32" aria-hidden="true"></canvas></div>
+                <div><p class="demo-character-name" data-selected-name>Scout</p><p class="chat-copy" id="chat-copy">Ready for your next question.</p></div>
+              </div>
+              <button class="button button-ghost demo-button" type="button" data-action="preview-thinking">Preview thinking <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></button>
+            </div>
+          </article>
+          <article class="placement">
+            <div class="placement-caption"><span>02 / Agent roster</span><span>32 px</span></div>
+            <div class="placement-demo roster-demo">
+              <div class="demo-topline"><span>Companions</span><span class="demo-label">Sketch</span></div>
+              <ul class="roster" id="roster"></ul>
+            </div>
+          </article>
+          <article class="placement">
+            <div class="placement-caption"><span>03 / Empty-state corner</span><span>64 px</span></div>
+            <div class="placement-demo empty-demo">
+              <div class="demo-topline"><span>Your workspace</span><span class="demo-label">Sketch</span></div>
+              <div class="empty-copy"><h3>Nothing queued.</h3><p>A quiet corner can still have company.</p></div>
+              <a class="button button-ghost demo-button" href="#crew">Compare companions <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 12h17.5M13.5 5l7 7-7 7" /></svg></a>
+              <canvas id="empty-sprite" width="64" height="64" aria-hidden="true"></canvas>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell site-footer">
+      <p>Original pixel art. Not affiliated with Grok or xAI.</p>
+      <p>Local character study · No dashboard integration</p>
+    </footer>
+    <noscript><p class="shell noscript-note">Enable JavaScript to preview characters and export sprites.</p></noscript>
+  </body>
+</html>
