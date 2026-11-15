@@ -2,6 +2,8 @@
 
 Owner: STAGE worker. Public API (`src/console/stage3d/index.ts`):
 
+> Monitoring feeds (`?mode=monitoring`) render the separate three.js World3D scene in `src/console/world3d/` (see `docs/WORLD3D.md`). It reuses `sun.ts`, `raster.ts` and the feed pose/dynamics helpers read-only; changes to those helpers must keep `npm run test:monitoring` passing.
+
 | Export | Purpose |
 | --- | --- |
 | `<Stage className? onSelect? selectedId? hud? creditsClassName? />` | Main 3D globe. Reads the console store (`useConsoleSelector`) and reacts to `state.stage` and stage directives. |

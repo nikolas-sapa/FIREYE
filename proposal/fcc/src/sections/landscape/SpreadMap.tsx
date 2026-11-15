@@ -38,6 +38,10 @@ export interface SpreadMapProps {
   disagree?: Uint8Array;
   arrival?: Float32Array;
   ignition?: number;
+  /** A fire front being drawn or in use: vertices are model cell indices. */
+  front?: { kind: 'line' | 'area'; vertices: number[] };
+  /** Removes the last front vertex (Backspace). */
+  onUndo?: () => void;
   /** Wind FROM direction (degrees) and speed for the corner indicator. */
   wind?: { fromDeg: number; kph: number };
   seams?: boolean;
@@ -46,7 +50,7 @@ export interface SpreadMapProps {
   className?: string;
 }
 
-export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree, arrival, ignition, wind, seams = true,
+export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree, arrival, ignition, front, onUndo, wind, seams = true,
   onIgnite, describe, className }: SpreadMapProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cursor, setCursor] = useState<number>();
@@ -147,7 +151,28 @@ export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree
       ctx.strokeStyle = stroke; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.moveTo(cx - r - 6, cy); ctx.lineTo(cx + r + 6, cy); ctx.moveTo(cx, cy - r - 6); ctx.lineTo(cx, cy + r + 6); ctx.stroke();
     };
-    if (ignition !== undefined) mark(ignition, color.signal.DEFAULT, 9);
+    if (front) {
+      const at = (i: number) => [(i % MODEL_SIDE + 0.5) * CELL_PX, (Math.floor(i / MODEL_SIDE) + 0.5) * CELL_PX] as const;
+      const v = front.vertices;
+      ctx.strokeStyle = color.signal.DEFAULT; ctx.fillStyle = color.signal.DEFAULT; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+      if (v.length > 1) {
+        ctx.beginPath();
+        v.forEach((i, k) => { const [x, y] = at(i); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+        if (front.kind === 'area' && v.length > 2) {
+          ctx.closePath();
+          ctx.globalAlpha = 0.15; ctx.fill(); ctx.globalAlpha = 1;
+        }
+        ctx.stroke();
+      }
+      // Preview of the next segment while drawing.
+      if (v.length && cursor !== undefined && !v.includes(cursor)) {
+        const [x0, y0] = at(v[v.length - 1]), [x1, y1] = at(cursor);
+        ctx.setLineDash([6, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+        if (front.kind === 'area' && v.length > 1) { const [xa, ya] = at(v[0]); ctx.lineTo(xa, ya); }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+      for (const i of v) { const [x, y] = at(i); ctx.fillRect(x - 4, y - 4, 8, 8); }
+    } else if (ignition !== undefined) mark(ignition, color.signal.DEFAULT, 9);
     if (focused && cursor !== undefined) mark(cursor, color.bone.DEFAULT, 6);
     if (wind) {
       // Arrow points downwind, the direction the head runs.
@@ -160,7 +185,7 @@ export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree
       ctx.fillStyle = color.bone.DEFAULT; ctx.font = '600 18px ui-monospace, monospace'; ctx.textAlign = 'center';
       ctx.fillText(`${Math.round(wind.kph)} KM/H`, cx, cy + 58);
     }
-  }, [layers, fuel, shade, reviews, stitched, disagree, arrival, ignition, wind, seams, cursor, focused]);
+  }, [layers, fuel, shade, reviews, stitched, disagree, arrival, ignition, front, wind, seams, cursor, focused]);
 
   const cellAt = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -169,7 +194,8 @@ export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree
     return x >= 0 && y >= 0 && x < MODEL_SIDE && y < MODEL_SIDE ? y * MODEL_SIDE + x : undefined;
   };
   const onKey = (event: KeyboardEvent<HTMLCanvasElement>) => {
-    const current = cursor ?? ignition ?? (MODEL_SIDE / 2) * MODEL_SIDE + MODEL_SIDE / 2;
+    if (event.key === 'Backspace' && front?.vertices.length) { event.preventDefault(); onUndo?.(); return; }
+    const current = cursor ?? (front ? front.vertices[front.vertices.length - 1] : ignition) ?? (MODEL_SIDE / 2) * MODEL_SIDE + MODEL_SIDE / 2;
     const step = event.shiftKey ? 16 : 4;
     let x = current % MODEL_SIDE, y = Math.floor(current / MODEL_SIDE);
     if (event.key === 'ArrowLeft') x -= step; else if (event.key === 'ArrowRight') x += step;
@@ -188,7 +214,9 @@ export function SpreadMap({ imageUrl, layers, fuel, elevation, reviews, disagree
           <div className="fcc-hatch absolute inset-0 flex items-center justify-center font-mono text-nano uppercase text-bone-dim">Pick a landscape</div>}
         <canvas ref={canvas} width={CANVAS_PX} height={CANVAS_PX} tabIndex={imageUrl ? 0 : -1}
           role="application" aria-roledescription="landscape map"
-          aria-label="Landscape map. Click to set the ignition point. With the keyboard, arrow keys move the cursor (Shift for larger steps) and Enter sets ignition."
+          aria-label={front
+            ? `Landscape map. Click to add a point to the ${front.kind === 'line' ? 'fire line' : 'burning area'}; ${front.vertices.length} so far. With the keyboard, arrow keys move the cursor (Shift for larger steps), Enter adds a point and Backspace removes the last one.`
+            : 'Landscape map. Click to set the ignition point. With the keyboard, arrow keys move the cursor (Shift for larger steps) and Enter sets ignition.'}
           onPointerMove={event => setCursor(cellAt(event))} onPointerLeave={() => !focused && setCursor(undefined)}
           onClick={event => { const i = cellAt(event as unknown as PointerEvent<HTMLCanvasElement>); if (i !== undefined) onIgnite?.(i); }}
           onKeyDown={onKey} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}

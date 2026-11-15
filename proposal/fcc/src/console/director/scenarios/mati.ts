@@ -505,6 +505,8 @@ export const mati: ScenarioScript = {
   tzOffsetMin: 180,
   areaUnit: 'ha',
   primary: { match: /^mati$/i, fallback: { id: 'mati', name: 'Mati', pos: { lon: 24.0045, lat: 38.0455 }, kind: 'town' }, radiusM: 1500 },
+  // 14:00 EEST: the hot, dry, gusty afternoon before ignition (hourly ERA5 covers the whole day).
+  windowStart: () => Date.UTC(2018, 6, 23, 11, 0),
   timeline: ({ start, end, ignitionT }) => {
     const ign = ignitionT && ignitionT >= start && ignitionT < end ? ignitionT : start + 30 * MIN;
     return { T0: Math.max(start, ign - 12 * MIN), tShift: null, tDetect: ign + 2 * MIN };

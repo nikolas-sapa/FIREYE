@@ -1,5 +1,15 @@
 # Fire Command Center shared taskboard
 
+## DEVIN-PR49-REPAIR-20261115
+
+Owner authorized Repair Then Merge for PR49 after review identified PNG decoder, paid-grid budget and historical-evidence regressions. Coordinator owns TASKBOARD and Git delivery. Isolated branch `devin/1794731537-repair-pr49`; exact implementation claim recorded before edits in ignored `.scratch/pr49-repair-20261115/claim-and-test-plan.md`: `proposal/fcc/server/image-lab-landscape.ts`, `proposal/fcc/src/image-lab/grid.ts`, `proposal/fcc/src/image-lab/grid-client.ts`, `proposal/fcc/tests/image-lab-grid.ts`, `proposal/fcc/src/sections/GreeceGridLab.tsx`, `proposal/fcc/docs/IMAGE_LAB.md`. Existing FIREYE/World3D features retained.
+
+Test plan before implementation: IMG49-01 restore inherited regression tests first, observe at least one failure on unchanged PR49 source. IMG49-02 valid 256px terrain accepts, oversized dimensions/extra scanline byte/filter5 reject 3/3; grid peak concurrency1 and default exactly4 ordered calls, zero retries. IMG49-03 frontend typecheck/image-lab/monitoring/console/spread/build/PWA exit0; built browser FIREYE/monitoring/replay at 1440x900 and375x812, zero page errors and paid/provider calls. Desktop interactions require stable post-boot verification, not HTTP200 alone.
+
+Implementation: restore reviewed main guards and tests, retain new line/area UI, restore budget and evidence caveats, verify exact six-file diff and record browser evidence, then coordinator delivery after review and hosted checks.
+
+Non-goals: mascot work, backend/frontend shared-state acceptance, public hosting, production auth, live provider calls, paid calls, dependency/security-policy changes, operational wildfire claims.
+
 BATCH-20261115-18 final scoped review: typescript-reviewer01a1de11-d2d8-70a3-956a-679b2e410feb APPROVE frozen testd543408026b060ebb7380d67282460ec53da308d82b9738bb09547166714fb11,0blockers; native263+compiled263/noEmit/fullcompiler0failure/skip, actuallocalhostexports and streamguardmutationRED1→GREEN4. Root inspected exact1filediff and independentlyreran native263/compiled263/typecheck/hash/scopePASS. Runtimeclient/source/lockunchanged. Coordinatorauthorizes exacttest+board branchdelivery/merge afterlatestmainreconcile andhostedchecks.0providers/full#18activation remainsopen.
 
 

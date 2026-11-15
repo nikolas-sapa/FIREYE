@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppearanceToggle, AutonomyDial, IconButton, Icon, InstallAppButton, LensSelect, ThemeToggle, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
+import { AppearanceToggle, AutonomyDial, IconButton, Icon, InstallAppButton, LensSelect, TimelineScrubber, Tooltip, cn, type TimelineMark } from '@ds';
 import { useConsoleApi, useConsoleSelector } from '../store';
 import { acresSeries } from './derived';
 import { incidentNumber, localDay, localHour, localTime, packTz, zuluTime } from './format';
@@ -319,7 +319,6 @@ export function CommandStrip() {
       <Sep />
       <OrchestratorStatus />
       <DirectorControls />
-      <ThemeToggle compact hint="T" />
       <AppearanceToggle />
       <InstallAppButton />
       <Tooltip content={disclaimer} side="bottom" className="shrink-0">
