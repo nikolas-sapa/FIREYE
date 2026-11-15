@@ -51,7 +51,11 @@ const lods = (fns: ((b: MeshBuilder) => number | void)[], windRef = 0, seed = 1)
 const aleppoPine = (b: MeshBuilder, lod: number) => {
   b.cyl(0.24, 0.13, 6.2, lod ? 4 : 6, C.bark, { rz: 0.06 }, Flag.Wood, { top: false });
   // Umbrella crown so distant pines read round from above, not as octahedron diamonds.
-  if (lod >= 2) { b.cyl(3.0, 1.7, 2.3, 6, C.pine, { y: 5.9 }, Flag.Foliage, { bottom: true }); return; }
+  if (lod >= 2) {
+    b.blob(2.8, C.pine, { x: -0.55, y: 7, z: 0.25 }, Flag.Foliage, 0, 0.23, 0.48);
+    b.blob(1.9, C.pine2, { x: 1.45, y: 6.45, z: -0.4 }, Flag.Foliage, 0, 0.2, 0.5);
+    return;
+  }
   b.cyl(0.08, 0.04, 2.6, 4, C.bark, { y: 4.8, rz: 0.75 }, Flag.Wood, { top: false });
   b.cyl(0.08, 0.04, 2.4, 4, C.bark, { y: 5.1, rz: -0.7, ry: 1.2 }, Flag.Wood, { top: false });
   const crowns: [number, number, number, number][] = lod ? [[0, 7.1, 0, 2.6], [1.7, 6.4, 0.6, 1.8]]
@@ -411,7 +415,7 @@ const DEFS: Def[] = [
   { id: 'maquis', label: 'Maquis shrub (kermes oak, mastic)', cls: T.Shrub, material: 'dense evergreen sclerophyll', flam: 3, kind: 'veg', maxTier: 1, sens: 0.45, b: shrub(C.maquis, 4), n: 2, wind: 2 },
   { id: 'oleander', label: 'Oleander hedge', cls: T.Shrub, material: 'irrigated ornamental shrub', flam: 1, kind: 'veg', maxTier: 1, sens: 0.05, b: shrub(mix(hex(0x3f6a33), C.leafPink, 0.15), 3), n: 2, wind: 2 },
   { id: 'broom', label: 'Spanish broom', cls: T.Shrub, material: 'fine twigs, seasonal flowers', flam: 3, kind: 'veg', maxTier: 1, sens: 0.6, b: shrub(hex(0x6f7d34), 3), n: 2, wind: 2 },
-  { id: 'phrygana', label: 'Phrygana cushion (thyme, sage)', cls: T.Shrub, material: 'aromatic low shrub, volatile oils', flam: 3, kind: 'veg', maxTier: 0, sens: 0.6, b: cushion, n: 2, wind: 1 },
+  { id: 'phrygana', label: 'Phrygana cushion (thyme, sage)', cls: T.Shrub, material: 'aromatic low shrub, volatile oils', flam: 3, kind: 'veg', maxTier: 1, sens: 0.6, b: cushion, n: 2, wind: 1 },
   { id: 'dry-shrub', label: 'Dead / drought-killed shrub', cls: T.DeadVegetation, material: 'dead fine fuel', flam: 4, kind: 'veg', maxTier: 1, sens: 0, b: deadShrub, n: 2, wind: 1.5 },
   { id: 'snag', label: 'Standing dead pine (2009 burn scar)', cls: T.DeadVegetation, material: 'dead standing wood', flam: 2, kind: 'rigid', maxTier: 2, sens: 0, b: snag, n: 2 },
   { id: 'grass', label: 'Annual grass clump', cls: T.Grass, material: 'fine herbaceous fuel', flam: 2, kind: 'grass', maxTier: 0, shadow: false, sens: 1, b: grassClump },
@@ -423,6 +427,7 @@ const DEFS: Def[] = [
   { id: 'rock', label: 'Limestone boulder', cls: T.NonCombustibleDebris, material: 'rock', flam: 0, kind: 'rigid', maxTier: 1, b: rock },
 
   { id: 'house-flat', label: 'Flat-roof concrete house', cls: T.Structure, material: 'reinforced concrete, timber/plastic fittings', flam: 1, maxTier: 2, b: houseFlat, n: 3 },
+  { id: 'foundation', label: 'Simulated masonry foundation', cls: T.Structure, material: 'concrete', flam: 0, maxTier: 2, shadow: false, b: b => b.box(1, 1, 1, C.concrete, {}, Flag.Paint) },
   { id: 'house-tiled', label: 'Tiled-roof house', cls: T.Structure, material: 'masonry, timber roof frame, pergola', flam: 2, maxTier: 2, b: houseTiled, n: 3 },
   { id: 'apartments', label: 'Apartment block', cls: T.Structure, material: 'reinforced concrete', flam: 1, maxTier: 2, b: apartments, n: 3 },
   { id: 'chapel', label: 'Chapel', cls: T.Structure, material: 'masonry, tiled roof', flam: 1, maxTier: 2, b: chapel, n: 3 },

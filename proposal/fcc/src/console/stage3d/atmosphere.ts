@@ -30,6 +30,7 @@ uniform sampler2D maskTex;
 uniform float smokeMix;
 uniform mat3 toLocal;
 uniform vec3 camLocal;
+uniform float cameraHeight;
 uniform vec4 domain;   // minX, minY, size, plume ceiling
 uniform vec4 bboxL;    // minX, minY, sizeX, sizeY (local metres)
 uniform vec3 sunDir;   // local ENU
@@ -120,6 +121,11 @@ vec3 skyColor(vec3 d, vec3 sc, vec3 amb) {
 
 void main() {
   vec2 uv = v_textureCoordinates;
+  // The local ENU haze model is not an orbital atmosphere. Preserve the actual globe from space,
+  // then blend into the existing local look; EO/thermal sensor rendering remains unchanged.
+  vec4 sceneColor = texture(colorTexture, uv);
+  float localMix = (look.x > 0.5 || look.y > 0.5) ? 1.0 : 1.0 - smoothstep(25000.0, 120000.0, cameraHeight);
+  if (localMix <= 0.0) { out_FragColor = sceneColor; return; }
   vec2 res = czm_viewport.zw;
   float rawDepth = czm_readDepth(depthTexture, uv);
   bool sky = rawDepth >= 1.0;
@@ -283,7 +289,7 @@ void main() {
     col = mix(col, fogC, f);
   }
   col = col * T + L * tune2.w;
-  out_FragColor = vec4(max(col, 0.0), 1.0);
+  out_FragColor = mix(sceneColor, vec4(max(col, 0.0), 1.0), localMix);
 }
 `;
 
@@ -409,6 +415,7 @@ export class AtmospherePass {
         smokeMix: () => st.smokeMix,
         toLocal: this.frame.rot,
         camLocal: () => st.camLocal,
+        cameraHeight: () => scene.camera.positionCartographic.height,
         domain: new Cesium.Cartesian4(smoke.domain.minX, smoke.domain.minY, smoke.domain.size, 5000),
         bboxL: new Cesium.Cartesian4(sw[0], sw[1], ne[0] - sw[0], ne[1] - sw[1]),
         sunDir: () => st.sun,

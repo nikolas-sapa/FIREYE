@@ -191,6 +191,8 @@ export interface Feed {
   fx: FeedFx;
   label: string; // "HAWK-3 · EO/IR GIMBAL"
   live: boolean;
+  /** Explicit unavailable sensor state; do not substitute archive or generated frames. */
+  offlineReason?: string;
   /** Camera pose source: follows unit, fixed pose, or orbit target. */
   pose: { mode: 'unit' | 'fixed' | 'orbit'; pos?: Geo; target?: Geo; headingDeg?: number; pitchDeg?: number; fovDeg?: number; rangeM?: number };
   /** Orchestrator relevance 0..100 (orders the feed strip; top feed is enlarged). */
@@ -385,6 +387,35 @@ export interface PredictionCheck {
   method: string; // e.g. "Huygens wavelet spread on DEM + fuel + hourly wind; no tuning to this fire"
 }
 
+export type ReconPattern = 'circle' | 'square' | 'line' | 'hover';
+export interface DroneStation { id: string; name: string; pos: Geo }
+export interface ReconDrone {
+  unitId: string;
+  stationId: string;
+  phase: 'docked' | 'launching' | 'enroute' | 'observing' | 'returning' | 'landing' | 'charging';
+  changedAt: Ms;
+  sorties: number;
+}
+export interface ReconTask {
+  id: string;
+  unitId: string;
+  cellId: string;
+  target: Geo;
+  label: string;
+  reason: string;
+  assignedAt: Ms;
+  observedAt?: Ms;
+  pattern?: ReconPattern;
+  sourceIds?: string[];
+  status: 'enroute' | 'observing' | 'complete' | 'superseded';
+}
+
+export interface ReconEvent extends ChronicleRecord {
+  kind: 'fleet' | 'projection' | 'detection';
+  /** A low-risk drone movement command, also shown as an agent notification. */
+  tasking?: boolean;
+}
+
 export interface ConsoleState {
   ready: boolean;
   pack: ScenarioPack | null;
@@ -412,6 +443,8 @@ export interface ConsoleState {
   scenarioId?: ScenarioId;
   /** Newest first. */
   predictions?: PredictionCheck[];
+  /** FIREYE-only simulated reconnaissance. No dispatch or approval actions. */
+  recon?: { tasks: ReconTask[]; events: ReconEvent[]; stations?: DroneStation[]; drones?: ReconDrone[] };
 }
 
 /** Actions exposed by the store hook. */

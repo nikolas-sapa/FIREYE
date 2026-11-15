@@ -94,9 +94,11 @@ const chiefTopBar = readFileSync(resolve(process.cwd(), 'src/console/fireye/shel
 assert.ok(chiefChat.includes('placeholder="Ask Chief"'));
 assert.ok(!chiefChat.includes('Ask the orchestrator'));
 assert.match(chiefChat, /<span className="font-mono text-micro uppercase tracking-\[0\.16em\] text-bone">Chief<\/span>/);
-assert.match(chiefTopBar, /import \{ TamagotchiSprite \} from '\.\.\/\.\.\/ui\/TamagotchiSprite';/);
-assert.match(chiefTopBar, /<TamagotchiSprite size=\{16\}/);
-console.log('CB01 PASS: Chief placeholder/header and existing topbar TamagotchiSprite');
+assert.match(chiefChat, /<TamagotchiSprite size=\{16\}/);
+assert.match(chiefTopBar, /<FireyeMark size=\{96\}/);
+assert.equal((chiefTopBar.match(/<FireyeMark /g) ?? []).length, 1);
+assert.doesNotMatch(chiefTopBar, /<TamagotchiSprite/);
+console.log('CB01 PASS: Chief placeholder/header and preserved chat mascot and single canonical header eye');
 
 type MotionSnapshot = { frame: number; intervals: number; listeners: number; cadence: number[] };
 type MotionHarness = {

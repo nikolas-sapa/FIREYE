@@ -11,9 +11,9 @@ export interface SavedView { position: Cesium.Cartesian3; heading: number; pitch
 
 function centerTarget(engine: StageEngine): Cesium.Cartesian3 | null {
   const scene = engine.viewer.scene;
-  const c = new Cesium.Cartesian2(scene.canvas.clientWidth / 2, scene.canvas.clientHeight / 2);
-  const ray = scene.camera.getPickRay(c);
-  return (ray && scene.globe.pick(ray, scene)) ?? null;
+  // The optical axis stays in the clear map window when panels cover an asymmetric frustum.
+  const ray = new Cesium.Ray(scene.camera.positionWC, scene.camera.directionWC);
+  return scene.globe.pick(ray, scene) ?? null;
 }
 
 function orbitAround(engine: StageEngine, target: Cesium.Cartesian3, headingRad: number, pitchRad: number, range: number, duration = 0) {

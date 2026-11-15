@@ -16,31 +16,22 @@ function Swatch({ c, shape }: { c: string; shape: NonNullable<LegendItem['shape'
 
 function groups(outline: boolean, thermal: boolean): Group[] {
   return [
-    { title: 'Fleet & aircraft', vis: ['fleet'], rows: [
+    { title: 'Drones', vis: ['fleet'], rows: [
       { label: 'UAV · simulated (click to dive)', icon: 'drone', tone: 'text-ice' },
-      { label: 'Helicopter', icon: 'helo', tone: 'text-ice' },
-      { label: 'Fixed-wing tanker', icon: 'tanker', tone: 'text-ice' },
-      { label: 'Altitude stem', color: role.drone, shape: 'line' },
     ] },
-    { title: 'Ground', vis: ['groundUnits', 'groundCams'], rows: [
-      { label: 'Engine / crew', icon: 'engine', tone: 'text-bone' },
+    { title: 'Fixed cameras', vis: ['groundCams'], rows: [
       { label: 'Fixed ridge camera', icon: 'camera', tone: 'text-ice' },
       { label: 'Camera view cone', color: color.ice, shape: 'dash' },
     ] },
     { title: 'IoT mesh · simulated', vis: ['iot'], rows: [
-      { label: 'Weather node', icon: 'wind', tone: 'text-bone-dim' },
-      { label: 'Fuel moisture', icon: 'droplet', tone: 'text-bone-dim' },
-      { label: 'Smoke / CO / PM2.5', icon: 'sensor', tone: 'text-bone-dim' },
-      { label: 'IR flame detector', icon: 'flame', tone: 'text-bone-dim' },
+      { label: 'Ground sensor · select dot for details', color: color.bone.dim, shape: 'dot' },
       { label: 'Nominal', color: color.bone.dim, shape: 'square' },
       { label: 'Watch threshold', color: color.amber, shape: 'square' },
       { label: 'Alarm', color: color.ember, shape: 'square' },
       { label: 'Offline', color: color.ink[400], shape: 'square' },
     ] },
-    { title: 'Paths & sensing', vis: ['flightPaths', 'footprints', 'findings'], rows: [
-      { label: 'Flight path / trail', color: role.drone, shape: 'line' },
+    { title: 'Sensing', vis: ['footprints', 'findings'], rows: [
       { label: 'Sensor footprint', color: role.telemetry, shape: 'hatch' },
-      { label: 'Proposed route', color: role.accent, shape: 'dash' },
       { label: 'Detection (approx. ring)', color: role.detection, shape: 'dot' },
     ] },
     { title: 'Fire', vis: ['fireFront', 'projections'], rows: [

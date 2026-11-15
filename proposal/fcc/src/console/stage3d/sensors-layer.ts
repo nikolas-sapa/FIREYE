@@ -1,20 +1,18 @@
 import * as Cesium from 'cesium';
 import { color as ds } from '@ds';
-import type { Feed, Ms, ScenarioPack } from '../contracts';
+import type { DroneStation, Feed, Ms, ReconDrone, ScenarioPack } from '../contracts';
 import type { SensorModel } from '../fireye/data/sensors';
 import { sectorRisk } from '../fireye/data/risk';
-import type { SensorKind, SensorStatus } from '../fireye/data/types';
+import type { SensorStatus } from '../fireye/data/types';
 import { GLYPH_SCALE, glyph, loadIcons } from './glyphs';
 import { destination } from './raster';
 import { getSampler } from './sampler';
-
-const SENSOR_ICON: Record<SensorKind, 'wind' | 'droplet' | 'sensor' | 'flame'> = { wx: 'wind', fuel: 'droplet', air: 'sensor', flame: 'flame' };
 
 export function sensorColor(status: SensorStatus): string {
   return status === 'alarm' ? ds.ember : status === 'watch' ? ds.amber : status === 'offline' ? ds.ink[400] : ds.bone.dim;
 }
 
-export interface OverlayVisibility { iot: boolean; cams: boolean; risk: boolean; labels: boolean }
+export interface OverlayVisibility { iot: boolean; cams: boolean; risk: boolean; labels: boolean; footprints?: boolean }
 
 /**
  * FIREYE additions to the main globe: simulated IoT nodes, fixed ground cameras with view cones and
@@ -23,9 +21,10 @@ export interface OverlayVisibility { iot: boolean; cams: boolean; risk: boolean;
  */
 export class FireyeOverlay {
   readonly ds = new Cesium.CustomDataSource('fireye-overlay');
-  private sensors = new Map<string, { e: Cesium.Entity; status: SensorStatus | null; kind: SensorKind }>();
+  private sensors = new Map<string, { e: Cesium.Entity; status: SensorStatus | null }>();
   private risk = new Map<string, { e: Cesium.Entity; value: number }>();
   private cams = new Map<string, Cesium.Entity>();
+  private stations = new Map<string, Cesium.Entity>();
   private bucket = NaN;
   private riskBucket = NaN;
   private selected: string | null = null;
@@ -34,7 +33,7 @@ export class FireyeOverlay {
   private destroyed = false;
 
   constructor(private viewer: Cesium.Viewer, private pack: ScenarioPack, private model: SensorModel) {
-    this.ready = loadIcons(['wind', 'droplet', 'sensor', 'flame', 'camera']).then(() => {
+    this.ready = loadIcons(['camera', 'battery']).then(() => {
       if (this.destroyed) return;
       void viewer.dataSources.add(this.ds);
       this.build();
@@ -59,10 +58,10 @@ export class FireyeOverlay {
       const e = this.ds.entities.add({
         id: `p:${s.id}`, name: `${s.code} · simulated IoT node`,
         position: Cesium.Cartesian3.fromDegrees(s.pos.lon, s.pos.lat, this.h(s.pos.lon, s.pos.lat) + 4),
-        billboard: { image: glyph({ icon: SENSOR_ICON[s.kind], color: ds.bone.dim, style: 'chip', size: 16 }), scale: GLYPH_SCALE, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        point: { pixelSize: 5, color: Cesium.Color.fromCssColorString(ds.bone.dim), outlineColor: Cesium.Color.fromCssColorString(ds.ink[950]), outlineWidth: 1, disableDepthTestDistance: Number.POSITIVE_INFINITY },
         label: this.label(s.code, 9000),
       });
-      this.sensors.set(s.id, { e, status: null, kind: s.kind });
+      this.sensors.set(s.id, { e, status: null });
     }
     const sectors = new Map<string, { lon: number; lat: number; n: number }>();
     for (const s of this.model.specs) {
@@ -108,6 +107,27 @@ export class FireyeOverlay {
     });
   }
 
+  setStations(stations: DroneStation[], drones: ReconDrone[] = []) {
+    void this.ready.then(() => {
+      if (this.destroyed) return;
+      for (const s of stations) {
+        let e = this.stations.get(s.id);
+        if (!e) {
+          e = this.ds.entities.add({
+            id: `p:${s.id}`, name: `${s.name} · simulated drone station`,
+            position: Cesium.Cartesian3.fromDegrees(s.pos.lon, s.pos.lat, this.h(s.pos.lon, s.pos.lat) + 8),
+            billboard: { image: glyph({ icon: 'battery', color: ds.ice, style: 'bracket', size: 30 }), scale: GLYPH_SCALE, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+            label: { ...this.label('', 80000), pixelOffset: new Cesium.Cartesian2(0, 23) },
+          });
+          this.stations.set(s.id, e);
+        }
+        const onPad = drones.filter(d => d.stationId === s.id && (d.phase === 'docked' || d.phase === 'charging')).length;
+        e.label!.text = new Cesium.ConstantProperty(`${s.id.includes('north') ? 'NORTH' : 'SOUTH'} STATION · ${onPad}/3 ON PAD`);
+      }
+      this.apply();
+    });
+  }
+
   setTime(t: Ms) {
     const k = Math.floor(t / 30000);
     if (k === this.bucket || !this.sensors.size) return;
@@ -139,7 +159,9 @@ export class FireyeOverlay {
     const s = this.sensors.get(id);
     if (!s) return;
     const sel = this.selected === id;
-    s.e.billboard!.image = new Cesium.ConstantProperty(glyph({ icon: SENSOR_ICON[s.kind], color: sensorColor(s.status ?? 'nominal'), style: s.status === 'alarm' ? 'solid' : 'chip', size: 16, selected: sel }));
+    s.e.point!.color = new Cesium.ConstantProperty(Cesium.Color.fromCssColorString(sensorColor(s.status ?? 'nominal')));
+    s.e.point!.pixelSize = new Cesium.ConstantProperty(sel ? 9 : s.status === 'alarm' ? 7 : 5);
+    if (s.e.label) s.e.label.show = new Cesium.ConstantProperty(sel);
   }
 
   setSelected(id: string | null) {
@@ -158,13 +180,15 @@ export class FireyeOverlay {
   private apply() {
     for (const s of this.sensors.values()) {
       s.e.show = this.vis.iot;
-      if (s.e.label) s.e.label.show = new Cesium.ConstantProperty(this.vis.labels);
+      if (s.e.label) s.e.label.show = new Cesium.ConstantProperty(s.e.id === `p:${this.selected}`);
     }
     for (const e of this.cams.values()) {
       e.show = this.vis.cams;
       if (e.label) e.label.show = new Cesium.ConstantProperty(this.vis.labels);
+      if (e.polyline) e.polyline.show = new Cesium.ConstantProperty(this.vis.footprints ?? false);
     }
     for (const r of this.risk.values()) r.e.show = this.vis.risk;
+    for (const e of this.stations.values()) if (e.label) e.label.show = new Cesium.ConstantProperty(this.vis.labels);
     if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
   }
 

@@ -5,6 +5,7 @@ import { enqueue } from '../agents/swarm';
 import { addNote } from './notes';
 import { pushMessage, replaceMessage } from './messages';
 import { etaMin, etaText } from './score';
+import { reconSummary } from '../world/recon';
 
 const THINK_S = 1.2;
 
@@ -47,6 +48,15 @@ const CALLSIGN = /\b(hawk|e|crew|dz|m|so|h|t)[- ]?(\d{1,3})\b/i;
 
 export function answer(sim: Sim, raw: string): Reply {
   const q = raw.toLowerCase();
+  if (sim.recon) {
+    if (/dispatch|evac|approve|reject|crew|engine|helicopter|tanker/.test(q)) return { text: 'I only coordinate simulated drone reconnaissance. I do not dispatch ground units, aircraft or public advisories.' };
+    if (/project|spread|advanc|faster/.test(q)) return projection(sim);
+    if (/chang|alert|new fire/.test(q)) {
+      const alerts = sim.recon.events.filter(e => e.severity === 'alert' || e.severity === 'critical').slice(-3);
+      return { text: alerts.map(e => e.title).join('\n') || 'No important fire changes detected at this time.' };
+    }
+    return { text: reconSummary(sim) };
+  }
   const cs = raw.match(CALLSIGN);
   if (/\bwhy\b/.test(q)) return why(sim, q);
   if (cs) {

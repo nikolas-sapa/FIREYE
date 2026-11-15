@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ARCHETYPE, lodForTier, type Archetype } from '../catalog';
 import { TILE_M, type HeightField } from '../frame';
-import type { Detail, InstanceGroup } from '../types';
+import { TruthClass, type Detail, type InstanceGroup } from '../types';
 import type { WorldMaterialSet } from './materials';
 import { geometryFor, triangles } from './geometry';
 import type { TileEntry, TileStore } from './store';
@@ -28,6 +28,13 @@ export class WorldView {
   private signature = '';
   private built = '';
   private builtAt = -Infinity;
+  private staged: ViewTile[] = [];
+  private stagedFar = 1e6;
+  private selection = '';
+  private requests: { tx: number; tz: number; detail: Detail; priority: number }[] = [];
+  private tiers = new Map<number, { tier: number; detail: Detail }>();
+  revision = 0;
+  rebuildMs = 0;
   tris = 0;
   draws = 0;
 
@@ -40,11 +47,18 @@ export class WorldView {
   /** Request and pick tiles for the current camera. Cheap; runs every renderer step for visible views. */
   select(store: TileStore, viewH: number, thin: boolean, quota = MAX_TILES) {
     const cam = this.camera, f = this.hf.frame;
+    const p = cam.position, q = cam.quaternion;
+    const selection = `${Math.round(p.x / 2)},${Math.round(p.y / 2)},${Math.round(p.z / 2)},${Math.round(q.x * 2000)},${Math.round(q.y * 2000)},${Math.round(q.z * 2000)},${Math.round(q.w * 2000)},${cam.fov},${viewH},${thin},${quota},${store.revision}`;
+    if (selection === this.selection) {
+      for (const r of this.requests) store.want(r.tx, r.tz, r.detail, r.priority);
+      return;
+    }
+    this.selection = selection; this.requests = [];
     cam.updateMatrixWorld();
     pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     frustum.setFromProjectionMatrix(pm);
-    const p = cam.position, ground = this.hf.height(p.x, p.z), agl = p.y - ground;
-    this.air = agl > 120;
+    const ground = this.hf.height(p.x, p.z), agl = p.y - ground;
+    this.air = agl > (this.air ? 110 : 130);
     const R = this.air ? Math.min(3200, agl * 2.4 + 700) : 1500;
     const k = viewH / (2 * Math.tan(cam.fov * Math.PI / 360));
     const [t0x, t0z] = f.tileOf(p.x - R, p.z - R), [t1x, t1z] = f.tileOf(p.x + R, p.z + R);
@@ -59,13 +73,15 @@ export class WorldView {
       if (d > R) continue;
       if (d > 0 && !frustum.intersectsBox(box)) continue;
       const ppm = k / Math.max(1, d);
-      const tier = ppm > 8 ? 0 : ppm > 1.2 ? 1 : 2;
-      const detail: Detail = (tier === 0 || d < 60) && d < 160 && !this.air ? 'near' : 'far';
+      const prev = this.tiers.get(tz * f.tilesX + tx);
+      const tier = ppm > (prev?.tier === 0 ? 7 : 9) ? 0 : ppm > (prev && prev.tier < 2 ? 1.05 : 1.35) ? 1 : 2;
+      const detail: Detail = (tier === 0 || d < 60) && d < (prev?.detail === 'near' ? 185 : 145) && !this.air ? 'near' : 'far';
       candidates.push({ tx, tz, tier, d, detail });
     }
     // The quota keeps the union of all views' tiles inside the shared LRU cap, so views never evict each other's tiles.
     candidates.sort((a, b) => a.d - b.d);
     const picked: ViewTile[] = [];
+    const tiers = new Map<number, { tier: number; detail: Detail }>();
     let missing = 0;
     // A near tile also keeps its far fallback cached, so it costs two cache slots.
     let cost = 0, taken = 0;
@@ -77,21 +93,22 @@ export class WorldView {
       const wanted = c.detail === 'near' ? near : far;
       // Rank-first priority: every camera gets its closest tiles before any camera gets distant ones.
       store.want(c.tx, c.tz, c.detail, taken * 1e5 + c.d);
-      const use = wanted ?? (c.detail === 'near' ? far : null);
+      this.requests.push({ tx: c.tx, tz: c.tz, detail: c.detail, priority: taken * 1e5 + c.d });
+      tiers.set(c.tz * f.tilesX + c.tx, c);
+      const use = wanted ?? near ?? far;
       if (!wanted) missing++;
       if (use) { store.touch(use.key); picked.push({ entry: use, tier: c.tier, d: c.d }); }
     }
-    this.tiles = picked;
+    this.tiers = tiers;
+    this.staged = picked;
     const beyond = candidates[taken];
-    this.objFar = Math.max(120, beyond ? beyond.d : R);
+    this.stagedFar = Math.max(120, beyond ? beyond.d : R);
     this.settled = missing === 0 && store.ready;
     this.thin = thin;
     // Near-tile instances switch LOD by their own distance, so the camera's coarse position is part of the signature.
-    this.lodRadius = 90 * viewH / 540;
-    const cell = this.tiles.some(t => t.tier === 0) ? `${Math.round(p.x / 40)},${Math.round(p.z / 40)},${Math.round(this.lodRadius)}` : '';
-    this.signature = this.tiles.map(t => `${t.entry.key}:${t.tier}`).sort().join('|') + (thin ? 't' : '') + cell;
-    this.mask.fill(0);
-    for (const t of this.tiles) this.mask[t.entry.data.tz * f.tilesX + t.entry.data.tx] = 255;
+    this.lodRadius = 65 * viewH / 540;
+    const cell = picked.some(t => t.tier === 0) ? `${Math.round(p.x / 40)},${Math.round(p.z / 40)},${Math.round(this.lodRadius)}` : '';
+    this.signature = picked.map(t => `${t.entry.key}:${t.tier}`).sort().join('|') + (thin ? 't' : '') + cell;
     // Ground focus for shadows and agents: where the optical axis meets the terrain (bounded).
     cam.getWorldDirection(v);
     let dist = 40;
@@ -123,7 +140,8 @@ export class WorldView {
   /** Rebuild instanced batches when the tile set or tiers changed (rate-limited by the caller). */
   rebuild(materials: WorldMaterialSet, now: number, force = false) {
     if (!this.dirty || (!force && now - this.builtAt < 280)) return false;
-    this.built = this.signature; this.builtAt = now;
+    if (!this.staged.length && this.tiles.length) return false;
+    const start = performance.now();
     type Part = { g: InstanceGroup; n: number; tileKey: string; idx?: Uint32Array };
     const plan = new Map<string, { a: Archetype; lod: number; parts: Part[]; total: number }>();
     const put = (a: Archetype, lod: number, part: Part) => {
@@ -133,9 +151,20 @@ export class WorldView {
       p.parts.push(part); p.total += part.n;
     };
     const cam = this.camera.position, r2 = this.lodRadius * this.lodRadius;
-    for (const t of this.tiles) for (const g of t.entry.data.groups) {
+    for (const t of this.staged) for (const g of t.entry.data.groups) {
       const a = ARCHETYPE.get(g.archetype);
       if (!a || a.maxTier < t.tier) continue;
+      if (a.kind === 'grass' && a.maxTier === 0) {
+        // Thousands of sub-pixel blades elsewhere in a near tile do not contribute to coverage.
+        // Keep every clump in the foreground, not an arbitrary fraction across the whole tile.
+        const radius = this.thin ? 40 : 95, indices: number[] = [], M = g.matrices;
+        for (let i = 0; i < g.count; i++) {
+          const dx = M[i * 16 + 12] - cam.x, dz = M[i * 16 + 14] - cam.z;
+          if (dx * dx + dz * dz < radius * radius) indices.push(i);
+        }
+        if (indices.length) put(a, 0, { g, n: indices.length, tileKey: t.entry.key, idx: Uint32Array.from(indices) });
+        continue;
+      }
       if (t.tier === 0 && a.lodCount > 1) {
         // Full geometry only near the camera; the rest of a near tile uses the next LOD.
         const near: number[] = [], far: number[] = [], M = g.matrices;
@@ -147,14 +176,15 @@ export class WorldView {
         if (far.length) put(a, lodForTier(a, 1), { g, n: far.length, tileKey: t.entry.key, idx: Uint32Array.from(far) });
         continue;
       }
-      const n = t.tier === 2 && this.thin && a.kind === 'veg' ? Math.ceil(g.count * 0.6) : g.count;
-      put(a, lodForTier(a, t.tier), { g, n, tileKey: t.entry.key });
+      // Keep canopy coverage on the wall: simplify the mesh rather than deleting 40% of the plants.
+      const tier = this.thin && a.kind === 'veg' && a.lodCount > 2 ? Math.max(2, t.tier) : t.tier;
+      put(a, lodForTier(a, tier), { g, n: g.count, tileKey: t.entry.key });
     }
     for (const [key, b] of this.batches) if (!plan.has(key)) { this.group.remove(b.mesh); b.mesh.dispose(); this.batches.delete(key); }
     const objects: ObjectRef[] = [];
     let nextId = 0;
     this.tris = 0;
-    for (const t of this.tiles) this.tris += t.entry.terrainTris + t.entry.roadTris;
+    for (const t of this.staged) this.tris += t.entry.terrainTris + t.entry.roadTris;
     for (const [key, p] of plan) {
       let b = this.batches.get(key);
       if (!b || b.capacity < p.total) {
@@ -169,7 +199,9 @@ export class WorldView {
         const geo = mesh.geometry;
         if (!geo.boundingBox) geo.computeBoundingBox();
         // Ankle-high clutter is skipped too: its shadows are sub-pixel but each caster costs a draw.
-        mesh.castShadow = p.a.shadow && p.lod === 0 && geo.boundingBox!.max.y > 0.7; mesh.receiveShadow = true;
+        const silhouette = p.a.cls === TruthClass.Tree || p.a.cls === TruthClass.Structure || p.a.cls === TruthClass.Vehicle;
+        mesh.userData.shadowCandidate = p.a.shadow && silhouette && p.lod === 0 && geo.boundingBox!.max.y > 0.7;
+        mesh.receiveShadow = true;
         mesh.customDepthMaterial = materials.depth(kind);
         mesh.userData.archetype = p.a.id;
         this.group.add(mesh);
@@ -202,7 +234,29 @@ export class WorldView {
       b.mesh.instanceColor!.clearUpdateRanges(); b.mesh.instanceColor!.addUpdateRange(0, p.total * 3); b.mesh.instanceColor!.needsUpdate = true;
       this.tris += b.tris * p.total;
     }
+    // Instance batches are not individually culled by the shadow pass. Keep the nearest four
+    // silhouette batches rather than paying for distant variants outside the small shadow camera.
+    const casters: { mesh: THREE.InstancedMesh; distance: number }[] = [];
+    for (const { mesh } of this.batches.values()) {
+      mesh.castShadow = false;
+      if (!mesh.userData.shadowCandidate) continue;
+      let distance = Infinity;
+      const m = mesh.instanceMatrix.array;
+      for (let i = 0; i < mesh.count; i++) {
+        const dx = m[i * 16 + 12] - cam.x, dz = m[i * 16 + 14] - cam.z;
+        distance = Math.min(distance, dx * dx + dz * dz);
+      }
+      casters.push({ mesh, distance });
+    }
+    casters.sort((a, b) => a.distance - b.distance).slice(0, 4).forEach(c => { c.mesh.castShadow = true; });
     this.objects = objects; this.objectCount = nextId;
+    // Commit terrain, instance batches and background coverage as one coherent view.
+    this.show(false);
+    this.tiles = this.staged; this.objFar = this.stagedFar;
+    this.mask.fill(0);
+    for (const t of this.tiles) this.mask[t.entry.data.tz * this.hf.frame.tilesX + t.entry.data.tx] = 255;
+    this.built = this.signature; this.builtAt = now; this.revision++;
+    this.rebuildMs = performance.now() - start;
     this.draws = this.batches.size + this.tiles.length * 2;
     return true;
   }
@@ -224,6 +278,14 @@ export class WorldView {
   }
 
   meshes() { return [...this.batches.values()].map(b => b.mesh); }
+  bytes() { let n = 0; for (const b of this.batches.values()) n += b.capacity * 19 * 4; return n; }
 
-  dispose() { for (const b of this.batches.values()) b.mesh.dispose(); this.batches.clear(); this.group.clear(); }
+  dispose() {
+    this.show(false);
+    for (const b of this.batches.values()) b.mesh.dispose();
+    this.batches.clear(); this.group.clear();
+    this.tiles = []; this.staged = []; this.objects = []; this.objectCount = 0;
+    this.mask.fill(0); this.signature = this.built = this.selection = ''; this.tiers.clear();
+    this.settled = false; this.builtAt = -Infinity;
+  }
 }

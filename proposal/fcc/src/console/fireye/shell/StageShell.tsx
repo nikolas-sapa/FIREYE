@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { PerspectiveFrustum } from 'cesium';
 import { Icon, Sparkline, cn } from '@ds';
 import type { Geo } from '../../contracts';
 import { useConsoleSelector } from '../../store';
@@ -7,6 +8,7 @@ import { FireyeOverlay } from '../../stage3d/sensors-layer';
 import type { StageEngine } from '../../stage3d/StageEngine';
 import { ThermalPass } from '../../stage3d/thermal';
 import { stageWorld, useStageWorld } from '../../stage3d/world';
+import { setMapLayers } from '../../stage3d/map-settings';
 import { localTime, packZone } from '../../ui/format';
 import { SENSOR_KIND_LABEL, sensorModel } from '../data/sensors';
 import { CameraControls } from './CameraControls';
@@ -14,8 +16,11 @@ import { dive, DiveLayer } from './Dive';
 import { LegendPanel } from './Legend';
 import { OrchestratorCallout, OrchestratorChat } from './OrchestratorCallout';
 import { isUav } from './sync';
-import { fireyeUi, useFireye } from './ui';
+import { mapFraming, type MapInsets } from './map-framing';
+import { fireyeUi, mapPatch, useFireye } from './ui';
 import { VisibilityPanel } from './Visibility';
+
+const ZERO_INSETS: MapInsets = { left: 0, right: 0, top: 0, bottom: 0 };
 
 const STATUS_TEXT = { nominal: 'text-bone-dim', watch: 'text-amber', alarm: 'text-ember', offline: 'text-bone-mute' } as const;
 
@@ -65,17 +70,43 @@ function SensorCard({ id }: { id: string }) {
 }
 
 /** The main globe plus every FIREYE overlay: thermal pass, IoT/camera glyphs, camera cluster, panels, callout, chat, dive. */
-export function StageShell({ onFocus, onEngine }: { onFocus: (g: Geo, rangeM?: number) => void; onEngine?: (e: StageEngine | null) => void }) {
+export function StageShell({ onFocus, onEngine, insets = ZERO_INSETS }: {
+  onFocus: (g: Geo, rangeM?: number) => void;
+  onEngine?: (e: StageEngine | null) => void;
+  insets?: MapInsets;
+}) {
   const [engine, setEngine] = useState<StageEngine | null>(null);
   useEffect(() => { onEngine?.(engine); }, [engine, onEngine]);
   const pack = useStageWorld((s) => s.pack);
+  const recon = useConsoleSelector(s => !!s.recon);
+  const stations = useConsoleSelector(s => s.recon?.stations);
+  const drones = useConsoleSelector(s => s.recon?.drones);
   const selected = useFireye((s) => s.selected);
+  const booted = useFireye((s) => s.booted);
   const thermal = useFireye((s) => s.thermal);
   const vis = useFireye((s) => s.vis);
   const panel = useFireye((s) => s.panel);
   const phase = useFireye((s) => s.dive.phase);
+  const nativeFrustum = useRef<{ engine: StageEngine; fov: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!engine || phase !== 'idle') return;
+    const { camera, scene } = engine.viewer, frustum = camera.frustum as PerspectiveFrustum;
+    const fov = frustum.fov;
+    if (fov === undefined) return;
+    const original = nativeFrustum.current?.engine === engine ? nativeFrustum.current : { engine, fov };
+    nativeFrustum.current = original;
+    const baseFov = original.fov;
+    const frame = () => {
+      const framing = mapFraming(scene.canvas.clientWidth, scene.canvas.clientHeight, insets, baseFov, frustum.near);
+      if (framing) { Object.assign(frustum, framing); scene.requestRender(); }
+    };
+    const observer = new ResizeObserver(frame);
+    observer.observe(scene.canvas); frame();
+    return () => observer.disconnect();
+  }, [engine, insets, phase]);
   const overlay = useRef<FireyeOverlay | null>(null);
   const pass = useRef<ThermalPass | null>(null);
+  useEffect(() => { fireyeUi.set({ reconProfile: recon }); setMapLayers(mapPatch(vis, recon)); }, [vis, recon]);
 
   useEffect(() => {
     if (!engine || !pack) return;
@@ -92,14 +123,15 @@ export function StageShell({ onFocus, onEngine }: { onFocus: (g: Geo, rangeM?: n
       if (changed.has('feeds')) o.setCams(s.feeds);
     });
     const ui = fireyeUi.get();
-    o.setVisible({ iot: ui.vis.iot, cams: ui.vis.groundCams, risk: ui.vis.risk, labels: ui.vis.labels });
+    o.setVisible({ iot: ui.vis.iot, cams: ui.vis.groundCams, risk: ui.vis.risk, labels: ui.vis.labels, footprints: ui.vis.footprints });
     p.set(ui.thermal);
     return () => { off(); o.destroy(); p.destroy(); overlay.current = null; pass.current = null; dive.attach(null); };
   }, [engine, pack]);
 
   useEffect(() => { pass.current?.set(thermal); }, [thermal, engine]);
-  useEffect(() => { overlay.current?.setVisible({ iot: vis.iot, cams: vis.groundCams, risk: vis.risk, labels: vis.labels }); }, [vis, engine]);
+  useEffect(() => { overlay.current?.setVisible({ iot: vis.iot, cams: vis.groundCams, risk: vis.risk, labels: vis.labels, footprints: vis.footprints }); }, [vis, engine]);
   useEffect(() => { overlay.current?.setSelected(selected?.startsWith('iot-') ? selected : null); }, [selected, engine]);
+  useEffect(() => { overlay.current?.setStations(stations ?? [], drones ?? []); }, [stations, drones, engine]);
 
   // The globe-wide Normal/Thermal switch also sets every drone sensor; per-drone choices can differ afterwards.
   const firstThermal = useRef(true);
@@ -132,20 +164,20 @@ export function StageShell({ onFocus, onEngine }: { onFocus: (g: Geo, rangeM?: n
 
   const inFeed = phase !== 'idle';
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <StageView mapControls={false} selectedId={selected?.startsWith('iot-') ? null : selected} onSelect={onSelect} onEngineReady={setEngine} />
+    <div className="fireye-map-stage relative h-full w-full overflow-hidden" style={{
+      '--fireye-map-left': `${insets.left}px`, '--fireye-map-right': `${insets.right}px`, '--fireye-map-bottom': `${insets.bottom}px`,
+    } as CSSProperties}>
+      <StageView mapControls={false} hud={booted} selectedId={selected?.startsWith('iot-') ? null : selected} onSelect={onSelect} onEngineReady={setEngine} />
       {engine && (
-        <div className={cn('pointer-events-none absolute inset-0 z-[2] transition-opacity duration-base ease-servo', inFeed && 'opacity-0')} aria-hidden={inFeed}>
+        <div style={insets} className={cn('fireye-boot-hud pointer-events-none absolute z-[2] transition-opacity duration-base ease-servo', inFeed && 'opacity-0')} aria-hidden={inFeed}>
           {thermal && (
             <span className="fireye-fade absolute bottom-[5.75rem] left-3 border border-amber/50 bg-ink-950/85 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-amber">
               Simulated thermal · not radiometric
             </span>
           )}
-          <div className="absolute left-3 top-3 flex justify-center" style={{ right: panel ? 384 : 80 }}>
-            <OrchestratorCallout onFocus={(g) => onFocus(g, 2400)} />
-          </div>
+          <OrchestratorCallout onFocus={(g) => onFocus(g, 2400)} />
           {selected?.startsWith('iot-') && <div className="absolute bottom-[7.5rem] left-3"><SensorCard id={selected} /></div>}
-          <div className="absolute bottom-0 right-3 top-3 flex flex-row-reverse items-start gap-2 pb-16">
+          <div className="absolute bottom-0 right-3 top-4 flex flex-row-reverse items-start gap-2 pb-16">
             <div className={cn('pointer-events-auto', inFeed && 'pointer-events-none')}><CameraControls engine={engine} orbitTarget={orbitTarget} /></div>
             {panel === 'legend' && <LegendPanel />}
             {panel === 'layers' && <VisibilityPanel />}
@@ -153,7 +185,7 @@ export function StageShell({ onFocus, onEngine }: { onFocus: (g: Geo, rangeM?: n
           <div className="absolute bottom-12 left-3"><OrchestratorChat /></div>
         </div>
       )}
-      <DiveLayer engine={engine} />
+      <DiveLayer engine={engine} contentInsets={insets} />
     </div>
   );
 }

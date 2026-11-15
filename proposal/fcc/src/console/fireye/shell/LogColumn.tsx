@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, cn, type IconName } from '@ds';
 import type { Geo, Ms } from '../../contracts';
 import { useConsoleSelector } from '../../store';
 import { localTime, packZone } from '../../ui/format';
 import { visibleAt } from '../data/chronicle';
-import { journal } from '../data/journal';
 import type { ChronicleEntry, ChronicleKind } from '../data/types';
 import { useChronicle } from './sync';
 import { fireyeUi, useFireye } from './ui';
@@ -19,14 +18,6 @@ const KIND_LABEL: Record<ChronicleKind, string> = {
 };
 const SEV_BAR = { info: 'bg-ink-600', watch: 'bg-amber', alert: 'bg-ember/70', critical: 'bg-ember' } as const;
 const PROV = { simulated: 'SIM', historical: 'HIST', derived: 'DERIVED' } as const;
-
-function useJournal(t: Ms): ChronicleEntry[] {
-  const v = useSyncExternalStore(journal.subscribe, journal.version, journal.version);
-  return useMemo(() => journal.list(t).map((e) => ({
-    id: `journal-${e.key}`, t: e.t, tab: 'ops' as const, kind: 'command' as const, severity: 'watch' as const, provenance: 'simulated' as const,
-    source: 'CHIEF · YOU', title: `${e.decision === 'approved' ? 'Approved' : 'Rejected'} · ${e.title}`, decision: e.decision,
-  })), [v, t]);
-}
 
 function Row({ e, fresh, tz, onFocus, onSeek }: { e: ChronicleEntry; fresh: boolean; tz: string; onFocus: (g: Geo) => void; onSeek: (t: Ms) => void }) {
   const [open, setOpen] = useState(false);
@@ -51,7 +42,6 @@ function Row({ e, fresh, tz, onFocus, onSeek }: { e: ChronicleEntry; fresh: bool
             <span className="mt-1.5 flex gap-3 font-mono text-micro uppercase text-bone-mute">
               <span role="button" tabIndex={0} onClick={(ev) => { ev.stopPropagation(); onSeek(e.t); }} onKeyDown={(ev) => { if (ev.key === 'Enter') { ev.stopPropagation(); onSeek(e.t); } }} className="underline hover:text-bone">Seek here</span>
               {e.url && <a href={e.url} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()} className="underline hover:text-bone">Source</a>}
-              {e.decision && <span className={e.decision === 'needed' ? 'text-signal' : 'text-bone-dim'}>{e.decision === 'needed' ? 'Decision requested' : e.decision}</span>}
             </span>
           )}
         </span>
@@ -71,9 +61,9 @@ export function LogColumn({ onFocus, onSeek }: { onFocus: (g: Geo) => void; onSe
   const seen = useRef<Ms>(t);
   const tz = packZone(pack).label;
   const tSec = Math.floor(t / 1000) * 1000;
-  const decisions = useJournal(tSec);
+  const events = useConsoleSelector(s => s.recon?.events);
   const visible = useMemo(() => (ch ? visibleAt(ch, tSec) : []), [ch, tSec]);
-  const all = useMemo(() => [...visible, ...decisions].sort((a, b) => b.t - a.t || (a.id < b.id ? 1 : -1)), [visible, decisions]);
+  const all = useMemo(() => [...visible, ...(events ?? []).filter(e => e.t <= tSec)].sort((a, b) => b.t - a.t || (a.id < b.id ? 1 : -1)), [visible, events, tSec]);
   const counts = { intake: all.filter((e) => e.tab === 'intake').length, ops: all.filter((e) => e.tab === 'ops').length };
   const inTab = all.filter((e) => e.tab === tab);
   const kinds = [...new Set(inTab.map((e) => e.kind))];

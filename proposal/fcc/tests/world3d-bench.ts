@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { loadScenario, clc2018 } from '../src/console/scenario/load';
 import { buildSource } from '../src/console/world3d/gen/source';
 import { createContext, generateTile, generateFar } from '../src/console/world3d/gen/tile';
+import assert from 'node:assert/strict';
 
 export async function loadPack() {
   const root = resolve('public');
@@ -22,10 +23,15 @@ const src = buildSource(pack, clc2018(pack), { imagery: { width: W, height: H, b
 let t = performance.now();
 const ctx = createContext(src);
 console.log('context ms', (performance.now() - t).toFixed(1), 'tiles', ctx.frame.tilesX, ctx.frame.tilesZ);
+const [cx, cz] = ctx.frame.tileOf(ctx.frame.x(23.955), ctx.frame.z(38.047));
+const cold = generateTile(ctx, cx, cz, 'near');
+console.log('first near tile ms', cold.ms.toFixed(1), '(synthetic imagery fixture; browser QA uses the actual JPEG)');
+assert.ok(cold.ms <= 40, `first tile exceeds 40 ms: ${cold.ms}`);
 t = performance.now();
 const far = generateFar(ctx);
-console.log('far ms', (performance.now() - t).toFixed(1), 'chunks', far.chunks.length, 'verts', far.chunks.reduce((s, c) => s + c.mesh.position.length / 3, 0));
-const [cx, cz] = ctx.frame.tileOf(ctx.frame.x(23.955), ctx.frame.z(38.047));
+console.log('far ms', (performance.now() - t).toFixed(1), 'chunks', far.chunks.length,
+  'terrainVerts', far.chunks.reduce((s, c) => s + c.mesh.position.length / 3, 0),
+  'contextChunks', far.context?.length ?? 0, 'contextVerts', far.context?.reduce((s, c) => s + c.position.length / 3, 0) ?? 0);
 for (const detail of ['near', 'far'] as const) {
   const times: number[] = [];
   let maxObj = 0, maxInst = 0, worst = '';
@@ -38,4 +44,5 @@ for (const detail of ['near', 'far'] as const) {
   }
   times.sort((a, b) => a - b);
   console.log(detail, 'median', times[times.length >> 1].toFixed(1), 'p90', times[Math.floor(times.length * 0.9)].toFixed(1), 'max', times[times.length - 1].toFixed(1), 'maxObjects', maxObj, 'maxInstances', maxInst, 'worst', worst);
+  assert.ok(times[times.length - 1] <= 40, `${detail} worst tile exceeds 40 ms`);
 }

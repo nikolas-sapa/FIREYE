@@ -99,9 +99,10 @@ function TiltSlider({ engine }: { engine: StageEngine }) {
 export function CameraControls({ engine, orbitTarget }: { engine: StageEngine; orbitTarget: () => { lon: number; lat: number } | null }) {
   const [top, setTop] = useState(false);
   const orbiting = useFireye((s) => s.orbit);
+  const booted = useFireye((s) => s.booted);
   const stopRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (!orbiting) { stopRef.current?.(); stopRef.current = null; return; }
+    if (!booted || !orbiting) { stopRef.current?.(); stopRef.current = null; return; }
     const stop = cameraOps.orbit(engine, orbitTarget());
     stopRef.current = () => { stop(); };
     // Any user drag inside the orbit stops it; mirror that in the button state.
@@ -110,7 +111,7 @@ export function CameraControls({ engine, orbitTarget }: { engine: StageEngine; o
     canvas.addEventListener('pointerdown', off);
     canvas.addEventListener('wheel', off, { passive: true });
     return () => { canvas.removeEventListener('pointerdown', off); canvas.removeEventListener('wheel', off); stop(); };
-  }, [orbiting, engine, orbitTarget]);
+  }, [booted, orbiting, engine, orbitTarget]);
   return (
     <div className="fireye-enter flex flex-col items-center gap-2" style={{ ['--i' as string]: 5 }}>
       <CompassRing engine={engine} />

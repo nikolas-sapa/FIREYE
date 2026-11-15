@@ -22,7 +22,7 @@ const evaluate = code => ab(['eval', '-b', Buffer.from(code).toString('base64')]
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 try {
-  await ab(['--allowed-domains','127.0.0.1,localhost','open',`${origin}/console.html?t=17:00&boot=0&tokens=0&context=0&appearance=dark`]);
+  await ab(['--allowed-domains','127.0.0.1,localhost','open',`${origin}/console.html?mode=fireye&t=17:00&boot=0&tokens=0&context=0&appearance=dark`]);
   await ab(['wait','--fn',`!!document.querySelector('canvas[data-world="world3d"][data-ready="true"]')`]);
   await ab(['find','role','button','click','--name','1×','--exact']);
   await ab(['click','button[aria-label^="AETOS-2 · IR GIMBAL."]']);

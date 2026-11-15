@@ -95,6 +95,7 @@ export function rebuildCoverage(sim: Sim): void {
   const taken = new Set<string>();
   const free: string[] = [];
   for (const u of sim.units) {
+    if (sim.profile === 'recon') break;
     if (u.kind !== 'drone') continue;
     const m = sim.umeta.get(u.id);
     if (!m || m.plan.mode === 'orbit' || u.taskId) continue;

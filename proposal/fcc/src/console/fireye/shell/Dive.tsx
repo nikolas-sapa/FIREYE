@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { Icon, cn } from '@ds';
 import { cameraOps, type SavedView } from '../../stage3d/camera-ops';
 import { prefersReducedMotion } from '../../stage3d/easing';
@@ -36,7 +36,7 @@ export const dive = {
     const my = ++token;
     fireyeUi.set({ orbit: false, panel: null });
     saved = cameraOps.save(engine);
-    if (isUav(feed) && feed.unitId) {
+    if (isUav(feed) && feed.unitId && !feed.offlineReason) {
       fireyeUi.set({ selected: feed.unitId, dive: { phase: 'lock', feedId, unitId: feed.unitId } });
       await wait(LOCK_MS);
       if (my !== token || !engine) return;
@@ -105,7 +105,7 @@ function TargetLock({ engine, unitId, label }: { engine: StageEngine; unitId: st
 }
 
 /** Everything the dive draws above the globe: target lock, hand-off wipe and the full-feed HUD. */
-export function DiveLayer({ engine }: { engine: StageEngine | null }) {
+export function DiveLayer({ engine, contentInsets }: { engine: StageEngine | null; contentInsets?: CSSProperties }) {
   const d = useFireye((s) => s.dive);
   const feed = useStageWorld((s) => (d.feedId ? s.feeds.find((f) => f.id === d.feedId) : undefined));
   const unit = useStageWorld((s) => (d.unitId ? s.units.find((u) => u.id === d.unitId) : undefined));
@@ -116,8 +116,9 @@ export function DiveLayer({ engine }: { engine: StageEngine | null }) {
   return (
     <div className="absolute inset-0 z-[3]">
       {(d.phase === 'lock' || d.phase === 'flying') && engine && d.unitId && <TargetLock engine={engine} unitId={d.unitId} label={name} />}
+      <div className="absolute inset-0" style={contentInsets}>
       {d.phase === 'flying' && (
-        <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 top-16 flex justify-center">
           <span className="fireye-fade bg-ink-950/90 px-2 py-1 font-mono text-micro uppercase tracking-[0.16em] text-bone-dim">Transferring to {name} · {feed.modality ?? 'unknown'} source</span>
         </div>
       )}
@@ -131,13 +132,13 @@ export function DiveLayer({ engine }: { engine: StageEngine | null }) {
       {d.phase === 'feed' && (
         <>
           <Corners className="fireye-fade m-6" />
-          <div className="absolute left-6 top-6 flex items-center gap-2">
+          <div data-feed-toolbar className="absolute left-6 right-6 top-16 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => void dive.exit()} autoFocus
-              className="flex h-8 items-center gap-2 border border-line-strong bg-ink-950/90 px-3 font-mono text-micro uppercase tracking-[0.14em] text-bone hover:bg-ink-800 focus-visible:outline focus-visible:outline-1 focus-visible:outline-signal">
+              className="flex h-8 shrink-0 items-center gap-2 border border-line-strong bg-ink-950/90 px-3 font-mono text-micro uppercase tracking-[0.14em] text-bone hover:bg-ink-800 focus-visible:outline focus-visible:outline-1 focus-visible:outline-signal">
               <Icon name="chevron-left" size={11} />Back to globe<span className="text-bone-mute">Esc</span>
             </button>
-            <span className="flex h-8 items-center gap-2 border border-line bg-ink-950/90 px-3 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim">
-              {feed.label}
+            <span className="flex h-8 min-w-0 max-w-full items-center gap-2 border border-line bg-ink-950/90 px-3 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim">
+              <span className="truncate">{feed.label}</span>
             </span>
             {uav && (
               <div role="group" aria-label="Display palette, not source modality" className="flex h-8 border border-line-strong bg-ink-950/90">
@@ -152,6 +153,7 @@ export function DiveLayer({ engine }: { engine: StageEngine | null }) {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

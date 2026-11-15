@@ -1,7 +1,10 @@
 import { ARCHETYPE, CATALOG } from '../catalog';
 import { HeightField, LocalFrame, TILE_M } from '../frame';
-import { hex, mix, srgbToLinear, type Rgb } from '../mesh';
+import { hex, mix, srgbToLinear, MeshBuilder, type Rgb } from '../mesh';
 import { Rng, hash2, valueNoise } from '../rng';
+import { describeBuilding, type BuildingDescriptor } from './buildings';
+import { cropRows, landscapeAt } from './landscape';
+export { buildingScale } from './buildings';
 import { Flag, TruthClass, type CuratedSite, type Detail, type DumpInfo, type DumpKind, type FarTerrain, type InstanceGroup, type MeshArrays, type TileData, type WorldSource } from '../types';
 
 /* Deterministic tile generator. Pure function of (source, tile, detail); identical output in workers and tests. */
@@ -14,6 +17,7 @@ export interface GenContext {
   bldIdx: Map<number, number[]>;
   siteIdx: Map<number, CuratedSite[]>;
   image?: (x: number, z: number) => Rgb | null;
+  building: (index: number) => BuildingDescriptor;
 }
 
 const ROAD_HW: Record<string, number> = { highway: 3.8, road: 2.3, track: 1.3 };
@@ -40,7 +44,7 @@ export function createContext(src: WorldSource): GenContext {
   });
   // Indexed into every tile its footprint can reach; only the tile holding the centre places it.
   src.buildings.forEach((b, i) => {
-    const [t0x, t0z] = frame.tileOf(b.x - 14, b.z - 14), [t1x, t1z] = frame.tileOf(b.x + 14, b.z + 14);
+    const [t0x, t0z] = frame.tileOf(b.x - 22, b.z - 22), [t1x, t1z] = frame.tileOf(b.x + 22, b.z + 22);
     for (let tz = t0z; tz <= t1z; tz++) for (let tx = t0x; tx <= t1x; tx++) {
       if (!frame.validTile(tx, tz)) continue;
       const k = key(tx, tz); let list = bldIdx.get(k); if (!list) bldIdx.set(k, list = []); list.push(i);
@@ -68,7 +72,20 @@ export function createContext(src: WorldSource): GenContext {
       return [c(0), c(1), c(2)];
     };
   }
-  return { src, hf, frame, roadIdx, bldIdx, siteIdx, image };
+  const buildings = new Map<number, BuildingDescriptor>();
+  const building = (i: number) => {
+    let descriptor = buildings.get(i);
+    if (!descriptor) {
+      const b = src.buildings[i], [tx, tz] = frame.tileOf(b.x, b.z), indices = new Set<number>();
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        for (const ri of roadIdx.get(key(tx + dx, tz + dz)) ?? []) indices.add(ri);
+      }
+      descriptor = describeBuilding(b, hf, [...indices].map(ri => src.roads[ri]));
+      buildings.set(i, descriptor);
+    }
+    return descriptor;
+  };
+  return { src, hf, frame, roadIdx, bldIdx, siteIdx, image, building };
 }
 
 /* ---------------------------------------------------------------- instance accumulation */
@@ -127,7 +144,6 @@ const P = {
   field: hex(0xb7a676), sand: hex(0xd8c8a2), paved: hex(0x9d9890), dump: hex(0x6d6253), seabed: hex(0x6e8f8c), asphalt: hex(0x67676a),
   asphaltWorn: hex(0x85827c), dirt: hex(0xa08a6a), line: hex(0xe8e4d6),
 };
-const WALLS: [Rgb, number][] = [[hex(0xf1ede4), 6], [hex(0xe7d5b2), 2], [hex(0xdcbf8f), 1], [hex(0xe9cfc4), 0.5], [hex(0xd5dde0), 0.5]];
 const CARS: [Rgb, number][] = [[hex(0xeeeeee), 3.5], [hex(0xa9adb2), 2], [hex(0x1d1f22), 1], [hex(0x9a2a24), 0.8], [hex(0x2c4d8a), 1], [hex(0x5d6166), 1.2], [hex(0xc9b48c), 0.5]];
 const BAGS: [Rgb, number][] = [[hex(0x1b1c1e), 6], [hex(0x2f5fa0), 1.5], [hex(0x3c6b3a), 1], [hex(0xdcdcd6), 1.5]];
 const BOTTLES: [Rgb, number][] = [[hex(0x2f63b8), 6], [hex(0xe07a2a), 3], [hex(0x8d9196), 1]];
@@ -137,7 +153,6 @@ const FABRIC: [Rgb, number][] = [[hex(0x7d6a55), 2], [hex(0x4b5560), 2], [hex(0x
 const BRIGHT: [Rgb, number][] = [[hex(0xd23a2e), 1], [hex(0xe6c229), 1], [hex(0x2b74c8), 1], [hex(0xf2f2f2), 1], [hex(0x2a8a4a), 1]];
 const tintFor = (id: string, r: Rng): Rgb | undefined => {
   switch (id) {
-    case 'house-flat': case 'house-tiled': case 'apartments': return r.weighted(WALLS);
     case 'car': case 'pickup': return r.weighted(CARS);
     case 'trash-bag': return r.weighted(BAGS);
     case 'gas-bottle': return r.weighted(BOTTLES);
@@ -149,6 +164,16 @@ const tintFor = (id: string, r: Rng): Rgb | undefined => {
   }
 };
 const vegTint = (r: Rng, k = 0.14): Rgb => { const b = 1 - k + r.next() * 2 * k, h = (r.next() - 0.5) * k; return [b * (1 + h), b, b * (1 - h)]; };
+
+/** Correlated grove colour and independent crown/height variation, using the same inexpensive meshes. */
+export function plantStyle(x: number, z: number, r: Rng, young = false) {
+  const patch = valueNoise(x / 48, z / 48, 83);
+  const light = r.range(0.78, 1.2) * (0.86 + patch * 0.28);
+  const warm = (patch - 0.5) * 0.28 + r.range(-0.07, 0.07);
+  const crown = young ? r.range(0.5, 0.8) : r.range(0.9, 1.5);
+  return { sx: crown, sz: crown * r.range(0.88, 1.12), sy: young ? r.range(0.45, 0.75) : r.range(0.72, 1.32),
+    tint: [light * (1 + warm), light, light * (1 - warm)] as Rgb };
+}
 
 /* ---------------------------------------------------------------- land-cover rules (CORINE 2018 codes) */
 
@@ -184,13 +209,15 @@ function landGround(ctx: GenContext, x: number, z: number, nz: number, nz2: numb
   const clc = hf.clcAt(wx, wz), fuel = hf.fuelAt(wx, wz), dem = hf.dem(x, z);
   if (dem < -0.4 || fuel === 1) return { base: P.seabed, flag: Flag.GroundWater, cls: TruthClass.Water, img: 0.2 };
   if (dem < 2.2 && (hf.isWater(x + 25, z) || hf.isWater(x, z + 25) || hf.isWater(x - 25, z) || hf.isWater(x, z - 25))) return { base: P.sand, flag: Flag.GroundSand, cls: TruthClass.Sand, img: 0.3 };
-  if (coverOf(clc, fuel).forestFloor) return { base: mix(P.litter, P.soil, nz * 0.5), flag: Flag.GroundLitter, cls: TruthClass.Litter, img: 0.45 };
+  if (coverOf(clc, fuel).forestFloor) return { base: mix(P.litter, P.soil, landscapeAt(x, z).clearing * 0.55), flag: Flag.GroundLitter, cls: TruthClass.Litter, img: 0.45 };
   if (clc === 333 || fuel === 2) {
     const g = nz > 0.55;
     return g ? { base: mix(P.grassDry, P.bare, nz2 * 0.5), flag: Flag.GroundGrass, cls: TruthClass.GrassGround, img: 0.5 } : { base: mix(P.bare, P.rock, nz2), flag: Flag.GroundBare, cls: TruthClass.Bare, img: 0.5 };
   }
   if (clc === 211 || clc === 242 || clc === 221 || clc === 243) return { base: mix(P.field, P.soil, nz2 * 0.4), flag: Flag.GroundField, cls: TruthClass.Field, img: 0.45 };
   if (URBAN(clc)) {
+    const stand = landscapeAt(x, z).canopy;
+    if (clc === 112 && stand > 0.56) return { base: mix(P.litter, P.grassDry, (1 - stand) * 0.65), flag: Flag.GroundLitter, cls: TruthClass.Litter, img: 0.45 };
     const g = nz < 0.78;
     return g ? { base: mix(P.grassDry, P.soil, nz2 * 0.5), flag: Flag.GroundGrass, cls: TruthClass.GrassGround, img: 0.55 } : { base: mix(P.paved, P.soil, nz2 * 0.6), flag: Flag.GroundPaved, cls: TruthClass.Paved, img: 0.55 };
   }
@@ -207,7 +234,14 @@ function imageAt(ctx: GenContext, x: number, z: number, r: number): Rgb | null {
 function groundColour(ctx: GenContext, g: Ground, x: number, z: number, v: number, out: Float32Array, o: number, footprint = 0) {
   const im = imageAt(ctx, x, z, footprint * 0.5);
   const c = im ? mix(g.base, [im[0] * 1.15, im[1] * 1.15, im[2] * 1.15], g.img) : g.base;
-  out[o] = c[0] * v; out[o + 1] = c[1] * v; out[o + 2] = c[2] * v;
+  // Broad soil/vegetation colour patches survive the transition from 3D plants to the far terrain.
+  // This is illustrative surface variation, not an extra measured land-cover layer.
+  const patch = valueNoise(x / 38, z / 38, 67) - 0.5;
+  const organic = g.flag === Flag.GroundGrass || g.flag === Flag.GroundLitter || g.flag === Flag.GroundField;
+  const k = organic ? 1 + patch * 0.38 : 1 + patch * 0.14;
+  out[o] = c[0] * v * k * (1 + patch * 0.12);
+  out[o + 1] = c[1] * v * k;
+  out[o + 2] = c[2] * v * k * (1 - patch * 0.12);
 }
 
 /* ---------------------------------------------------------------- dumps */
@@ -264,49 +298,19 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
     }
   }
 
-  // Nearest road (point + unit direction) within `maxD`.
-  const nearestRoad = (x: number, z: number, maxD: number) => {
-    let best: { d: number; px: number; pz: number; ux: number; uz: number; kind: string } | null = null;
-    for (const r of roads) for (let i = 0; i + 1 < r.pts.length / 2; i++) {
-      const ax = r.pts[i * 2], az = r.pts[i * 2 + 1], bx = r.pts[i * 2 + 2], bz = r.pts[i * 2 + 3];
-      const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
-      const px = ax + dx * t, pz = az + dz * t, d = Math.hypot(x - px, z - pz);
-      if (d < maxD && (!best || d < best.d)) { const l = Math.sqrt(l2); best = { d, px, pz, ux: dx / l, uz: dz / l, kind: r.kind }; }
-    }
-    return best;
-  };
-
   /* ------------------------------------------------ buildings and yards */
   const homes: number[] = [], nodes: number[] = [], pasture: number[] = [];
   for (const bi of ctx.bldIdx.get(tileKey) ?? []) {
     const b = src.buildings[bi];
     if (hf.isWater(b.x, b.z)) continue;
-    const r = new Rng(b.id, 17);
-    const k = b.kind;
-    const id = /church|chapel|temple/.test(k) ? 'chapel' : k === 'greenhouse' ? 'greenhouse'
-      : /industrial|warehouse|commercial|retail|supermarket|service/.test(k) ? 'warehouse'
-        : /hut|shed|garage|farm_auxiliary|stable|bunker|quonset/.test(k) ? 'shed'
-          : /apartments|hotel|school|kindergarten|hospital|public/.test(k) || r.chance(0.07) ? 'apartments'
-            : r.chance(0.58) ? 'house-flat' : 'house-tiled';
-    const dims: Record<string, [number, number]> = { 'house-flat': [10, 8], 'house-tiled': [9.7, 8.2], apartments: [16.4, 11.4], chapel: [5, 10], shed: [3.8, 3], greenhouse: [8, 20], warehouse: [20, 14] };
-    const s = id === 'greenhouse' || id === 'warehouse' ? r.range(0.8, 1.1) : r.range(0.82, 1.12);
-    const [w, d] = dims[id];
-    if (!inTile(b.x, b.z)) { mark(b.x, b.z, Math.hypot(w, d) * s / 2 + 1, M_BUILD); continue; }
-    const road = nearestRoad(b.x, b.z, 45);
-    let ry: number;
-    if (road) { const dx = road.px - b.x, dz = road.pz - b.z; ry = Math.abs(dx) + Math.abs(dz) > 0.1 ? Math.atan2(dx, dz) : Math.atan2(road.ux, road.uz); }
-    else ry = r.range(0, Math.PI * 2);
-    ry = Math.round(ry / (Math.PI / 2) * 4) / 4 * (Math.PI / 2) + r.range(-0.03, 0.03);
-    const cy = Math.cos(ry), sy = Math.sin(ry);
-    const local = (lx: number, lz: number): [number, number] => [b.x + lx * cy + lz * sy, b.z - lx * sy + lz * cy];
-    // Building rests on its lowest corner so slopes never leave it floating.
-    let y = Infinity;
-    for (const [lx, lz] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, 0]]) { const [cx, cz] = local(lx * s, lz * s); y = Math.min(y, hf.height(cx, cz)); }
-    G.add(id, b.x, y - 0.15, b.z, { ry, s, tint: tintFor(id, r) });
-    for (let lz = -d / 2 - 1; lz <= d / 2 + 1; lz += 1.5) for (let lx = -w / 2 - 1; lx <= w / 2 + 1; lx += 1.5) { const [cx, cz] = local(lx * s, lz * s); mark(cx, cz, 1, M_BUILD); }
+    const r = new Rng(b.id, 29);
+    const desc = ctx.building(bi), { id, w, d, sx, sz, sy, ry, y, low, local, tint, phase } = desc;
+    for (let lz = -d / 2 - 1; lz <= d / 2 + 1; lz += 1.5) for (let lx = -w / 2 - 1; lx <= w / 2 + 1; lx += 1.5) { const [cx, cz] = local(lx * sx, lz * sz); mark(cx, cz, 1, M_BUILD); }
+    if (!inTile(b.x, b.z)) continue;
+    G.add(id, b.x, y, b.z, { ry, sx, sy, sz, tint, phase });
+    if (y - low > 0.35) G.add('foundation', b.x, low - 0.1, b.z, { ry, sx: w * sx, sy: y - low + 0.12, sz: d * sz });
     if (id === 'greenhouse' || id === 'warehouse' || id === 'chapel') continue;
-    const [hx, hz] = local(0, (d / 2 + 2) * s);
+    const [hx, hz] = local(0, d * sz / 2 + 2);
     homes.push(hx, hz); nodes.push(hx, hz);
     if (id === 'shed') continue;
     // Yard props in the building's frame: +z faces the road.
@@ -317,7 +321,7 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
       mark(px, pz, rad, M_TAKEN);
       return true;
     };
-    const W = w * s / 2, D = d * s / 2;
+    const W = w * sx / 2, D = d * sz / 2;
     if (r.chance(0.55)) tryPut(r.chance(0.82) ? 'car' : 'pickup', r.range(-W, W), D + r.range(2.5, 4), { ry: Math.PI / 2 + (r.chance(0.5) ? Math.PI : 0) }, 2.2);
     if (r.chance(0.36)) tryPut('wheelie-bin', W + 1, D + 1.5, { ry: r.range(-0.3, 0.3) }, 0.6);
     if (r.chance(0.35)) tryPut('gas-bottle', r.chance(0.5) ? W + 0.45 : -W - 0.45, r.range(-D, D), { ry: r.range(0, 6) }, 0.3);
@@ -334,10 +338,10 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
       const wid = edge < 0.45 ? 'wall' : edge < 0.55 ? 'fence' : 'wood-fence';
       for (let lx = -W - 2.5; lx < W + 2.5; lx += 1) { const [px, pz] = local(lx + 0.5, D + 1.6); if (free(px, pz, M_ROAD | M_WATER)) G.add(wid, px, hf.height(px, pz) - 0.05, pz, { ry: ry }); }
     }
-    for (let i = r.int(0, 3); i > 0; i--) {
+    for (let i = r.int(2, 5); i > 0; i--) {
       const sp = r.weighted([['olive', 0.3], ['aleppo-pine', 0.25], ['cypress', 0.2], ['citrus', 0.15], ['palm', 0.05], ['fig', 0.05]] as const);
       const ang = r.range(0, Math.PI * 2), dist = Math.max(W, D) + r.range(2, 7);
-      tryPut(sp, Math.cos(ang) * dist, Math.sin(ang) * dist - 1, { ry: r.range(0, 6), s: r.range(0.7, 1.15), tint: vegTint(r), phase: r.next() }, 2);
+      tryPut(sp, Math.cos(ang) * dist, Math.sin(ang) * dist - 1, { ry: r.range(0, 6), ...plantStyle(b.x, b.z, r), phase: r.next() }, 2);
     }
     if (r.chance(0.35)) for (let lx = -W; lx < W; lx += 1.6) tryPut('oleander', lx, D + 0.9, { ry: r.range(0, 6), s: r.range(0.8, 1.1), tint: vegTint(r), phase: r.next() }, 0.5);
   }
@@ -478,42 +482,41 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
     const clc = hf.clcAt(x, z), cov = coverOf(clc, hf.fuelAt(x, z));
     if (!cov.tree || !free(x, z)) return;
     if (clc === 242 && valueNoise(x / 90, z / 90, 4) > 0.5) return; // orchard patches handled below
-    const k = clc === 112 || cov.forestFloor || clc === 324 ? 0.3 + 1.4 * canopy(x, z) : 1;
+    const patch = landscapeAt(x, z).trees;
+    const k = (clc === 112 || cov.forestFloor || clc === 324 ? 0.65 + 0.95 * canopy(x, z) : 1) * patch;
     const scarK = inScar(x, z) ? 0.35 : 1;
-    if (!r.chance(cov.tree * k * scarK)) return;
+    if (!r.chance(cov.tree * k * scarK * 1.18)) return;
     const sp = r.weighted(cov.trees);
-    G.add(sp, x, hf.height(x, z) - 0.1, z, { ry: r.range(0, 6.28), s: sp === 'pine-young' ? r.range(0.4, 0.65) : r.range(0.75, 1.25), tint: vegTint(r), phase: r.next() });
+    G.add(sp, x, hf.height(x, z) - 0.1, z, { ry: r.range(0, 6.28), ...plantStyle(x, z, r, sp === 'pine-young'), phase: r.next() });
     mark(x, z, 1, M_TAKEN);
   });
   // Olive groves in rows (CLC 242 patches).
   {
-    const ang = hash2(tx, tz, 8) * Math.PI, ca = Math.cos(ang), sa = Math.sin(ang), step = 7;
-    for (let v = -TILE_M; v < TILE_M; v += step) for (let u = -TILE_M; u < TILE_M; u += step) {
-      const x = x0 + 128 + u * ca - v * sa, z = z0 + 128 + u * sa + v * ca;
-      if (!inTile(x, z) || hf.clcAt(x, z) !== 242 || valueNoise(x / 90, z / 90, 4) <= 0.5 || !free(x, z)) continue;
+    cropRows([x0, z0, x0 + TILE_M, z0 + TILE_M], 7, 7, 0.31, (x, z) => {
+      if (hf.clcAt(x, z) !== 242 || valueNoise(x / 90, z / 90, 4) <= 0.5 || !free(x, z)) return;
       const r = new Rng(Math.round(x * 3), Math.round(z * 3), 43);
-      if (r.chance(0.12)) continue;
+      if (r.chance(0.12)) return;
       G.add('olive', x, hf.height(x, z) - 0.1, z, { ry: r.range(0, 6), s: r.range(0.7, 1), tint: vegTint(r), phase: r.next() });
       mark(x, z, 1.5, M_TAKEN);
-    }
+    });
   }
   // Vineyard rows (CLC 221).
   {
-    const ang = hash2(tx, tz, 12) * Math.PI, ca = Math.cos(ang), sa = Math.sin(ang);
-    for (let v = -TILE_M; v < TILE_M; v += 2.6) for (let u = -TILE_M; u < TILE_M; u += 4.4) {
-      const x = x0 + 128 + u * ca - v * sa, z = z0 + 128 + u * sa + v * ca;
-      if (!inTile(x, z) || hf.clcAt(x, z) !== 221 || !free(x, z)) continue;
+    const ang = 0.48;
+    cropRows([x0, z0, x0 + TILE_M, z0 + TILE_M], 2.6, 4.4, ang, (x, z) => {
+      if (hf.clcAt(x, z) !== 221 || !free(x, z)) return;
       G.add('vine-row', x, hf.height(x, z), z, { ry: -ang, tint: vegTint(new Rng(Math.round(x), Math.round(z))), phase: hash2(Math.round(x), Math.round(z)) });
-    }
+    });
   }
   scatter(3, 202, (x, z, r) => {
     const clc = hf.clcAt(x, z), cov = coverOf(clc, hf.fuelAt(x, z));
     if (!cov.shrub || !free(x, z)) return;
     const sc = inScar(x, z);
-    if (!r.chance(cov.shrub * (sc ? 1.2 : 1) * (0.7 + 0.6 * valueNoise(x / 25, z / 25, 9)))) return;
+    const land = landscapeAt(x, z);
+    if (!r.chance(cov.shrub * (sc ? 1.25 : 1.18) * land.shrubs * (cov.forestFloor ? 0.55 + land.clearing * 0.75 : 1)) || hf.slope(x, z) > 1.1) return;
     let sp = r.weighted(cov.shrubs);
     if (sc && r.chance(0.25)) sp = 'dry-shrub';
-    G.add(sp, x, hf.height(x, z) - 0.05, z, { ry: r.range(0, 6.28), s: r.range(0.6, 1.4), sy: r.range(0.75, 1.2), tint: vegTint(r, 0.18), phase: r.next() });
+    G.add(sp, x, hf.height(x, z) - 0.05, z, { ry: r.range(0, 6.28), ...plantStyle(x, z, r), sy: r.range(0.6, 1.45), phase: r.next() });
   });
   scatter(8, 303, (x, z, r) => {
     if (!inScar(x, z) || !free(x, z) || !r.chance(0.22)) return;
@@ -533,6 +536,8 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
     if ((clc === 333 || clc === 321 || clc === 324 || clc === 211) && r.chance(0.15)) pasture.push(x, z);
   });
   scatter(2, 606, (x, z, r) => {
+    // CLC inland marsh/peat only. Proximity to the Aegean is not evidence of reed habitat.
+    if (hf.clcAt(x, z) !== 411 && hf.clcAt(x, z) !== 412) return;
     if (!free(x, z) || !r.chance(0.35)) return;
     let wet = false;
     for (let k = 0; k < 6 && !wet; k++) wet = hf.isWater(x + Math.cos(k) * 14, z + Math.sin(k) * 14);
@@ -544,15 +549,17 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
       if (!inTile(x, z) || bits & (M_ROAD | M_BUILD | M_WATER)) return;
       const clc = hf.clcAt(x, z), cov = coverOf(clc, hf.fuelAt(x, z));
       const verge = bits & M_VERGE ? 0.35 : 0, dump = dumps.some(d => Math.hypot(x - d.x, z - d.z) < d.r + 2) ? 0.3 : 0;
-      const p = Math.min(0.95, cov.grass * (0.55 + 0.9 * valueNoise(x / 14, z / 14, 21)) + verge + dump);
+      const p = Math.min(0.95, cov.grass * (0.55 + 0.9 * valueNoise(x / 14, z / 14, 21)) * (cov.forestFloor ? 0.4 + landscapeAt(x, z).clearing : 1) + verge + dump);
       if (!r.chance(p)) return;
       const tall = r.chance(cov.tall + verge * 0.6 + dump);
-      G.add(tall ? 'tall-grass' : 'grass', x, hf.height(x, z) - 0.03, z, { ry: r.range(0, 6.28), s: r.range(0.8, 1.5), sy: r.range(0.7, 1.3), tint: vegTint(r, 0.2), phase: r.next() });
+      G.add(tall ? 'tall-grass' : 'grass', x, hf.height(x, z) - 0.03, z, { ry: r.range(0, 6.28), sx: r.range(1.4, 2.5), sz: r.range(1.4, 2.5), sy: r.range(0.7, 1.5), tint: vegTint(r, 0.28), phase: r.next() });
     });
   }
 
   /* ------------------------------------------------ terrain mesh */
-  const step = detail === 'near' ? TILE_M / 96 : 8, n = Math.round(TILE_M / step) + 1;
+  // The source DEM is ~20 m. A 5.3 m near mesh resolves its relief and the bounded
+  // visual micro-relief without spending most cold generation time on redundant vertices.
+  const step = detail === 'near' ? TILE_M / 48 : 8, n = Math.round(TILE_M / step) + 1;
   const vCount = n * n + 4 * n;
   const position = new Float32Array(vCount * 3), color = new Float32Array(vCount * 3), meta = new Float32Array(vCount * 2), params = new Float32Array(vCount * 4);
   let minY = Infinity, maxY = -Infinity;
@@ -560,8 +567,8 @@ export function generateTile(ctx: GenContext, tx: number, tz: number, detail: De
     const nz = valueNoise(x / 11, z / 11, 3), nz2 = valueNoise(x / 3.3, z / 3.3, 5);
     const bits = m(Math.min(x, x0 + TILE_M - 0.01), Math.min(z, z0 + TILE_M - 0.01));
     let g = landGround(ctx, x, z, nz, nz2);
-    // Coarse tiles are seen from afar, where the top-down imagery (canopy, roofs, yards) carries the colour.
-    if (detail === 'far') g.img = Math.max(g.img, 0.8);
+    // Keep the imagery/palette mixture identical at every detail level. Changing
+    // the mixture here produces visible 256 m squares as near tiles replace far ones.
     const shore = g.cls === TruthClass.Water || g.cls === TruthClass.Sand;
     if (!shore && dumps.some(d => Math.hypot(x - d.x, z - d.z) < d.r)) g = { base: mix(P.dump, P.soil, nz2 * 0.5), flag: Flag.GroundDump, cls: TruthClass.DumpGround, img: 0.15 };
     else if (!shore && bits & M_BUILD) g = { base: mix(P.paved, P.soil, nz2 * 0.3), flag: Flag.GroundPaved, cls: TruthClass.Paved, img: 0.35 };
@@ -692,7 +699,6 @@ export function generateFar(ctx: GenContext, step = 40, margin = 5000, block = 1
       for (const [ox, oz] of [[-q, -q], [q, -q], [-q, q], [q, q]]) {
         const sx = x + ox, sz = z + oz;
         g = landGround(ctx, sx, sz, valueNoise(sx / 11, sz / 11, 3), valueNoise(sx / 3.3, sz / 3.3, 5));
-        g.img = Math.max(g.img, 0.8);
         groundColour(ctx, g, sx, sz, 1, one, 0, q * 2);
         acc[0] += one[0] / 4; acc[1] += one[1] / 4; acc[2] += one[2] / 4;
       }
@@ -710,7 +716,7 @@ export function generateFar(ctx: GenContext, step = 40, margin = 5000, block = 1
     const cols: number[] = [], rows: number[] = [];
     for (let i = 0; i < w - 1; i += stride) cols.push(bi + i); cols.push(bi + w - 1);
     for (let j = 0; j < h - 1; j += stride) rows.push(bj + j); rows.push(bj + h - 1);
-    const cw = cols.length, ch = rows.length, ring = skirt > 0 ? 2 * (cw + ch) : 0, n = cw * ch + ring;
+    const cw = cols.length, ch = rows.length, ring = skirt > 0 ? 2 * (cw + ch) - 4 : 0, n = cw * ch + ring;
     const position = new Float32Array(n * 3), color = new Float32Array(n * 3), meta = new Float32Array(n * 2), params = new Float32Array(n * 4);
     const put = (v: number, gi: number, gj: number, drop: number) => {
       const s = gj * nx + gi;
@@ -743,10 +749,86 @@ export function generateFar(ctx: GenContext, step = 40, margin = 5000, block = 1
     const w = Math.min(block, nx - 1 - bi) + 1, h = Math.min(block, nz - 1 - bj) + 1;
     let minY = Infinity, maxY = -Infinity;
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const y = H[(bj + j) * nx + bi + i]; minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
-    chunks.push({
-      mesh: patch(bi, bj, w, h, 1, 0), coarse: patch(bi, bj, w, h, 4, 40), minY, maxY,
-      bounds: [xa + bi * step, za + bj * step, xa + (bi + w - 1) * step, za + (bj + h - 1) * step],
-    });
+    const bounds: [number, number, number, number] = [xa + bi * step, za + bj * step, xa + (bi + w - 1) * step, za + (bj + h - 1) * step];
+    chunks.push({ mesh: patch(bi, bj, w, h, 1, 0),
+      coarse: patch(bi, bj, w, h, 4, 40), minY, maxY, bounds });
   }
-  return { chunks, tilesX: frame.tilesX, tilesZ: frame.tilesZ, xMin: frame.xMin, zMin: frame.zMin };
+  // Context uses smaller culling blocks, only inside the source bounds. The 5 km terrain margin needs no objects.
+  const context: MeshArrays[] = [], contextM = 2560;
+  for (let z = frame.zMin; z < frame.zMax; z += contextM) for (let x = frame.xMin; x < frame.xMax; x += contextM) {
+    const m = contextMesh(ctx, [x, z, Math.min(frame.xMax, x + contextM), Math.min(frame.zMax, z + contextM)]);
+    if (m.position.length) context.push(m);
+  }
+  return { chunks, context, tilesX: frame.tilesX, tilesZ: frame.tilesZ, xMin: frame.xMin, zMin: frame.zMin };
+}
+
+/** Distant aggregate canopy and buildings, batched without small-object detail. Not measured trees. */
+export function contextMesh(ctx: GenContext, bounds: [number, number, number, number]): MeshArrays {
+  const { hf, frame, src } = ctx, b = new MeshBuilder(71), classes: number[] = [];
+  const origins = new Map<number, [number, number]>();
+  const phases = new Map<number, number>();
+  const [x0, z0, x1, z1] = bounds;
+  const inside = (x: number, z: number) => x >= x0 && z >= z0 && x < x1 && z < z1;
+  const label = (cls: TruthClass) => { while (classes.length < b.vertexCount) classes.push(cls); };
+  const pitch = 28;
+  for (let j = Math.ceil(Math.max(z0, frame.zMin) / pitch); j * pitch < Math.min(z1, frame.zMax); j++) {
+    for (let i = Math.ceil(Math.max(x0, frame.xMin) / pitch); i * pitch < Math.min(x1, frame.xMax); i++) {
+      const r = new Rng(i, j, 119), x = (i + r.next()) * pitch, z = (j + r.next()) * pitch;
+      if (!inside(x, z) || hf.isWater(x, z)) continue;
+      const cov = coverOf(hf.clcAt(x, z), hf.fuelAt(x, z));
+      if (!cov.tree || !r.chance(cov.tree * 1.35 * landscapeAt(x, z).trees)) continue;
+      // Keep coarse patches off source road/building corridors, just as in the detailed tiles.
+      const [tx, tz] = frame.tileOf(x, z), key = tz * frame.tilesX + tx;
+      if ((ctx.bldIdx.get(key) ?? []).some(k => Math.hypot(src.buildings[k].x - x, src.buildings[k].z - z) < 15)) continue;
+      const onRoad = (ctx.roadIdx.get(key) ?? []).some(k => {
+        const p = src.roads[k].pts;
+        for (let q = 0; q + 3 < p.length; q += 2) {
+          const dx = p[q + 2] - p[q], dz = p[q + 3] - p[q + 1];
+          const t = Math.max(0, Math.min(1, ((x - p[q]) * dx + (z - p[q + 1]) * dz) / (dx * dx + dz * dz || 1)));
+          if (Math.hypot(x - p[q] - dx * t, z - p[q + 1] - dz * t) < ROAD_HW[src.roads[k].kind] + 7) return true;
+        }
+        return false;
+      });
+      if (onRoad) continue;
+      const y = hf.height(x, z), s = plantStyle(x, z, r), pine = cov.forestFloor;
+      const tint = pine ? hex(0x52613a) : hex(0x79805a);
+      const c: Rgb = [tint[0] * s.tint[0], tint[1] * s.tint[1], tint[2] * s.tint[2]];
+      // Two-triangle aggregate crown. The far shader turns it toward the camera.
+      const radius = r.range(3.5, 5.5) * s.sx * (pitch / 20), h = radius * 0.55 * s.sy, cy = y + (pine ? 6 : 3);
+      const points: [number, number, number][] = [[x - radius, cy, z], [x, cy + h, z],
+        [x + radius, cy, z], [x, cy - h, z]];
+      const start = b.vertexCount;
+      for (let k = 1; k < 3; k++) b.tri(points[0], points[k + 1], points[k], c, Flag.Foliage);
+      label(TruthClass.Tree);
+      // The origin is carried separately so each crown rotates in place, not around its chunk.
+      for (let k = start; k < b.vertexCount; k++) origins.set(k, [x, z]);
+    }
+  }
+  for (let bi = 0; bi < src.buildings.length; bi++) {
+    const p = src.buildings[bi];
+    if (!inside(p.x, p.z) || hf.isWater(p.x, p.z)) continue;
+    const d = ctx.building(bi);
+    const start = b.vertexCount;
+    // Merge foundation and body into one silhouette. Roofline and orientation stay identical
+    // to the detailed descriptor, without doubling every background building's triangle count.
+    const base = d.low - 0.1, height = d.y + d.h * d.sy - base;
+    const wall = hex(d.id === 'house-tiled' ? 0xe2d1ae : d.id === 'warehouse' ? 0xa9adae : d.id === 'shed' ? 0x8b8f93 : 0xebe6da);
+    const tint: Rgb = [wall[0] * d.tint[0], wall[1] * d.tint[1], wall[2] * d.tint[2]];
+    b.box(d.w * d.sx, height, d.d * d.sz, tint, { x: p.x, y: base, z: p.z, ry: d.ry }, Flag.Paint, { top: hex(0xbcb6a9) });
+    const roof = { x: p.x, y: d.y + d.h * d.sy, z: p.z, ry: d.ry, sx: d.sx, sy: d.sy, sz: d.sz };
+    if (d.id === 'house-tiled') b.hip(d.w, d.d, 2.2, hex(0xb2603f), roof);
+    if (d.id === 'chapel' || d.id === 'greenhouse') b.gable(d.w, d.d, d.id === 'chapel' ? 1.6 : 1.3,
+      hex(d.id === 'chapel' ? 0xb2603f : 0xe2e8e4), { ...roof, ry: d.ry + Math.PI / 2 });
+    for (let i = start; i < b.vertexCount; i++) phases.set(i, d.phase);
+    label(TruthClass.Structure);
+  }
+  const m = b.build();
+  m.params = new Float32Array(classes.length * 4);
+  classes.forEach((cls, i) => {
+    const origin = origins.get(i);
+    if (origin) { m.params[i * 4] = origin[0]; m.params[i * 4 + 1] = origin[1]; }
+    else m.params[i * 4] = phases.get(i) ?? 0;
+    m.params[i * 4 + 2] = cls; m.params[i * 4 + 3] = -1;
+  });
+  return m;
 }

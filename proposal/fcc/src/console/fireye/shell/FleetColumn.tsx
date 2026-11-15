@@ -1,198 +1,94 @@
-import { useMemo } from 'react';
-import { Icon, cn } from '@ds';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { Icon, Modal, cn, type IconName } from '@ds';
 import { useConsoleSelector } from '../../store';
 import { useStageWorld } from '../../stage3d/world';
-import { COMMAND_FLOW, simFleet, type CommandStatus, type FleetAsset } from '../data/fleet';
-import { SENSOR_KIND_LABEL } from '../data/sensors';
-import type { SensorStatus } from '../data/types';
-import { localTime, packZone } from '../../ui/format';
-import { isUav, sensorOf, useChronicle } from './sync';
-import { fireyeUi, useFireye } from './ui';
+import { sensorModel } from '../data/sensors';
+import { SOURCE_LABELS } from '../data/source-flow';
+import { SourceFlow } from './SourceFlow';
+import { fireyeUi } from './ui';
 
-function Section({ title, meta, children, i }: { title: string; meta?: React.ReactNode; children: React.ReactNode; i: number }) {
+function SourceTile({ icon, code, title, detail, compact, tone = 'text-bone-dim', onClick, children }: {
+  icon: IconName; code: string; title: string; detail: string; compact: boolean; tone?: string; onClick: () => void; children?: ReactNode;
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  const show = () => { if (compact) setRect(ref.current?.getBoundingClientRect() ?? null); };
   return (
-    <section className="fireye-enter border-b border-line" style={{ ['--i' as string]: i }}>
-      <header className="flex h-8 items-center gap-2 px-3">
-        <span className="font-mono text-micro uppercase tracking-[0.18em] text-bone-dim">{title}</span>
-        <span className="ml-auto font-mono text-micro uppercase text-bone-mute">{meta}</span>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-const STATUS_TONE: Record<CommandStatus, string> = {
-  enqueued: 'text-bone-dim', sent: 'text-bone-dim', delivered: 'text-ice', accepted: 'text-ice', running: 'text-phosphor',
-  completed: 'text-bone-mute', failed: 'text-ember', cancelled: 'text-bone-mute', rejected: 'text-ember',
-};
-
-function Pipeline({ status }: { status: CommandStatus }) {
-  const idx = COMMAND_FLOW.indexOf(status);
-  const bad = status === 'failed' || status === 'rejected' || status === 'cancelled';
-  return (
-    <span className="flex items-center gap-0.5" aria-label={`Command ${status}`}>
-      {COMMAND_FLOW.map((s, i) => (
-        <span key={s} title={s} className={cn('h-1 w-3 transition-colors duration-base ease-servo',
-          bad ? (i === 0 ? 'bg-ember' : 'bg-ink-700') : i < idx ? 'bg-bone-mute' : i === idx ? (s === 'running' ? 'bg-phosphor' : 'bg-bone') : 'bg-ink-700')} />
-      ))}
-    </span>
-  );
-}
-
-function Battery({ pct }: { pct: number | null }) {
-  if (pct == null) return <span className="font-mono text-micro text-bone-mute">BAT —</span>;
-  return (
-    <span className="flex items-center gap-1 font-mono text-micro text-bone-dim">
-      <span className="relative h-1.5 w-6 border border-line-strong">
-        <span className={cn('absolute inset-y-0 left-0', pct < 25 ? 'bg-ember' : pct < 45 ? 'bg-amber' : 'bg-bone-dim')} style={{ width: `${pct}%` }} />
-      </span>
-      <span className="fcc-num">{pct}%</span>
-    </span>
-  );
-}
-
-function AssetRow({ a, onSelect, onDive, selected }: { a: FleetAsset; onSelect: () => void; onDive: () => void; selected: boolean }) {
-  const feeds = useStageWorld((s) => s.feeds);
-  const feed = a.feedId ? feeds.find((f) => f.id === a.feedId) : undefined;
-  const sensor = feed && isUav(feed) ? sensorOf(feed) : null;
-  return (
-    <div className={cn('group relative border-t border-line-faint px-3 py-2 transition-colors duration-quick ease-servo', selected ? 'bg-ink-800' : 'hover:bg-ink-900')}>
-      {selected && <span aria-hidden className="absolute inset-y-0 left-0 w-px bg-signal" />}
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={onSelect} className="flex min-w-0 items-center gap-2 text-left" aria-label={`Select ${a.callsign}`}>
-          <Icon name="drone" size={13} className="text-ice" />
-          <span className="font-mono text-tiny uppercase tracking-[0.1em] text-bone">{a.callsign}</span>
-          <span className="font-mono text-micro uppercase text-bone-mute">{a.asset_id}</span>
-        </button>
-        <span className="ml-auto flex items-center gap-1">
-          {a.capabilities.map((c) => (
-            <button key={c} type="button" disabled={!feed}
-              aria-pressed={sensor === c}
-              onClick={() => feed && sensor !== c && fireyeUi.toggleFx(feed.id, sensor ?? 'eo')}
-              title={`Display palette only; source channel remains ${feed?.modality ?? 'unknown'}. Not radiometric.`}
-              className={cn('border px-1 font-mono text-micro uppercase leading-4 transition-colors duration-quick ease-servo',
-                sensor === c ? 'border-bone-dim text-bone' : 'border-line text-bone-mute hover:text-bone-dim')}>
-              {c === 'thermal' ? 'IR FX' : 'EO FX'}
-            </button>
-          ))}
-        </span>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2 font-mono text-micro uppercase text-bone-mute">
-        <span className={cn(a.feed_status === 'available' ? 'text-phosphor' : a.feed_status === 'unavailable' ? 'text-ember' : 'text-amber')}>{a.feed_status}</span>
-        <Battery pct={a.battery_percent} />
-        <span className="fcc-num">{a.altM != null ? `${Math.round(a.altM)} M AGL` : 'Position unmapped'}</span>
-        {a.feedId && (
-          <button type="button" onClick={onDive} className="ml-auto flex items-center gap-1 text-bone-dim opacity-0 transition-opacity duration-quick ease-servo hover:text-bone focus-visible:opacity-100 group-hover:opacity-100">
-            <Icon name="video" size={10} />Dive
-          </button>
-        )}
-      </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-xs text-bone-dim">{a.task}</span>
-        {a.command && <Pipeline status={a.command.status} />}
-      </div>
-      <div className="mt-0.5 flex items-center gap-2 font-mono text-micro uppercase text-bone-mute">
-        <span className="truncate">{a.mission_id ?? 'No mission'}{a.mission_version != null ? ` · v${a.mission_version}` : ''}</span>
-        {a.command && <span className={cn('ml-auto', STATUS_TONE[a.command.status])}>{a.command.status}</span>}
-      </div>
+    <div className={cn('min-w-0', !compact && 'flex items-center gap-2')}>
+      <button ref={ref} type="button" aria-label={title} onClick={onClick} onMouseEnter={show} onMouseLeave={() => setRect(null)}
+        onFocus={show} onBlur={() => setRect(null)} aria-describedby={rect ? `hover-${code}` : undefined}
+        className={cn('flex shrink-0 flex-col items-center justify-center gap-1 border border-line bg-ink-950 outline-none transition-colors duration-quick hover:border-line-strong hover:bg-ink-800 focus-visible:border-signal', compact ? 'h-11 w-11' : 'h-10 w-10', tone)}>
+        <Icon name={icon} size={17} />
+        <span className="fcc-num font-mono text-micro uppercase leading-none">{code}</span>
+      </button>
+      {!compact && <div className="min-w-0 flex-1"><button type="button" onClick={onClick} className="block w-full truncate text-left font-mono text-micro uppercase text-bone">{title}</button><p className="mt-1 truncate text-xs text-bone-mute">{detail}</p>{children}</div>}
+      {rect && createPortal(
+        <div role="tooltip" id={`hover-${code}`} className="fireye-hover-card pointer-events-none fixed z-modal w-[280px] border border-line-strong bg-ink-950 p-3 shadow-panel"
+          style={{ left: Math.min(rect.right + 6, window.innerWidth - 288), top: Math.max(8, Math.min(rect.top, window.innerHeight - 170)) }}>
+          <p className={cn('flex items-center gap-2 font-mono text-micro uppercase', tone)}><Icon name={icon} size={15} />{title}</p>
+          <p className="mt-2 whitespace-pre-line text-xs leading-5 text-bone-dim">{detail}</p>
+          <p className="mt-2 font-mono text-micro uppercase text-bone-mute">Click to open</p>
+        </div>, document.body)}
     </div>
   );
 }
 
-const SENSOR_DOT: Record<SensorStatus, string> = { nominal: 'bg-bone-mute', watch: 'bg-amber', alarm: 'bg-ember', offline: 'bg-ink-500' };
-
-export function FleetColumn({ onDive, onFocusUnit, onFocusSensor }: { onDive: (feedId: string) => void; onFocusUnit: (unitId: string) => void; onFocusSensor: (id: string) => void }) {
-  const ch = useChronicle();
-  const t = useConsoleSelector((s) => s.clock.t);
-  const units = useConsoleSelector((s) => s.units);
-  const projection = useConsoleSelector((s) => s.projection);
-  const predictions = useConsoleSelector((s) => s.predictions);
-  const actions = useConsoleSelector((s) => s.actions);
-  const pack = useConsoleSelector((s) => s.pack);
-  const feeds = useStageWorld((s) => s.feeds);
-  const selected = useFireye((s) => s.selected);
-  const fleetLog = useMemo(() => ch?.entries.filter((e) => e.command) ?? [], [ch]);
-  const tick = Math.floor(t / 5000);
-  const sim = useMemo(() => simFleet({ clock: { t, speed: 0, paused: false }, units, feeds, projection, predictions, actions }, fleetLog), [tick, units, feeds, projection, predictions, actions, fleetLog]);
-  const snap = sim;
-  const readings = ch ? ch.sensors.all(t) : [];
-  const counts = readings.reduce<Record<SensorStatus, number>>((m, r) => { m[r.status]++; return m; }, { nominal: 0, watch: 0, alarm: 0, offline: 0 });
-  const tripped = readings.filter((r) => r.status === 'alarm' || r.status === 'offline');
-  const cams = feeds.filter((f) => f.kind === 'ridge-cam');
-  const z = packZone(pack);
-  const live = snap.assets.filter((a) => a.feed_status === 'available').length;
+/** A persistent two-column icon rail; details expand over the map rather than moving it. */
+export function FleetColumn({ compact = false, onDive, onFocusUnit, onFocusSensor }: {
+  compact?: boolean; onDive: (feedId: string) => void; onFocusUnit: (unitId: string) => void; onFocusSensor: (id: string) => void;
+}) {
+  const state = useConsoleSelector(s => s), feeds = useStageWorld(s => s.feeds);
+  const [flowId, setFlowId] = useState<string | null>(null);
+  const sensors = useMemo(() => state.pack ? sensorModel(state.pack) : null, [state.pack]);
+  const cams = feeds.filter(f => f.kind === 'ridge-cam');
+  const grid = compact ? 'grid grid-cols-2 gap-1 px-1.5' : 'flex flex-col gap-2 px-3';
+  const heading = (text: string) => <h3 className="px-2 pb-1 pt-3 font-mono text-micro uppercase tracking-[0.1em] text-bone-mute">{text}</h3>;
+  const groups: [string, IconName, string][] = [['vision', 'camera', 'AI'], ['iot', 'sensor', 'IOT'], ['weather', 'wind', 'WX'], ['radio', 'radio', 'RAD'], ['terrain', 'layers', 'DEM'], ['connection', 'sensor', 'LINK']];
   return (
-    <div className="flex h-full min-h-0 flex-col bg-ink-950">
-      <div className="fireye-enter flex h-9 shrink-0 items-center gap-2 border-b border-line px-3" style={{ ['--i' as string]: 1 }}>
-        <span className="font-mono text-nano uppercase tracking-[0.2em] text-bone">Fleet</span>
-        <span className="font-mono text-micro uppercase text-bone-mute">{snap.mode}</span>
-        <div className="ml-auto flex h-6 items-stretch border border-line-strong">
-          <span className="bg-ink-700 px-2 font-mono text-micro uppercase leading-6 text-bone">Sim</span>
-          <a href="/console.html?mode=crew" className="border-l border-line px-2 font-mono text-micro uppercase leading-6 text-bone-mute hover:text-bone-dim">Crew reader</a>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <Section i={2} title="UAV assets" meta={<span className="fcc-num">{live}/{snap.assets.length} live</span>}>
-          {snap.assets.length === 0 && <p className="px-3 pb-3 font-mono text-micro uppercase text-bone-mute">No assets received</p>}
-          {snap.assets.map((a) => (
-            <AssetRow key={a.asset_id} a={a} selected={!!a.unitId && selected === a.unitId}
-              onSelect={() => { if (a.unitId) { fireyeUi.set({ selected: a.unitId }); onFocusUnit(a.unitId); } }}
-              onDive={() => a.feedId && onDive(a.feedId)} />
-          ))}
-        </Section>
-        <Section i={3} title="Ground cameras" meta={`${cams.length} fixed`}>
-          {cams.map((c) => (
-            <button key={c.id} type="button" onClick={() => onDive(c.id)} className="flex w-full items-center gap-2 border-t border-line-faint px-3 py-1.5 text-left hover:bg-ink-900">
-              <Icon name="camera" size={12} className="text-ice" />
-              <span className="min-w-0 flex-1 truncate font-mono text-micro uppercase text-bone-dim">{c.label}</span>
-              <span className="font-mono text-micro uppercase text-phosphor">{c.live ? 'available' : 'stale'}</span>
-            </button>
-          ))}
-        </Section>
-        <Section i={4} title="IoT mesh" meta="Simulated">
-          <div className="grid grid-cols-4 gap-px border-t border-line-faint bg-line-faint">
-            {(['nominal', 'watch', 'alarm', 'offline'] as SensorStatus[]).map((s) => (
-              <div key={s} className="flex flex-col items-start gap-0.5 bg-ink-950 px-3 py-1.5">
-                <span className="flex items-center gap-1 font-mono text-micro uppercase text-bone-mute"><span className={cn('h-1.5 w-1.5', SENSOR_DOT[s])} />{s}</span>
-                <span className={cn('fcc-num font-mono text-sm leading-none', s === 'alarm' && counts[s] ? 'text-ember' : 'text-bone')}>{counts[s]}</span>
-              </div>
-            ))}
-          </div>
-          {tripped.slice(0, 6).map((r) => {
-            const s = ch!.sensors.specs.find((x) => x.id === r.id)!;
-            return (
-              <button key={r.id} type="button" onClick={() => onFocusSensor(r.id)} className="flex w-full items-center gap-2 border-t border-line-faint px-3 py-1.5 text-left hover:bg-ink-900">
-                <span className={cn('h-1.5 w-1.5', SENSOR_DOT[r.status])} />
-                <span className="font-mono text-micro uppercase text-bone">{s.code}</span>
-                <span className="min-w-0 flex-1 truncate font-mono text-micro uppercase text-bone-mute">{SENSOR_KIND_LABEL[s.kind]} · {s.sector}</span>
-                <span className={cn('font-mono text-micro uppercase', r.status === 'alarm' ? 'text-ember' : 'text-bone-mute')}>{r.status}</span>
-              </button>
-            );
+    <section aria-label="Fleet and sources" className="flex h-full min-h-0 flex-col bg-ink-950">
+      <button type="button" onClick={() => fireyeUi.setLayout({ leftOpen: compact })} aria-label={compact ? 'Expand fleet panel' : 'Collapse fleet panel'}
+        className="flex h-9 shrink-0 items-center justify-between border-b border-line px-2 font-mono text-micro uppercase text-bone-dim">
+        Fleet <Icon name={compact ? 'chevron-right' : 'chevron-left'} size={12} />
+      </button>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3">
+        {heading('Drones')}
+        <div className={grid}>
+          {state.units.map(u => {
+            const drone = state.recon?.drones?.find(d => d.unitId === u.id);
+            const task = state.recon?.tasks.find(t => t.id === u.taskId), feed = feeds.find(f => f.unitId === u.id);
+            const station = state.recon?.stations?.find(s => s.id === drone?.stationId);
+            const battery = Math.round((u.battery ?? 0) * 100);
+            return <SourceTile key={u.id} icon="drone" code={`A${u.id.split('-')[1]} ${battery}`} title={`Open ${u.callsign} feed`} compact={compact}
+              tone={drone?.phase === 'charging' ? 'text-amber' : feed?.live ? 'text-ice' : 'text-bone-mute'}
+              detail={`${u.callsign} · ${battery}% · ${drone?.phase ?? u.status}\n${task ? `${task.pattern} pattern · ${task.label}` : 'Station reserve'}\n${station?.name ?? ''}\n${feed?.offlineReason ?? 'Live simulated camera'}`}
+              onClick={() => feed && onDive(feed.id)}>
+              <div className="mt-1 flex gap-3 font-mono text-micro uppercase"><button type="button" onClick={() => feed && setFlowId(feed.id)} className="text-ice">Flow</button><button type="button" onClick={() => onFocusUnit(u.id)} className="text-bone-mute">Locate</button></div>
+            </SourceTile>;
           })}
-        </Section>
-        <Section i={5} title="Analysis" meta="Toy estimates">
-          {snap.assessments.length === 0 && <p className="px-3 pb-2 font-mono text-micro uppercase text-bone-mute">No assessments yet</p>}
-          {snap.assessments.map((a) => (
-            <div key={a.id} className="border-t border-line-faint px-3 py-1.5">
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-xs text-bone-dim">{a.label}</span>
-                <span className={cn('font-mono text-micro uppercase', a.status === 'proposed' ? 'text-signal' : a.status === 'assessing' ? 'text-ice' : 'text-bone-mute')}>{a.status.replace('_', ' ')}</span>
-              </div>
-              <div className="mt-0.5 flex gap-2 font-mono text-micro uppercase text-bone-mute">
-                <span>{a.ranking_source}</span><span className="truncate">{a.note}</span>
-              </div>
-            </div>
-          ))}
-        </Section>
-        <Section i={6} title="Providers" meta={snap.source === 'sim' ? `Sim · ${localTime(t, z.label)}` : 'Bridge'}>
-          {snap.providers.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 border-t border-line-faint px-3 py-1.5 font-mono text-micro uppercase">
-              <span className="text-bone-dim">{p.label}</span>
-              <span className={cn('ml-auto', p.status === 'connected' ? 'text-phosphor' : 'text-bone-mute')}>{p.status}</span>
-            </div>
-          ))}
-        </Section>
+        </div>
+        {heading('Stations')}
+        <div className={grid}>{state.recon?.stations?.map((s, i) => <SourceTile key={s.id} compact={compact} icon="battery" code={i ? 'SOUTH' : 'NORTH'} title={s.name}
+          detail={`${state.recon?.drones?.filter(d => d.stationId === s.id && (d.phase === 'docked' || d.phase === 'charging')).length} on pad · 3 allocated\n18-minute full recharge · simulated`} onClick={() => setFlowId(s.id)} />)}</div>
+        {heading(`Cameras ${cams.length}`)}
+        <div className={grid}>{cams.map((c, i) => <SourceTile key={c.id} compact={compact} icon="camera" code={`C${i + 1}`} title={`Open ${c.label.split(' · ')[0]} feed`}
+          tone={c.live ? 'text-phosphor' : 'text-bone-mute'} detail={`${c.label}\n${c.live ? 'Live simulated fixed camera' : 'Offline'} · ${c.findingIds.length} findings\nFixed mount · terrain coverage`}
+          onClick={() => onDive(c.id)}><button type="button" onClick={() => setFlowId(c.id)} className="font-mono text-micro uppercase text-ice">Analysis flow</button></SourceTile>)}</div>
+        {heading('Sources')}
+        <div className={grid}>{groups.map(([id, icon, code]) => <SourceTile key={id} compact={compact} icon={icon} code={code} title={SOURCE_LABELS[id]}
+          detail={id === 'iot' ? `${sensors?.specs.length ?? 0} simulated nodes\nCurrent readings → risk analysis → Orchestrator tasking` : id === 'connection' ? 'Isolated read-only Crew entry\nNo mapped positions or simulated fallback' : `${SOURCE_LABELS[id]}\nInspect current and past analysis, evidence links and Orchestrator decisions`}
+          onClick={() => setFlowId(id)} />)}</div>
+        {!compact && <details className="px-3 pt-3"><summary className="cursor-pointer font-mono text-micro uppercase text-bone-mute">Ground sensors</summary>
+          {sensors?.specs.map(s => <button key={s.id} type="button" onClick={() => onFocusSensor(s.id)} className="mt-2 block text-xs text-bone-dim">{s.code} · {s.sector}</button>)}
+        </details>}
       </div>
-    </div>
+      <p className="border-t border-line p-2 text-center font-mono text-micro uppercase text-bone-mute">Simulated</p>
+      {flowId && flowId !== 'connection' && <SourceFlow id={flowId} onClose={() => setFlowId(null)} onOpenFeed={onDive} />}
+      <Modal open={flowId === 'connection'} onClose={() => setFlowId(null)} title="Read-only source connection">
+        <p>FIREYE uses the local reconnaissance simulation. Received backend state is available in the isolated Crew reader.</p>
+        <a href="/console.html?mode=crew" className="mt-3 inline-block border border-line px-3 py-2 font-mono text-micro uppercase text-bone">Open Crew reader</a>
+        <p className="mt-3 text-xs text-bone-mute">GET-only. Reader capabilities stay in memory. No simulator fallback, mapped positions or verified media are implied.</p>
+      </Modal>
+    </section>
   );
 }

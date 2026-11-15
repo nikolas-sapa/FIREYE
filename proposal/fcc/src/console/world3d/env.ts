@@ -19,9 +19,14 @@ export interface EnvInput {
   timeMs: number;
   /** Live views follow the wall clock; historical views advance in real time from the case time. */
   live: boolean;
+  /** False for replay-driven environments: timeMs is the authoritative playhead, even while paused. */
+  advance?: boolean;
   lat: number;
   lon: number;
   weather: WeatherInput;
+}
+export function environmentTime(input: Pick<EnvInput, 'timeMs' | 'live' | 'advance'>, elapsedMs: number, wallMs: number) {
+  return input.live ? wallMs : input.timeMs + (input.advance === false ? 0 : Math.max(0, elapsedMs));
 }
 export interface EnvOverrides { hour?: number; dayOfYear?: number; precipMm?: number; windKph?: number; windFromDeg?: number; cloud?: number; rh?: number; tempC?: number }
 

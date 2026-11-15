@@ -20,13 +20,15 @@ export interface FireyeMarkProps {
   title?: string;
   /** Avatar behaviour; omit for the static logo. */
   state?: OrchestratorState;
+  /** Directional attention without changing the canonical lid or pupil geometry. */
+  look?: 'center' | 'down-left' | 'down-right';
 }
 
 /**
  * FIREYE mark: an open eye drawn with two hairline lids around a diamond pupil in the signal
  * accent. The same drawing is the Orchestrator's avatar; `state` animates the lids and pupil.
  */
-export function FireyeMark({ size = 24, className, draw = false, weight, title = 'FIREYE', state }: FireyeMarkProps) {
+export function FireyeMark({ size = 24, className, draw = false, weight, title = 'FIREYE', state, look = 'center' }: FireyeMarkProps) {
   const px = weight ?? (size >= 64 ? 1.25 : 1.5);
   const sw = (px * 32) / size;
   return (
@@ -37,6 +39,7 @@ export function FireyeMark({ size = 24, className, draw = false, weight, title =
       role="img"
       aria-label={title}
       data-state={state}
+      data-look={look}
       className={cn('shrink-0 overflow-visible', draw && 'fireye-draw', state && 'fireye-avatar', className)}
       fill="none"
       stroke="currentColor"
@@ -47,7 +50,9 @@ export function FireyeMark({ size = 24, className, draw = false, weight, title =
         <path pathLength={1} className="fireye-lid" strokeWidth={sw} d={FIREYE_GEOMETRY.lowerLid} />
       </g>
       {state === 'alert' && <circle className="fireye-ring stroke-signal" cx={16} cy={16} r={6.25} strokeWidth={sw * 0.75} />}
-      <path className="fireye-pupil fill-signal" stroke="none" d={FIREYE_GEOMETRY.pupil} />
+      <g className="fireye-gaze" transform={look === 'down-left' ? 'translate(-3 2)' : look === 'down-right' ? 'translate(3 2)' : undefined}>
+        <path className="fireye-pupil fill-signal" stroke="none" d={FIREYE_GEOMETRY.pupil} />
+      </g>
     </svg>
   );
 }

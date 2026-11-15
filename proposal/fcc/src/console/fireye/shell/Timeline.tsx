@@ -13,6 +13,7 @@ export function Timeline({ onSeek }: { onSeek: (t: Ms) => void }) {
   const ch = useChronicle();
   const api = useConsoleApi();
   const t = useConsoleSelector((s) => s.clock.t);
+  const reconEvents = useConsoleSelector((s) => s.recon?.events);
   const paused = useConsoleSelector((s) => s.clock.paused);
   const speed = useConsoleSelector((s) => s.clock.speed);
   const pack = useConsoleSelector((s) => s.pack);
@@ -53,7 +54,7 @@ export function Timeline({ onSeek }: { onSeek: (t: Ms) => void }) {
   const density = useMemo(() => {
     if (!ch) return [];
     const bins = new Map<number, { i: number; o: number; crit: boolean }>();
-    for (const e of ch.entries) {
+    for (const e of [...ch.entries, ...(reconEvents ?? [])]) {
       const b = Math.floor(x(e.t) / 3);
       const v = bins.get(b) ?? { i: 0, o: 0, crit: false };
       if (e.tab === 'intake') v.i++; else v.o++;
@@ -61,7 +62,7 @@ export function Timeline({ onSeek }: { onSeek: (t: Ms) => void }) {
       bins.set(b, v);
     }
     return [...bins.entries()];
-  }, [ch, w]);
+  }, [ch, w, reconEvents]);
 
   // Chapters cluster around ignition; push labels right so they never overlap.
   const chapterLabels = useMemo(() => {

@@ -247,7 +247,7 @@ function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<S
     });
   }, [engineRef, settings.mode]);
   return (
-    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex flex-col items-end gap-1 font-mono text-micro uppercase text-bone-mute">
+    <div className="fcc-stage-camera-hud pointer-events-none absolute bottom-1.5 right-4 z-[1] flex flex-col items-end gap-1 font-mono text-micro uppercase text-bone-mute">
       <div ref={scaleRef} className="flex items-end gap-2 bg-ink-950/90 px-2 py-1" hidden>
         <span ref={detailRef} className="fcc-num mr-2" />
         <span ref={scaleBarRef} className="mb-0.5 inline-block h-1.5 border-x border-b border-bone-dim" />

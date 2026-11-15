@@ -74,6 +74,7 @@ varying vec3 vEmis;
 varying vec3 vWorldPos;
 varying vec4 vFire;
 varying float vTherm;
+flat varying float vSurface;
 #ifdef WORLD_TRUTH
 flat varying vec4 vTruth;
 #endif
@@ -93,7 +94,9 @@ function mainPrelude(kind: WorldMaterialKind) {
   mat4 IM = mat4(1.0);
 #endif
   float flag = aMeta.y;
+  vSurface = flag;
   float cls = floor(P.z + 0.5);
+  ${kind === 'far' ? 'if (cls > 19.5 && cls < 20.5) P.y = 0.35;' : ''}
   vec4 fireS = vec4(0.0);
   ${instanced(kind) && kind !== 'agent' ? `
   // Response units (41, 42) are live proxies and never burn.
@@ -115,6 +118,17 @@ const COLOR = /* glsl */`
   #ifdef USE_INSTANCING_COLOR
   if ((flag > 0.5 && flag < 1.5) || (flag > 4.5 && flag < 5.5)) vColor *= instanceColor.xyz;
   #endif
+  if (cls > 29.5 && cls < 30.5) {
+    // Paint, roof weathering and floor bands add residential scale without extra geometry or draws.
+    float weather = wHash(P.x * 93.7 + 17.0);
+    if (flag > 4.5 && flag < 5.5) {
+      float roof = step(0.7, normal.y);
+      float band = 1.0 - 0.07 * step(0.87, fract(position.y / 3.0));
+      vColor *= mix(vec3(band), vec3(0.76 + weather * 0.24, 0.79 + weather * 0.2, 0.82 + weather * 0.16), roof);
+    }
+    if (flag > 1.5 && flag < 2.5) vColor *= 0.65 + 0.65 * weather;
+    if (flag < 0.5) vColor *= vec3(0.82 + weather * 0.3, 0.85 + weather * 0.24, 0.88 + weather * 0.18);
+  }
   float sens = mod(P.y, 2.0);
   if (flag > 0.5 && flag < 1.5) {
     // Seasonal curing of live foliage: yellow-grey in summer drought, a fresher flush after winter rain.
@@ -211,6 +225,13 @@ function project(kind: WorldMaterialKind) {
   const wind = kind === 'veg' || kind === 'grass';
   return /* glsl */`
   vec4 wp = modelMatrix * (IM * vec4(transformed, 1.0));
+  ${kind === 'far' ? `
+  if (cls > 19.5 && cls < 20.5) {
+    vec2 centre = aParams.xy;
+    vec2 toCam = cameraPosition.xz - centre;
+    vec2 right = vec2(toCam.y, -toCam.x) / max(0.001, length(toCam));
+    wp.xz = centre + right * (transformed.x - centre.x);
+  }` : ''}
   ${wind ? `
   float ww = aMeta.x * (1.0 - fireS.x);
   if (ww > 0.0) {
@@ -273,6 +294,7 @@ varying vec3 vEmis;
 varying vec3 vWorldPos;
 varying vec4 vFire;
 varying float vTherm;
+flat varying float vSurface;
 uniform float uTime;
 ${FIRE_PARS}
 float fHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -317,6 +339,20 @@ const THERMAL_OUT = /* glsl */`
 #endif
 `;
 
+const GROUND_DETAIL = /* glsl */`
+  // World-space surface variation, not displacement or inferred fuel measurements.
+  // Fade sub-metre detail before it aliases in aerial views.
+  if (vSurface > 9.5 && vSurface < 16.5) {
+    vec2 q = vWorldPos.xz;
+    float distanceFade = 1.0 - smoothstep(65.0, 240.0, length(vWorldPos - cameraPosition));
+    float broad = fNoise(q * 0.095), fine = fNoise(q * 1.3);
+    float litter = 1.0 - step(0.5, abs(vSurface - 12.0));
+    float fleck = smoothstep(0.66, 0.86, fNoise(q * vec2(3.6, 0.9)));
+    float detail = mix(0.88 + broad * 0.22, 0.73 + fine * 0.4 + fleck * 0.12, litter);
+    diffuseColor.rgb *= mix(1.0, detail, distanceFade);
+  }
+`;
+
 function patchFragment(shader: { fragmentShader: string }, kind: WorldMaterialKind) {
   const ground = kind === 'terrain' || kind === 'road' || kind === 'far';
   const burn = ground ? groundBurn(kind === 'road') : `
@@ -324,7 +360,7 @@ function patchFragment(shader: { fragmentShader: string }, kind: WorldMaterialKi
   float groundTherm = 0.0;`;
   let f = shader.fragmentShader
     .replace('#include <common>', `#include <common>\n${FRAG_PARS}${kind === 'far' ? FAR_FRAG_PARS : ''}${kind === 'veg' || kind === 'rigid' || kind === 'grass' ? '\nuniform float uObjFar;' : ''}`)
-    .replace('#include <color_fragment>', `#include <color_fragment>\n${burn}`)
+    .replace('#include <color_fragment>', `#include <color_fragment>\n${ground ? GROUND_DETAIL : ''}\n${burn}`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   totalEmissiveRadiance += vEmis + fireEmis;
   // Firelight: the heat-glow grid lights nearby surfaces orange (dominant at night).

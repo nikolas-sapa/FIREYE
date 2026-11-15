@@ -1,6 +1,7 @@
 import type { Action, Brief, Ms } from '../contracts';
 import type { Sim } from '../world/sim';
 import { MIN, compass } from '../world/geo';
+import { reconSummary } from '../world/recon';
 
 /** Facts captured with each published brief; the next brief lists what differs ("changed"). */
 export interface BriefFacts {
@@ -81,6 +82,7 @@ function diff(sim: Sim, a: BriefFacts, b: BriefFacts): string[] {
 }
 
 function compose(sim: Sim): { headline: string; bullets: string[] } {
+  if (sim.recon) return { headline: 'Coordinating drone reconnaissance', bullets: [reconSummary(sim)] };
   const c = sim.ctx;
   const t = sim.t;
   const p = sim.projection;
@@ -143,6 +145,11 @@ export function updateBrief(sim: Sim, force = false): void {
 
 /** 3-4 contextual questions for the prompt chips. */
 export function updateSuggestions(sim: Sim): void {
+  if (sim.recon) {
+    const next = ['Which blind spots are being checked?', 'What changed in the fire projection?', 'What are the drones doing?'];
+    if (sim.suggestions.join('|') !== next.join('|')) sim.suggestions = next;
+    return;
+  }
   const out: string[] = [];
   const z0 = sim.items.find((i) => i.zone === 'Z0_INTERRUPT');
   const top = z0 ?? sim.items.find((i) => i.zone === 'Z3_FOCUS');

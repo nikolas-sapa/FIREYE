@@ -31,7 +31,7 @@ export function markWorld3dFailed() { failed = true; }
 
 function envFor(pack: ScenarioPack, t: number): EnvInput {
   const w = weatherAt(pack, t);
-  return { view: 'fireye', timeMs: t, live: false, lat: pack.manifest.center.lat, lon: pack.manifest.center.lon,
+  return { view: 'fireye', timeMs: t, live: false, advance: false, lat: pack.manifest.center.lat, lon: pack.manifest.center.lon,
     weather: { tempC: w.tempC, rh: w.rh, windKph: w.windKph, windFromDeg: w.windDirDeg, gustKph: w.gustKph, precipMm: null, source: 'Scenario pack weather (reanalysis)' } };
 }
 
@@ -42,7 +42,7 @@ export function getWorld3D(pack: ScenarioPack): Promise<WorldRenderer | null> {
   void old?.promise.then(w => w?.destroy());
   const promise = import('../../world3d/render/WorldRenderer').then(({ WorldRenderer }) => {
     const start = pack.manifest.start;
-    let t = stageWorld.get().t, envT = t;
+    let t = stageWorld.get().t;
     const w = new WorldRenderer(pack, clc2018(pack), envFor(pack, t), { fire: true });
     w.setFireTime(t - start);
     const unsub = stageWorld.subscribe(() => {
@@ -50,12 +50,13 @@ export function getWorld3D(pack: ScenarioPack): Promise<WorldRenderer | null> {
       if (s.pack !== pack || s.t === t) return;
       t = s.t;
       w.setFireTime(t - start);
-      // Env follows the stage clock in coarse steps; between steps it advances in real time.
-      if (Math.abs(t - envT) > 120_000) { envT = t; w.setEnv(envFor(pack, t)); }
+      w.setEnv(envFor(pack, t));
     });
     const destroy = w.destroy.bind(w);
     w.destroy = () => { unsub(); destroy(); };
-    if (import.meta.env.DEV) (window as unknown as { __fccWorld?: WorldRenderer }).__fccWorld = w;
+    if (import.meta.env.DEV || /^(stats|debug)(,|$)/.test(new URLSearchParams(location.search).get('world') ?? '')) {
+      (window as unknown as { __fccWorld?: WorldRenderer }).__fccWorld = w;
+    }
     return w;
   }).catch((e) => { console.warn('[stage3d] World3D feeds unavailable; using Cesium feeds', e); failed = true; return null; });
   current = { pack, promise };

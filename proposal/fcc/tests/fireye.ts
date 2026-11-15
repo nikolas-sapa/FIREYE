@@ -6,12 +6,11 @@ import { contextFor } from '../src/console/world/engine';
 import { buildChronicle, visibleAt } from '../src/console/fireye/data/chronicle';
 import { sensorModel } from '../src/console/fireye/data/sensors';
 import { sectorRisk } from '../src/console/fireye/data/risk';
-import { journal } from '../src/console/fireye/data/journal';
 import {
   ASSESSMENT_STATUSES, COMMAND_FLOW, COMMAND_TERMINAL, FEED_STATUSES, RECEIPT_STAGES, fromBridge, type BridgeViewLite,
 } from '../src/console/fireye/data/fleet';
 import type { ChronicleEntry, ChronicleKind, SensorReading, SensorSpec } from '../src/console/fireye/data/types';
-import type { Action, ChronicleRecord, SensorNode, SensorSample } from '../src/console/contracts';
+import type { ChronicleRecord, SensorNode, SensorSample } from '../src/console/contracts';
 
 // Local FIREYE shapes must stay assignable to the published contract.
 const wire = {
@@ -32,7 +31,7 @@ const MIN = 60000;
 const pack = await loadScenario('mati-2018');
 const ctx = contextFor(pack);
 assert.equal(new Date(ctx.start).toISOString(), '2018-07-23T11:00:00.000Z', 'FIREYE window opens at 14:00 local');
-const ch = buildChronicle(pack, { start: ctx.start, end: ctx.end });
+const ch = buildChronicle(pack, { start: ctx.start, end: ctx.end }, 'recon');
 assert.ok(ch.entries.length > 80, 'chronicle has content');
 assert.ok(ch.entries.every((e, i, a) => i === 0 || a[i - 1]!.t <= e.t), 'entries sorted by time');
 assert.ok(ch.entries.every((e) => e.t >= ctx.start && e.t <= ctx.end), 'entries stay in the window');
@@ -60,8 +59,14 @@ for (const e of ch.entries) {
   if (e.provenance === 'historical') assert.equal(e.tab, 'intake', 'historical reports are outside information');
   assert.doesNotMatch(`${e.title} ${e.body ?? ''}`, /\b(victims?|bodies|corpses?|died|dead)\b/i, `${e.id}: no victim content`);
 }
-assert.ok(ch.entries.some((e) => e.tab === 'intake' && e.kind === 'radio') && ch.entries.some((e) => e.tab === 'ops' && e.kind === 'fleet'));
-console.log('Intake / Ops classification and content rules PASS');
+assert.ok(ch.entries.some((e) => e.tab === 'intake' && e.kind === 'radio') && ch.entries.some((e) => e.tab === 'ops' && e.kind === 'analysis'));
+assert.ok(ch.entries.every((e) => !e.decision && !e.command && !['command', 'fleet', 'orchestrator', 'projection'].includes(e.kind)), 'no scripted decisions, dispatch or fleet/projection claims');
+const legacy = buildChronicle(pack, { start: ctx.start, end: ctx.end }, 'legacy');
+assert.ok(legacy.entries.some(e => e.decision === 'needed'), 'Ops retains scripted human review');
+assert.ok(legacy.entries.some(e => e.command), 'Ops retains receipt history');
+assert.equal(buildChronicle(pack, { start: ctx.start, end: ctx.end }, 'recon'), ch, 'profile caches stay isolated');
+assert.equal(buildChronicle(pack, { start: ctx.start, end: ctx.end }), legacy, 'existing callers keep legacy review history');
+console.log('Intake / Ops classification, profile isolation and content rules PASS');
 
 // IoT readings are deterministic and do not depend on future fire arrivals.
 const model = sensorModel(pack);
@@ -77,6 +82,8 @@ for (const t of [ch.ignitionT - 20 * MIN, ch.ignitionT + 10 * MIN, tA]) {
   const blind = sensorModel({ ...pack, arrival });
   assert.equal(JSON.stringify(blind.all(t)), JSON.stringify(model.all(t)), `sensor readings at ${new Date(t).toISOString()} ignore future arrivals`);
   assert.deepEqual(sectorRisk(blind, t), sectorRisk(model, t), 'risk index ignores future arrivals');
+  const blindChronicle = buildChronicle({ ...pack, arrival }, { start: ctx.start, end: ctx.end }, 'recon');
+  assert.deepEqual(visibleAt(blindChronicle, t), visibleAt(ch, t), 'chronicle ignores future fire arrivals, including debounced transitions');
 }
 assert.ok(ch.risk.some((r) => r.t < ch.ignitionT && r.value >= 68), 'elevated risk shows before ignition');
 console.log(`IoT mesh: ${model.specs.length} nodes deterministic, no future-arrival reads PASS`);
@@ -87,12 +94,6 @@ assert.deepEqual([...RECEIPT_STAGES], ['sent', 'delivered', 'accepted', 'running
 assert.deepEqual([...COMMAND_FLOW], ['enqueued', 'sent', 'delivered', 'accepted', 'running', 'completed']);
 assert.ok(COMMAND_TERMINAL.every((s) => s === 'completed' || (RECEIPT_STAGES as readonly string[]).includes(s)));
 assert.deepEqual([...ASSESSMENT_STATUSES], ['assessing', 'review_ready', 'review_only', 'proposed', 'approved', 'superseded']);
-for (const e of ch.entries.filter((x) => x.command)) {
-  const steps = e.command!.steps.map((s) => s.status);
-  assert.equal(steps[0], 'enqueued');
-  assert.ok(steps.every((s) => s === 'enqueued' || (RECEIPT_STAGES as readonly string[]).includes(s)), `${e.id}: receipt stages`);
-  assert.ok(/^d[1-6]$/.test(e.command!.asset), 'asset ids follow the backend d1…d6 shape');
-}
 
 // Bridge adapter against a received-view fixture.
 const fixture: BridgeViewLite = {
@@ -123,17 +124,3 @@ assert.equal(snap.assets[1]!.feed_status, 'unavailable');
 assert.equal(snap.revision, 42);
 assert.ok(snap.providers.every((p) => p.status !== 'connected'), 'no fake active providers');
 console.log('Backend unions and bridge adapter fixture PASS');
-
-// Decision journal: in force only at or after the decision time; re-applied after rebuilds.
-journal.clear();
-const act = { id: 'a-1', kind: 'retask-drone', title: 'Retask AETOS-2', status: 'proposed' } as Action;
-journal.record({ key: `action:${act.kind}|${act.title}`, t: 1000, decision: 'approved', title: act.title, actionKind: act.kind });
-assert.equal(journal.at(`action:${act.kind}|${act.title}`, 999), undefined);
-assert.ok(journal.at(`action:${act.kind}|${act.title}`, 1000));
-const calls: string[] = [];
-const api = { approve: (id: string) => calls.push(`+${id}`), reject: (id: string) => calls.push(`-${id}`) };
-assert.equal(journal.reapply([act], 500, api), 0);
-assert.equal(journal.reapply([{ ...act, id: 'a-rebuilt' }], 2000, api), 1);
-assert.deepEqual(calls, ['+a-rebuilt']);
-journal.clear();
-console.log('Decision journal time scoping and re-application PASS');

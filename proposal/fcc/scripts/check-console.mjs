@@ -3,7 +3,7 @@ import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 const nodeRequire = createRequire(import.meta.url);
 try {
-  for (const test of ['thermal', 'crew-store', 'console', 'ops', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye']) {
+  for (const test of ['thermal', 'crew-store', 'console', 'ops', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye', 'recon', 'boot']) {
     const result = await build({
       entryPoints: [new URL(`../tests/${test}.ts`, import.meta.url).pathname],
       bundle: true, platform: 'node', format: test === 'tamagotchi' ? 'cjs' : 'esm', write: false,

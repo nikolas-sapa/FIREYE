@@ -58,6 +58,7 @@ if (typeof self !== 'undefined' && typeof document === 'undefined' && typeof (se
       const far = generateFar(ctx);
       const buffers: ArrayBuffer[] = [];
       for (const c of far.chunks) { meshBuffers(c.mesh, buffers); meshBuffers(c.coarse, buffers); }
+      for (const m of far.context ?? []) meshBuffers(m, buffers);
       post({ type: 'ready', far, imagery, ms: performance.now() - t0 }, buffers);
       for (const q of queue.splice(0)) run(q);
     } catch (e) { post({ type: 'error', message: String(e) }); }
