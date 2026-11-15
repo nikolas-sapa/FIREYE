@@ -1,0 +1,558 @@
+{
+ "id": "mati-2018",
+ "name": "Mati fire, Attica",
+ "disclaimer": "Scenario built from public data; units, people and events are simulated.",
+ "bbox": [
+  23.87,
+  37.98,
+  24.05,
+  38.1
+ ],
+ "center": {
+  "lon": 23.978,
+  "lat": 38.04
+ },
+ "start": 1532352000000,
+ "end": 1532372400000,
+ "tz": "EEST",
+ "tzOffsetMin": 180,
+ "dataStart": 1532353260000,
+ "dataEnd": 1532363520000,
+ "ignition": {
+  "t": 1532353260000,
+  "pos": {
+   "lon": 23.95191,
+   "lat": 38.03991
+  },
+  "alternatives": [
+   {
+    "t": 1532353260000,
+    "label": "199 call / first announcement",
+    "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Kathimerini, prosecutor's report coverage (Oct 2021)",
+    "url": "https://www.kathimerini.gr/society/561536221/to-eisaggeliko-porisma-gia-to-mati-ta-egklimatika-lathi-kai-oi-olethrioi-cheirismoi/",
+    "used": true
+   },
+   {
+    "t": 1532352900000,
+    "label": "Prosecutor's estimate of the real start",
+    "source": "thetoc.gr, timeline from the prosecutor's report",
+    "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/"
+   },
+   {
+    "t": 1532353800000,
+    "label": "BAMS text: 1350 UTC (1355 UTC elsewhere in the paper)",
+    "source": "Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"",
+    "url": "https://doi.org/10.1175/BAMS-D-18-0231.1"
+   },
+   {
+    "t": 1532354220000,
+    "label": "Fire Service press release time",
+    "source": "Wikipedia, \"2018 Attica wildfires\"",
+    "url": "https://en.wikipedia.org/wiki/2018_Attica_wildfires"
+   }
+  ]
+ },
+ "replayNote": "Replay window 23 Jul 2018 16:20 -> 22:00 EEST (13:20 -> 19:00 UTC). The fire started ~16:41 EEST in Daou Penteli and reached the coast at Mati around 18:45. Arrival times are a calibrated model inside the real EFFIS burnt area, not observations.",
+ "recommendedT0": 1532353080000,
+ "activeEdgeMin": 15,
+ "places": [
+  {
+   "id": "ignition",
+   "name": "Fire origin, Daou Penteli",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.95191,
+    "lat": 38.03991
+   },
+   "note": "Approximate origin inside the 2009 burn scar (IAWF/prosecutor: Daou Penteli); snapped 0 m into the EFFIS polygon"
+  },
+  {
+   "id": "ntaou-penteli",
+   "name": "Ntaou Penteli",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.94493,
+    "lat": 38.03904
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "neos-voutzas",
+   "name": "Neos Voutzas",
+   "kind": "town",
+   "pos": {
+    "lon": 23.98115,
+    "lat": 38.04226
+   },
+   "osm": "node/1337199515"
+  },
+  {
+   "id": "mati",
+   "name": "Mati",
+   "kind": "town",
+   "pos": {
+    "lon": 23.99247,
+    "lat": 38.04932
+   },
+   "osm": "node/1337199512"
+  },
+  {
+   "id": "kokkino-limanaki",
+   "name": "Kokkino Limanaki beach",
+   "kind": "landmark",
+   "pos": {
+    "lon": 24.00043,
+    "lat": 38.0334
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "argyra-akti",
+   "name": "Argyra Akti (Silver Coast)",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.997,
+    "lat": 38.04
+   },
+   "note": "Approximate: not in OSM; coast between Kokkino Limanaki and Mati"
+  },
+  {
+   "id": "rafina",
+   "name": "Rafina",
+   "kind": "town",
+   "pos": {
+    "lon": 24.00734,
+    "lat": 38.02037
+   },
+   "osm": "node/277422488"
+  },
+  {
+   "id": "rafina-port",
+   "name": "Rafina ferry terminal",
+   "kind": "landmark",
+   "pos": {
+    "lon": 24.01,
+    "lat": 38.0225
+   },
+   "note": "Approximate (OSM port area)"
+  },
+  {
+   "id": "rafina-beach",
+   "name": "Rafina beach",
+   "kind": "landmark",
+   "pos": {
+    "lon": 24.01188,
+    "lat": 38.01938
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "lidaki",
+   "name": "Lidaki cove",
+   "kind": "landmark",
+   "pos": {
+    "lon": 24.00906,
+    "lat": 38.02631
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "rafina-camp",
+   "name": "Rafina Camp",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.99551,
+    "lat": 38.00753
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "nea-makri",
+   "name": "Nea Makri",
+   "kind": "town",
+   "pos": {
+    "lon": 23.97907,
+    "lat": 38.08305
+   },
+   "osm": "node/279136267"
+  },
+  {
+   "id": "zouberi",
+   "name": "Zouberi",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.99289,
+    "lat": 38.06935
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "agia-marina",
+   "name": "Agia Marina",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.97212,
+    "lat": 38.06236
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "agios-andreas-camp",
+   "name": "Agios Andreas camp",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.99835,
+    "lat": 38.05806
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "neos-voutzas-fs",
+   "name": "Neos Voutzas volunteer fire station",
+   "kind": "station",
+   "pos": {
+    "lon": 23.98354,
+    "lat": 38.05565
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "kallitechnoupoli",
+   "name": "Kallitechnoupoli",
+   "kind": "town",
+   "pos": {
+    "lon": 23.95955,
+    "lat": 38.02527
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "ntrafi",
+   "name": "Ntrafi",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.9019,
+    "lat": 38.03266
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "dioni",
+   "name": "Dioni",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.93221,
+    "lat": 38.02268
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "palaios-mylos",
+   "name": "Palaios Mylos",
+   "kind": "hamlet",
+   "pos": {
+    "lon": 23.93441,
+    "lat": 38.01635
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "pikermi",
+   "name": "Pikermi",
+   "kind": "town",
+   "pos": {
+    "lon": 23.94103,
+    "lat": 38.00163
+   },
+   "osm": "node/789198973"
+  },
+  {
+   "id": "pallini",
+   "name": "Pallini",
+   "kind": "town",
+   "pos": {
+    "lon": 23.88108,
+    "lat": 38.00397
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "anthousa",
+   "name": "Anthousa",
+   "kind": "town",
+   "pos": {
+    "lon": 23.87571,
+    "lat": 38.02868
+   },
+   "osm": "OSM place/amenity node (Overpass lookup, name match)"
+  },
+  {
+   "id": "agia-varvara-rafina",
+   "name": "Agia Varvara church, Marathonos Ave",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.98238,
+    "lat": 38.02735
+   },
+   "osm": "way/698980490"
+  },
+  {
+   "id": "penteli-summit",
+   "name": "Mt Penteli summit",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.88,
+    "lat": 38.05
+   },
+   "note": "Approximate"
+  },
+  {
+   "id": "daou-ridge-trailhead",
+   "name": "Daou Ridge trailhead",
+   "kind": "trailhead",
+   "pos": {
+    "lon": 23.9555,
+    "lat": 38.0445
+   },
+   "fictional": true,
+   "note": "Fictional trailhead for the simulated rescue storyline"
+  },
+  {
+   "id": "pefka-riding-stables",
+   "name": "Pefka riding stables",
+   "kind": "ranch",
+   "pos": {
+    "lon": 23.969,
+    "lat": 38.0365
+   },
+   "fictional": true,
+   "note": "Fictional stables (horses) for the simulated storyline"
+  },
+  {
+   "id": "marathonos-crossing",
+   "name": "Marathonos Ave (first crossing, model)",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.98518,
+    "lat": 38.03414
+   },
+   "note": "Where the arrival model first crosses Marathonos Ave; the documented crossing time is ~18:18-18:20 at several points"
+  },
+  {
+   "id": "mati-coast",
+   "name": "Mati shore (Poseidonos Ave)",
+   "kind": "landmark",
+   "pos": {
+    "lon": 23.99862,
+    "lat": 38.04514
+   },
+   "note": "Burned (EFFIS) coastline cell nearest the Mati place node, 712 m away; approximate"
+  }
+ ],
+ "sources": [
+  {
+   "id": "open-meteo",
+   "name": "Open-Meteo Historical Weather API (ERA5 / ERA5-Land reanalysis), hourly",
+   "url": "https://archive-api.open-meteo.com/v1/archive?latitude=38.04&longitude=23.96&start_date=2018-07-23&end_date=2018-07-24&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=GMT",
+   "license": "CC BY 4.0 (Open-Meteo.com); contains modified Copernicus Climate Change Service information",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "Grid point 37.996483,23.951612 (model elev 224 m). Reanalysis is smoother than observed: Penteli NOA station recorded WNW 32-56 km/h with gusts 50-89 km/h, Rafina gusts occasionally to ~120 km/h (IAWF, FIRElinks, BAMS); see facts.json."
+  },
+  {
+   "id": "effis",
+   "name": "EFFIS (European Forest Fire Information System) burnt area, MODIS/Sentinel-2 mapped, feature 15060",
+   "url": "https://maps.effis.emergency.copernicus.eu/effis?service=WFS&version=1.1.0&request=GetFeature&typeName=ms:modis.ba.poly&bbox=37.98,23.85,38.10,24.08,EPSG:4326&outputFormat=geojson",
+   "license": "Copernicus EMS / JRC EFFIS open data; (c) European Union, EFFIS",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "FIREDATE 2018-07-23 00:00:00, AREA_HA 1362, 1198 vertices; rasterized 1362 ha. Land cover inside (EFFIS): artificial 50.2%, conifer 15.8%, other natural 17.8%, agriculture 10.7%, transitional 5.5%, sclerophyllous 0.0%."
+  },
+  {
+   "id": "clc2018",
+   "name": "CORINE Land Cover 2018 (Copernicus Land Monitoring Service, EEA), vector, 25 ha MMU",
+   "url": "https://image.discomap.eea.europa.eu/arcgis/rest/services/Corine/CLC2018_WM/MapServer/0/query",
+   "license": "Copernicus open data; (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency (EEA)",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "58 polygons rasterized (even-odd) to the grid; raw Code_18 kept in clc2018.bin (Uint16). Reference year 2018 (imagery 2017-2018), i.e. pre-fire."
+  },
+  {
+   "id": "terrarium",
+   "name": "Mapzen/AWS Terrain Tiles (Terrarium encoding), zoom 13",
+   "url": "https://registry.opendata.aws/terrain-tiles/",
+   "license": "Various open sources (SRTM / EU-DEM / GMTED, bathymetry ETOPO1); attribution per https://github.com/tilezen/joerd/blob/master/docs/attribution.md",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "Bilinear resample of 25 tiles to 790x666 grid. Sea mask = cells <= 0.5 m connected to the east edge (53.0 km2)."
+  },
+  {
+   "id": "osm",
+   "name": "OpenStreetMap via Overpass API (roads, buildings, water, places)",
+   "url": "https://overpass-api.de/api/interpreter",
+   "license": "ODbL 1.0 - (c) OpenStreetMap contributors",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "Current OSM snapshot (2026-11-14T19:52:13Z), not a July 2018 snapshot: many houses in Mati were destroyed in 2018 and rebuilt or demolished since. Roads simplified (Douglas-Peucker 6 m, tracks 12 m, junctions kept); buildings reduced to centroids. Road names are Greek as in OSM (nameEn when tagged)."
+  },
+  {
+   "id": "firms",
+   "name": "NASA FIRMS archive (VIIRS S-NPP 375 m, MODIS Terra/Aqua 1 km) standard processing, 2018-07-23/24",
+   "url": "https://firms.modaps.eosdis.nasa.gov/api/area/",
+   "license": "NASA open data; acknowledge LANCE/FIRMS",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "Real detections at their acquisition times (UTC). Polar-orbit overpasses miss most of the 2-hour run; detections confirm extent rather than timing. All detections in the bbox are kept."
+  },
+  {
+   "id": "s2cloudless",
+   "name": "Sentinel-2 cloudless 2018 (EOX), WMS GetMap",
+   "url": "https://s2maps.eu",
+   "license": "CC BY-NC-SA 4.0 - Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2018). Non-commercial use; replace for commercial deployments.",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "4096x3454 JPEG, EPSG:4326, ~4 m/px"
+  },
+  {
+   "id": "gibs",
+   "name": "NASA GIBS WMS: MODIS Terra / VIIRS S-NPP Corrected Reflectance True Color, VIIRS Thermal Anomalies 375 m",
+   "url": "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
+   "license": "NASA open data (no restrictions); acknowledge NASA EOSDIS GIBS",
+   "fetchedAt": "2026-11-14T20:03:02.387Z",
+   "note": "Daily snapshots: 23 Jul (Terra morning pass, pre-ignition) and 24 Jul (post-fire scar / plume). Coarse (250-375 m), context only."
+  }
+ ],
+ "imagery": {
+  "url": "/data/mati/imagery.jpg",
+  "bbox": [
+   23.87,
+   37.98,
+   24.05,
+   38.1
+  ],
+  "date": "2018 (cloudless composite; mostly pre-fire summer 2018 scenes, may include some post-fire pixels)",
+  "source": "Sentinel-2 cloudless 2018 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2018)"
+ },
+ "imageryExtra": [
+  {
+   "url": "/data/mati/gibs-modis-terra-truecolor-2018-07-23.jpg",
+   "bbox": [
+    23.87,
+    37.98,
+    24.05,
+    38.1
+   ],
+   "date": "2018-07-23",
+   "source": "NASA GIBS MODIS_Terra_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 432
+  },
+  {
+   "url": "/data/mati/gibs-modis-terra-truecolor-2018-07-24.jpg",
+   "bbox": [
+    23.87,
+    37.98,
+    24.05,
+    38.1
+   ],
+   "date": "2018-07-24",
+   "source": "NASA GIBS MODIS_Terra_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 432
+  },
+  {
+   "url": "/data/mati/gibs-viirs-truecolor-2018-07-24.jpg",
+   "bbox": [
+    23.87,
+    37.98,
+    24.05,
+    38.1
+   ],
+   "date": "2018-07-24",
+   "source": "NASA GIBS VIIRS_SNPP_CorrectedReflectance_TrueColor",
+   "width": 512,
+   "height": 432
+  },
+  {
+   "url": "/data/mati/gibs-viirs-thermal-2018-07-23.png",
+   "bbox": [
+    23.87,
+    37.98,
+    24.05,
+    38.1
+   ],
+   "date": "2018-07-23",
+   "source": "NASA GIBS VIIRS_SNPP_Thermal_Anomalies_375m_All",
+   "width": 1024,
+   "height": 864
+  },
+  {
+   "url": "/data/mati/gibs-viirs-thermal-2018-07-24.png",
+   "bbox": [
+    23.87,
+    37.98,
+    24.05,
+    38.1
+   ],
+   "date": "2018-07-24",
+   "source": "NASA GIBS VIIRS_SNPP_Thermal_Anomalies_375m_All",
+   "width": 1024,
+   "height": 864
+  }
+ ],
+ "hotspotMode": "firms",
+ "calibration": [
+  {
+   "id": "ignition",
+   "t": 1532353260000,
+   "modelT": 0,
+   "used": true
+  },
+  {
+   "id": "first-house",
+   "t": 1532353560000,
+   "modelT": 23,
+   "used": true,
+   "note": "perimeter 400 m at 0.9 ha"
+  },
+  {
+   "id": "two-fingers",
+   "t": 1532355660000,
+   "modelT": 276,
+   "used": true,
+   "note": "perimeter 3500 m at 80.8 ha"
+  },
+  {
+   "id": "nv-west-edge",
+   "t": 1532356860000,
+   "modelT": 480,
+   "used": true,
+   "note": "perimeter 6000 m at 248.0 ha"
+  },
+  {
+   "id": "neos-voutzas",
+   "t": 1532358120000,
+   "modelT": 761,
+   "used": true,
+   "note": "fire burns Neos Voutzas (place point)"
+  },
+  {
+   "id": "marathonos",
+   "t": 1532359140000,
+   "modelT": 979,
+   "used": true,
+   "note": "first Marathonos Ave crossing at {\"lon\":23.98518,\"lat\":38.03414}"
+  },
+  {
+   "id": "coast",
+   "t": 1532360700000,
+   "modelT": 1322,
+   "used": true,
+   "note": "first coastal cell at {\"lon\":23.99999,\"lat\":38.03613}"
+  }
+ ],
+ "effis": {
+  "id": "15060",
+  "areaHa": 1362,
+  "fireDate": "2018-07-23 00:00:00",
+  "rasterHa": 1362
+ },
+ "notes": [
+  "Fuel: CORINE 2018 classes mapped to FuelClass (312 conifer -> TimberLitter, 311/313 -> TimberUnderstory, 32x/334 -> Shrub, 2xx -> Agriculture, 321/333 -> Grass). CLC 112 (discontinuous urban: Mati, Neos Voutzas, Kokkino Limanaki) is a WUI mix: cells with an OSM building centroid within one cell (3x3, ~60 m block) -> Urban (1264 ha), the rest -> TimberLitter (pine between houses, 3631 ha). Sea from the elevation mask plus CORINE 523.",
+  "Arrival raster (synthesized): Dijkstra travel time from the ignition over the 8-neighbour grid, restricted to the real EFFIS burnt-area polygon (cells outside never burn), with fuel rate (CORINE-derived), slope factor and a fixed WNW wind (275 deg) anisotropy. Model time is mapped to clock time piecewise-linearly through documented anchors: ignition 16:41, first-house 16:46, two-fingers 17:21, nv-west-edge 17:41, neos-voutzas 18:02, marathonos 18:19, coast 18:45 EEST; perimeter anchors use the IAWF perimeter lengths. After the coast anchor flank cells burn at 1/1.8 of the last segment rate (last cell 19:31 EEST). Ember spotting, which the sources describe, is not modelled."
+ ],
+ "generatedAt": "2026-11-14T20:03:02.387Z"
+}

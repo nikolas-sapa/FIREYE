@@ -1,5 +1,26 @@
 # Fire Command Center shared taskboard
 
+## PR38-CI-2026-11-15, headless frontend verification
+
+Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.
+
+## PRFIX-2026-11-15, owner-authorized PR38 repair
+
+User explicitly reassigned the two open Marco PR fixes to root workers. Branch `proposal/fcc-review-followup`, source `bb1103ebbbea42344d88f70bc76934fddbea08b3`. Source repairs only, no issue work, paid calls, frontend launch or automatic merge. Preserve Marco source and all unrelated work.
+
+- Solver worker: `proposal/fcc/src/console/agents/spread.ts`, `proposal/fcc/tests/spread-precision.ts`. Twenty downward-rounding late seeds reach zero cells; ten-repeat 20-cell corridor and independent reference remain green.
+- Monitoring server worker: `proposal/fcc/server/monitoring.ts`, `proposal/fcc/tests/monitoring.ts`. Twenty malformed provider responses expose zero sentinel/raw-body strings; twenty explicit cross-site requests cause zero provider calls; documented rolling camera limit rejects excess calls without caching tokenized media.
+- Provenance worker: `proposal/fcc/src/console/monitoring/resources.ts`, `MonitoringApp.tsx`; new `proposal/fcc/tests/monitoring-provenance.ts`; `proposal/fcc/scripts/check-monitoring.mjs`. Missing/loading/error source states never claim zero retrieved detections; retrieved/memory/local/bundled origins remain distinct with zero false persisted labels.
+- Root: this claim, `proposal/fcc/docs/REVIEW_SCOPE.md`, `REVIEW_RECEIPT.md`, PR bodies/coordination, tests/reviews and explicit-path Git delivery. No package/lock/schema/backend/frozen archive changes without separate claim.
+
+Each worker captures failing regression before implementation, reruns focused tests/typecheck, then freezes for independent review. Root runs both-scenario tests, monitoring/image-lab mocked suites, no-key build/PWA and scope checks before updating PR38 and reconciling parent PR2. Non-goals: backend integration, new visual design, live providers, public deployment, calibrated physics or removal of safety guards.
+
+## PR2-CI-2026-11-15, test-fixture clock repair
+
+Root authorized `/root/fix_parent_pr_ci` to edit only `backend/tests/gemma-client.test.ts` on `proposal/fcc-console`, base `b99a495`. Inherited Node26 CI failed because expiry test sampled its injected clock before independently constructing a later-dated snapshot. RED deterministic advancing clock reproduces INVALID_INPUT before transport. Test-only fix uses one fixture cutoff clock, retains DEADLINE/receipt assertions and adds one-transport proof. No runtime/dependency/frontend/issue change. Root verifies focused/native/compiled tests and delivers exact paths.
+
+Historical proposal snapshot: 2026-11-14, Europe/Athens. Preserve 44 planning task IDs plus PROP-01 (45 total on this proposal branch). Separate research/admin receipts, submitted source and verified product milestones. [Brief](README.md) · [Rules](AGENTS.md) · [Parameter DRAFT/numeric cases](docs/specs/simulator-parameter-contract.md).
+
 ## ORCH-01 · scoped-active · local orchestration walking skeleton
 
 Owner: `/root/orchestration`, branch `task/orchestration-demo-v1`, base `4748ee8`.
@@ -15,6 +36,15 @@ Snapshot: 2026-11-14, 23:19 Europe/Athens. Preserve 44 task IDs. Separate resear
 
 - **Product implementation progress: rough 35–45%, not measured readiness.** Coordinator planning estimate after merged local protocol foundation; earlier ~30% (25–40%) was the pre-core static prototype audit, not current acceptance. Submitted UI/local world/fire/weather/synthetic feeds/scripted proposals/replay and merged local protocol provide foundation. Shared authority/network integration, honest evidence/projection, delivery/energy faults, genuine providers, browser/performance and full integration remain incomplete/absent. Administrative ratios and 71 local tests do not measure whole-product completion.
 - **Verified product acceptance: 0/13 P0 cards complete, 0% independently verified V1 numeric acceptance.** No product card checked. Isolated build/typecheck independently passed on pinned PR2 source; author screenshots remain unverified. These are foundation checks, not V1 numeric acceptance.
+### Historical proposal dashboard
+
+- **Research/admin/draft checkbox ratio: 18/44 = 40.9%, not project completion.** Research/admin partition: 18/28 checked = 64.3%; 13 gated product + 3 deferred cards form remaining 16. Equal weights apply only to administrative ratios.
+- **45 cards:** 18 done, 1 draft-ready, 1 active (PROP-01), 9 owner-action, 13 gated, 3 deferred. REF-01/PARAM-01 done as published **unapproved documents**, not app features. Administrative ratios above retain the original 44-card planning denominator.
+- Private [draft PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1): planning at cba56a4, main bootstrap 053ff54 unchanged. This board delta awaits coordinator delivery. [Draft PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), author marcseli, source 6bdb58843a33a70806ff9ca053407d57926ac6aa: submitted prototype, **not adopted/merged**. Independent isolated Node 26.11.1/npm ci --ignore-scripts/build/typecheck passed at pinned head; no V1/provider/shared-client/browser-perf acceptance. GitHub CI/check receipts 0.
+- This proposal branch reconciles the TASKBOARD-only conflict with planning commit `722b04f`, preserving its 44 IDs plus PROP-01 (45 total). This is branch maintenance, not product adoption or permission to merge.
+
+### Historical merged-core dashboard
+
 - **Research/admin/draft checkbox ratio: 18/44 = 40.9%, not project completion.** Research/admin partition: 18/28 checked = 64.3%; 13 product + 3 deferred cards form remaining 16. Equal weights apply only to administrative ratios.
 - **44 cards:** 18 done, 1 draft-ready, 2 scoped-active, 9 owner-action, 11 gated, 3 deferred. P0-02/P0-10 active ONLY for approved local protocol foundation; no product card complete. REF-01/PARAM-01 remain published drafts, not app features.
 - Private [PR #1](https://github.com/nikolas-sapa/fire-command-center/pull/1) merged, baseline main `ed470de61df5fad86c249d6a2a7facfb5d1666aa`. [Draft PR #2](https://github.com/nikolas-sapa/fire-command-center/pull/2), author marcseli, source 6bdb58843a33a70806ff9ca053407d57926ac6aa: submitted prototype, **not adopted/merged** in this board baseline. Independent isolated Node 26.11.1/npm ci --ignore-scripts/build/typecheck passed at pinned head; no V1/provider/shared-client/browser-perf acceptance.
@@ -88,6 +118,8 @@ USER-GO-2026-11-14: approved Convex eventual shared authority + single teammate 
 | Thermal/crew interface planning | /root/thermal_camera_contracts, coordinator claimed | chore/hackathon-planning: docs/contracts/thermal-camera.md, docs/contracts/crew-agent-boundaries.md ONLY; claimed planning responsibility, source pending, app cards gated |
 | Git delivery | Authorized Git specialist/coordinator | Explicit approved reviewed planning/protocol paths only, root Go before delivery; no blanket staging |
 | Local setup | Supervised backend setup agent | Boxd/Treg auth outside repo; no application/provider inference implied |
+| FCC console proposal (PROP-01) | marcseli (Droid agent) | `proposal/fcc-console`: `proposal/**` only, plus this claim row/card and conflict reconciliation. Submitted for owner review; no main merge |
+| FCC precision/presentation follow-up, owner-authorized 2026-11-15 | marcseli (Droid; implementation and authorized Git delivery), prepared for draft review | `proposal/fcc-review-followup`, stacked on PR #2: 108 final exact paths and test-first targets in `proposal/fcc/docs/REVIEW_SCOPE.md`; six study CLI claims released/excluded, current receipt in `proposal/fcc/docs/REVIEW_RECEIPT.md`; this claim row only outside `proposal/**`. No backend/schema/CI ownership, merge, deployment, provider call or frontend/backend launch permission. |
 
 **Functional ownership confirmed; exact protocol Tasks 1–4 claims approved above, all other app claims gated.** Frontend/simulator teammate (PR #2 author marcseli, identity confirmation pending) owns design + ALL proposal/fcc/**, including world/runtime/store/adapters/camera render/assets/frontend lock. Coordinator/root owns architecture/data/backend/agents/integration: future backend/** plus docs/contracts/**, docs/data/**, docs/architecture/**. Root never edits teammate app files; teammate consumes versioned root contracts. Frontend lock: teammate; backend protocol schema/lock: Task 1 worker; shared CI/integration: coordinator, exactly one active owner per file. Other future backend/document paths remain candidates, not stack approval; claim exact files/branch before edits. Teammate identity confirmation does not undo assigned functional ownership.
 
@@ -106,6 +138,13 @@ Weights total 100% of proposed bounded V1, exclude research/admin/deferred scope
 | M7 Camera Room/ranked PIP/role presets/replay | 12% | P0-09 → M9 |
 | M8 Simple Geist/blue theme, optional alert output | 4% | P0-09, voice opt-in only → M9 |
 | M9 Integration/CI/perf/fresh demo/access/submission | 10% | P0-11/P0-12/P0-13; O04/O05/O07–O09 |
+
+## Active proposal
+
+- [ ] PROP-01 · P0 · Status: active · FCC console proposal for owner review
+  - Owner: marcseli with Factory Droid agent. Branch: `proposal/fcc-console`. Files: `proposal/**`, this claim/card and planning-conflict reconciliation only. REV D adds Mati reconstruction, dual themes, prototype DEM/fuel/weather spread and prediction checks. Timed high-risk demo approvals removed; all high-risk drafts require clicks. `npm test` passes both 190 s tours, six beat jumps, one-click approval isolation, hold/apply and future-fire independence; 1 maximum Z0. `npm run build` passes. Both-theme Mati beats, actual feeds, ion/offline and Caldor menu/theme were browser-checked at 1920 × 1080, macOS 25.2, Chromium, scenario seeds. Real-entry 10 s samples 44.5–50.3 FPS average, with jumps/loading hitches; not the team's two-client performance gate. V1 numeric acceptance, multi-client authority, thermal-camera contract and real-provider gates remain unpassed. 0 inference calls. User authorized this proposal ahead of the planning gate, not adoption/main merge. See `proposal/HANDOFF.md`, application `docs/VALIDATION.md` and `proposal/AGENT_PROTOCOL.md`.
+
+  - 2026-11-15 proposal update: complete source `e561695`, subtree import `ab42fa3`, identical validated application tree. Adds replay-solar Auto/Light/Dark appearance, standalone offline PWA and default monochrome DEM Outline/Satellite/layer controls. Build, both-scenario tests and PWA checks pass; Chromium manifest/installability show 0 errors and production offline Mati/Caldor/proposal navigation passes. Native OS install was not performed. Genuine Google 3D **imagery** was verified, still 0 inference calls. Earlier FPS samples above predate these changes, not latest-mode acceptance. Historical root audits and all V1 gates remain unchanged.
 
 ## Completed research/admin, never product credit
 

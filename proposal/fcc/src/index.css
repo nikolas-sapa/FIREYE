@@ -1,0 +1,62 @@
+@import '@fontsource-variable/inter-tight';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import './design-system/tokens/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background: rgb(var(--ink-950)); scroll-behavior: smooth; }
+  body {
+    @apply bg-ink-950 text-bone font-sans antialiased;
+    font-feature-settings: var(--font-features);
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: rgb(var(--signal) / 0.35); color: rgb(var(--bone)); }
+  :focus-visible { outline: 1px solid rgb(var(--signal)); outline-offset: 2px; }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--ink-600)) transparent; }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--ink-600)); }
+  *::-webkit-scrollbar-track { background: transparent; }
+  /* Match installed/mobile viewport and avoid placing controls under display cutouts. */
+  .fcc-console-shell {
+    min-height: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+@layer components {
+  /* Micrographic label: mono, uppercase, tracked. The signature FCC text style. */
+  .fcc-label { @apply font-mono text-nano uppercase text-bone-mute; }
+  .fcc-micro { @apply font-mono text-micro uppercase text-bone-mute; }
+  .fcc-data  { @apply font-mono text-tiny tabular-nums text-bone; }
+  .fcc-num   { font-variant-numeric: tabular-nums slashed-zero; }
+
+  /* Background textures */
+  .fcc-dotgrid {
+    background-image: radial-gradient(rgb(var(--ink-600) / 0.55) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .fcc-linegrid {
+    background-image:
+      linear-gradient(rgb(var(--line-faint)) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line-faint)) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .fcc-hatch {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--ink-600) / 0.5) 0 1px, transparent 1px 6px);
+  }
+  .fcc-hatch-signal {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--signal) / 0.35) 0 1px, transparent 1px 6px);
+  }
+  .fcc-scanlines {
+    background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}

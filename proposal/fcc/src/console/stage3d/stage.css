@@ -1,0 +1,90 @@
+/* Stage-owned styles: Cesium credit container, pulse rings, feed HUD details. Colors come from tokens. */
+
+.fcc-stage .cesium-widget,
+.fcc-stage .cesium-widget canvas {
+  outline: none;
+}
+
+.fcc-stage-credits {
+  font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--bone-mute));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 50%;
+  pointer-events: auto;
+}
+.fcc-stage-credits .cesium-credit-logoContainer {
+  display: inline-flex !important;
+  align-items: center;
+  opacity: 0.55;
+}
+.fcc-stage-credits .cesium-credit-logoContainer img {
+  height: 12px !important;
+  width: auto !important;
+  filter: grayscale(1) brightness(1.6);
+}
+.fcc-stage-credits .cesium-credit-textContainer {
+  display: inline;
+  white-space: normal;
+  overflow: visible;
+}
+.fcc-stage-credits a,
+.fcc-stage-credits .cesium-credit-expand-link {
+  color: rgb(var(--bone-dim)) !important;
+  text-decoration: none;
+}
+.fcc-stage-credits .cesium-credit-expand-link:hover {
+  color: rgb(var(--bone)) !important;
+}
+.fcc-stage .cesium-credit-lightbox-overlay {
+  background-color: rgb(var(--void) / 0.7);
+}
+.fcc-stage .cesium-credit-lightbox {
+  background-color: rgb(var(--ink-900));
+  border: 1px solid rgb(var(--line-strong));
+  border-radius: 0;
+  color: rgb(var(--bone-dim));
+  font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  font-size: 11px;
+}
+
+@keyframes fcc-stage-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.95; }
+  100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+}
+.fcc-stage-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgb(var(--signal));
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  animation: fcc-stage-pulse 1.8s cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+.fcc-stage-pulse.delay { animation-delay: 0.9s; }
+
+@keyframes fcc-rec-blink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0.15; }
+}
+.fcc-rec-dot { animation: fcc-rec-blink 1.4s steps(1, end) infinite; }
+
+.fcc-feed-scan {
+  background-image: repeating-linear-gradient(0deg, rgb(var(--bone) / 0.035) 0 1px, transparent 1px 3px);
+}
+
+/* Keep sensor telemetry clear of the console's incident metrics and feed-navigation bar.
+   Standalone feed surfaces keep their original edge-aligned HUD. */
+.fcc-console-stage .fcc-feed-hud-bottom { bottom: 124px; }
+.fcc-console-stage .fcc-feed-hud-model { top: 60px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fcc-stage-pulse { animation: none; opacity: 0.8; }
+  .fcc-stage-pulse.delay { display: none; }
+  .fcc-rec-dot { animation: none; }
+}

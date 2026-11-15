@@ -1,0 +1,130 @@
+{
+ "facts": [
+  {
+   "id": "area-effis",
+   "label": "Burnt area (EFFIS satellite mapping)",
+   "value": "1,362 ha",
+   "source": "EFFIS burnt area, feature 15060",
+   "url": "https://maps.effis.emergency.copernicus.eu/effis?service=WFS&version=1.1.0&request=GetFeature&typeName=ms:modis.ba.poly&bbox=37.98,23.85,38.10,24.08,EPSG:4326&outputFormat=geojson"
+  },
+  {
+   "id": "area-iawf",
+   "label": "Burnt area (IAWF, FIRElinks)",
+   "value": "1,431 ha",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks)",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/"
+  },
+  {
+   "id": "area-bams",
+   "label": "Burnt area (BAMS, citing Lekkas et al.)",
+   "value": "1,250 ha",
+   "source": "Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"",
+   "url": "https://doi.org/10.1175/BAMS-D-18-0231.1"
+  },
+  {
+   "id": "deaths-wikipedia",
+   "label": "Fatalities (final count, Oct 2022)",
+   "value": "104",
+   "source": "Wikipedia, \"2018 Attica wildfires\"",
+   "url": "https://en.wikipedia.org/wiki/2018_Attica_wildfires"
+  },
+  {
+   "id": "deaths-guardian",
+   "label": "Fatalities (July 2019)",
+   "value": "103",
+   "source": "The Guardian, \"Greek fires one year on\" (20 Jul 2019)",
+   "url": "https://www.theguardian.com/world/2019/jul/20/greek-fires-one-year-on-103-dead-survivors-and-rescuers-look-back"
+  },
+  {
+   "id": "deaths-firelinks",
+   "label": "Fatalities (2019 papers)",
+   "value": "102",
+   "source": "Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks); Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"",
+   "url": "https://firelinks.eu/wp-content/uploads/2019/11/Xanthopoulos-Mitsopoulos-The-catastrophic-fire-of-July-2018-in-Greece-for-Firelinks-site.pdf"
+  },
+  {
+   "id": "deaths-iawf",
+   "label": "Fatalities (IAWF report)",
+   "value": "100",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/"
+  },
+  {
+   "id": "injured",
+   "label": "Injured",
+   "value": "At least 150 seriously injured (FIRElinks); 172 (Wikipedia)",
+   "source": "Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks); Wikipedia, \"2018 Attica wildfires\"",
+   "url": "https://firelinks.eu/wp-content/uploads/2019/11/Xanthopoulos-Mitsopoulos-The-catastrophic-fire-of-July-2018-in-Greece-for-Firelinks-site.pdf"
+  },
+  {
+   "id": "structures",
+   "label": "Homes / structures",
+   "value": "More than 1,650 homes (IAWF); about 3,000 houses (BAMS); more than 4,000 structures destroyed or damaged (Wikipedia)",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"; Wikipedia, \"2018 Attica wildfires\"",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/"
+  },
+  {
+   "id": "vehicles",
+   "label": "Vehicles burned",
+   "value": "305",
+   "source": "Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"",
+   "url": "https://doi.org/10.1175/BAMS-D-18-0231.1"
+  },
+  {
+   "id": "evacuated-sea",
+   "label": "People evacuated from beaches by boat",
+   "value": "715 (navy vessels, yachts and fishing boats; government spokesman, 24 Jul)",
+   "source": "Times of Israel (AP), 24 Jul 2018",
+   "url": "https://www.timesofisrael.com/death-toll-in-greece-wildfires-rises-to-60/"
+  },
+  {
+   "id": "rescued",
+   "label": "People evacuated or rescued",
+   "value": "Over 700",
+   "source": "Wikipedia, \"2018 Attica wildfires\"",
+   "url": "https://en.wikipedia.org/wiki/2018_Attica_wildfires"
+  },
+  {
+   "id": "warning",
+   "label": "Warning to residents",
+   "value": "No warning or organized evacuation reached residents (IAWF). Cell-broadcast 112 alerts started in Greece only in 2020; in 2018 112 was a call line.",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; ekathimerini, \"Greece activates full service of European emergency number\" (1 Jan 2020)",
+   "url": "https://www.ekathimerini.com/news/248021/greece-activates-full-service-of-european-emergency-number/"
+  },
+  {
+   "id": "duration",
+   "label": "Ignition to the sea",
+   "value": "Under 2 hours; mean head rate of spread about 2.6 km/h, about 4 km/h through Mati with bursts over 5 km/h",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/"
+  },
+  {
+   "id": "wind-penteli",
+   "label": "Wind at Penteli (NOA station, 495 m)",
+   "value": "WNW 32-56 km/h, gusts 50-89 km/h; gusts to 25-26 m/s with a lull 1440-1520 UTC",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"",
+   "url": "https://doi.org/10.1175/BAMS-D-18-0231.1"
+  },
+  {
+   "id": "wind-rafina",
+   "label": "Rafina weather",
+   "value": "38 C and 17% RH at 16:45 (HNMS); max 39 C, min RH 19% (BAMS); gusts occasionally to 120 km/h (FIRElinks)",
+   "source": "IAWF Wildfire Magazine, \"Fire around the globe: Attica region, Greece, July 2018\"; Lagouvardos et al. 2019, BAMS, \"The meteorological conditions of the 2018 Attica fires\"; Xanthopoulos & Mitsopoulos, \"The catastrophic fire of July 2018 in Greece\" (FIRElinks)",
+   "url": "https://www.iawfonline.org/article/fire-globe-attica-region-greece-july-2018/"
+  },
+  {
+   "id": "aircraft-gap",
+   "label": "Aerial support",
+   "value": "One helicopter dropped water 16:50-18:20; no aircraft 18:20-18:45",
+   "source": "thetoc.gr, timeline from the prosecutor's report",
+   "url": "https://www.thetoc.gr/koinwnia/article/mati-to-xronologio-tou-tromou-sto-eisaggeliko-porisma/"
+  },
+  {
+   "id": "camera",
+   "label": "Camera evidence",
+   "value": "Security-camera footage shows fire spreading in Mati from 18:07",
+   "source": "ekathimerini, \"Camera footage shows speed of fire spreading in Mati\"",
+   "url": "https://www.ekathimerini.com/news/232702/camera-footage-shows-speed-of-fire-spreading-in-mati/"
+  }
+ ]
+}
