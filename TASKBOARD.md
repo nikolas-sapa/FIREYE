@@ -1,5 +1,19 @@
 # Fire Command Center shared taskboard
 
+## ROOT-20261115-CHIEF-DESKTOP-DELIVERY
+
+Delivery owner: coordinator, branch `devin/20261115-chief-desktop-delivery`, base `33be396`. Source owner item23 completed isolated GPT-6.1 Sol/SWE-2 work; source is frozen and root-reviewed. Exact scope: `TASKBOARD.md`, `proposal/fcc/src/console/fireye/shell/OrchestratorCallout.tsx`, `proposal/fcc/src/console/fireye/shell/TopBar.tsx`, `proposal/fcc/tests/tamagotchi.ts`.
+
+Bounded recording test plan before integration: CB01 actual old-source assertion exit1, new-source exit0,48 existing sprite SSR combinations retained. CD01 fresh1440x900 Ops context:1 shared chat, Chief/Ask Chief/simulated-no-LLM copy, completed local status reply, close/reopen identical history, positive fully in-viewport chat bounds at reply and reopen,0 page/console/provider errors. CI01 applicable hosted frontend Node24/26 checks must pass before merge. IC01 exact4-path scope,3 source files byte-identical to reviewed candidate,0 data/assets/dependency/callback changes and clean whitespace.
+
+Implementation plan: integrate only the frozen3-file branding patch, preserve existing chat/decision behavior, obtain hosted checks and review the complete delivery diff. This is desktop recording scope, not a replacement for full issue13 acceptance.
+
+Receipts: candidate CB01 RED1/GREEN0; local npm test/typecheck/build each0. Root inspected actual desktop reply/reopen screenshots and deciding JSON: chat bounds312,486,360,252 within1440x900, exact retained history,0 errors/provider requests. Candidate served HTML/compiled chunk matched its built dist. Current-main frontend tree verified identical to candidate baseline `c98415b` before integration.
+
+Open limits preserved: earlier broad browser exit1; FIREYE mobile TopBar outside375px viewport, mobile Ops reopen visual inconclusive. Earlier FIREYE desktop test wrongly expected the TopBar to open chat, but its unchanged callback selects Ops/unsnoozes decisions. No callback or layout change is part of this patch; no broad desktop/mobile acceptance claimed.
+
+Non-goals: audience/responsive/map redesign, altered decision authority, new chat/model/provider integration, backend executor mapping, scientific data, new assets/dependencies, public deployment or full issue closure. Human Chief authority remains distinct from the simulated mascot.
+
 ## ROOT-20261115-SUBMISSION-EVIDENCE
 
 Owner: coordinator. Branch: `devin/20261115-submission-evidence`, base `9ac4ecd`. Exact scope: `SUBMISSION_EVIDENCE.md`, `TASKBOARD.md`. User requested a GitHub submission file; it will present evidence and an advocacy case, not fabricated rubric compliance or instructions controlling reviewer verdicts.
