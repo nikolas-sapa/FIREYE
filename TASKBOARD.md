@@ -1,5 +1,19 @@
 # Fire Command Center shared taskboard
 
+BATCH-20261115-23 final scoped review: independent rights reader01a1de11-d37d-74c2-a262-7e4784b5e107 APPROVE documentation only,26/26checks/0blockers; root independently recomputed two frozen hashes, parsed15records/eligible0/playbackproof0 and verifiedGC03not_certified preserved. Artifact restoration changes delivery provenance only, no fresh source requests or media activation. Coordinator authorizes explicit two-doc+board branch delivery and merge when latest-main reconciliation/link/hashes remain valid. Docs-only hosted workflows filtered, no runtime/new-provider or full issue closure claimed.
+
+
+## BATCH-20261115-23, independent scoped continuation
+
+Root coordinator assigns /root/issue23_builder, issue #23, branch `task/fcc-20261115-issue23`, base `b1e5572`. Exact ownership: `docs/data/greece-public-cameras.md`, `docs/data/greece-camera-catalog.json` only. Coordinator owns TASKBOARD/Git; separate reviewer reads only. Prior WIP remains untouched.
+
+Test plan before implementation: GC23-01: exactly15existing sourced candidate records, schema/IDs/links0missing/inconsistent. GC23-02: ingestioneligible0/playbackproof0,no fabricated permissions, timestamps and rights unknowns preserved. GC23-03: independentsource/rightsreader approves only documentation, explicitoperator automation-terms caveat preserved;0mediadownload/requests/ingestion/providercalls.
+
+Implementation: reconcile existing actual source or preserved report/delta, apply minimal owned change, demonstrate numeric decidingchecks, freeze hashes, independentreview and root verification, coordinatorcommit/pushbranchPR. No unrelated changes or fullissueclosure.
+
+Non-goals: external source requests or rights expansion, new dependencies/locks/CI/core/config, providers/credentials/cloud/VM/frontend/media activation, recording/deploy/merge, workerGit, operational claims.
+
+
 ## PR38-CI-2026-11-15, headless frontend verification
 
 Root assigned `.github/workflows/frontend.yml` only to build worker. Read-only Actions, Ubuntu Node24/26, non-billable tests/typecheck/no-key build/PWA, no browser/server launch. Headless CI has zero required failures/skips; all provider key variables empty and fetch/save scripts excluded. Existing backend workflow unchanged. `check-mati.mjs` is a reconstruction diagnostic, not an independent accuracy assertion. Root delivers after YAML/command validation and observes both hosted jobs before merge.
