@@ -1,5 +1,15 @@
 # Fire Command Center shared taskboard
 
+## ROOT-20261115-SUBMISSION-EVIDENCE
+
+Owner: coordinator. Branch: `devin/20261115-submission-evidence`, base `9ac4ecd`. Exact scope: `SUBMISSION_EVIDENCE.md`, `TASKBOARD.md`. User requested a GitHub submission file; it will present evidence and an advocacy case, not fabricated rubric compliance or instructions controlling reviewer verdicts.
+
+Test plan before implementation: SE01 all local evidence links resolve with0 missing targets; a deliberately missing link in an ignored copy returns1 and its restored copy returns0. SE02 exact2-file documentation scope,0 runtime/dependency/configuration changes and clean whitespace. SE03 manual claim audit against frozen source/receipts:0 unsupported operational/provider/impact/comprehensive-rubric claims.
+
+Implementation plan: author concise strengths, traceable implemented boundaries, explicit unknown rubric coverage, remaining acceptance gaps and next-phase milestones; run the existing document-link guard and review the full diff; deliver a documentation-only PR.
+
+Non-goals: agent/grader instructions, invented scores or criteria, guaranteed advancement/winning, application or audience redesign, scientific-data refresh, provider calls, backend executor integration, deployment or issue closure.
+
 ## ROOT-20261115-DOCS-DELIVERY, reviewed README and infographic integration
 
 Delivery owner: coordinator, branch `devin/20261115-current-docs-delivery`, base `c466b6f`. Implementation owners completed isolated item31/item32 worktrees; only frozen coordinator-reviewed artifacts may enter this branch. Exact delivery scope: `TASKBOARD.md`, `README.md`, and these16 assets under `docs/assets/readme/`: `demo-flow.svg`, `demo-flow.png`, `demo-flow.mmd`, `demo-flow.excalidraw`, `agent-roles.svg`, `agent-roles.png`, `agent-roles.mmd`, `agent-roles.excalidraw`, `system-overview.svg`, `system-overview.png`, `system-overview.mmd`, `system-overview.excalidraw`, `mission-lifecycle.svg`, `mission-lifecycle.png`, `mission-lifecycle.mmd`, `mission-lifecycle.excalidraw`.
