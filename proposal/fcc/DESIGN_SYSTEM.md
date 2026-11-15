@@ -4,6 +4,8 @@
 
 REV D adds dual FCC/Team themes, provenance tags and prediction-check cards. Historical facts must be attributed; replay-area overlap must be labelled as reconstruction agreement, not observed prediction accuracy. All video and agent work is simulated.
 
+The real-data monitoring entry (2026-11-15) reuses the same tokens, Button/Icon, ThemeToggle, AppearanceToggle, hairline sections, mono source-status labels and dominant stage layout. It replaces simulated orchestration with source summaries. Persistent Current / Historical / Saved badges, acquisition/retrieval times and provider links distinguish observations, forecasts, reanalysis and post-event mapping. Its six labeled simulated 3D drone/ground-camera views use the legacy camera geometry and styling, in a separate monitoring renderer with worker detail and steady frame timing. Recording-safe hides uncleared third-party camera media. No new design tokens or reusable primitives were added. See `docs/MONITORING.md`.
+
 REV C adds the full-screen console (`/console.html`): console layout and patterns (section 13A) and 10 console components (section 11, "Console components"). REV B added the Orchestrator-first patterns (section 13) and 12 components. REV B is archived at `public/rev-b/` and git tag `rev-b`; REV A at `public/rev-a/` and git tag `rev-a`.
 
 This is the canonical reference for building any FCC surface. Read it before writing UI. If something you need is not here, add it to the system (tokens, primitive or component), then document it here; do not invent one-off styles inside a feature.
@@ -137,7 +139,20 @@ The new `--on-signal` / `text-on-signal` token keeps filled primary actions read
 
 `AppearanceToggle` and `InstallAppButton` are public `@ds` components, shown alongside `ThemeToggle` in specimen C.10. Preferences: `fcc.appearance`, with `?appearance=auto|light|dark` taking precedence on load. Runtime API: `getAppearance`, `setAppearance`, `useAppearance`, `setSolarDaylight`, `getDaylightBlend`.
 
-The main globe defaults to monochrome DEM hillshade with independently hideable contours, roads and approximate building marks. Operational overlays retain semantic colours. Satellite is a separate main-view mode; camera feeds never inherit the outline treatment. The layer panel shows hidden-layer counts and explains that hiding a finding does not clear its decision queue entry.
+The main globe defaults to quiet **Outline cartography**, with no survey grid. Continuous OSM/CARTO vector context supplies coastlines, roads, places and mapped building footprints beyond the local pack. Water uses faint diagonal hatching; woodland uses sparse stipple; other land-use areas use restrained tones. City names lead the hierarchy, minor landmarks appear only nearby, and roads stay subordinate to operational overlays. Buildings appear with zoom. Contours, roads, places and buildings remain independently hideable; preserve saved preferences.
+
+Globe layers group geography, unit types, finding categories and incident layers. Give drones,
+helicopters, airplanes and each ground-unit type independent visibility, with separate callsign,
+trail, sensor-footprint and altitude-stem controls. Findings have category, label and uncertainty
+filters; fire surfaces and replay perimeters are independent. Group masters preserve child choices.
+Air-unit and basemap-only presets never alter simulation or decision state. Smoothed aircraft and
+unit-mounted camera motion share one bounded interpolation path; avoid instant waypoint turns,
+artificial camera orbits and stale detector boxes. Keep sensor telemetry clear of incident chrome.
+Letterbox sensor frames without cropping so normalized detection boxes stay registered on resize.
+
+Outline follows the same settled appearance blend as chrome, including manual Light/Dark overrides, Auto replay twilight and reduced motion. Changes update local material uniforms and cached endpoint imagery alphas, not terrain or data geometry. Streamed label/halo palettes choose the higher-contrast endpoint through twilight rather than fading into the background. Keep the map monochrome; operational overlays retain semantic colours. The fire overlay uses an unwarped reconstruction mask with a restrained scar and active edge, not cinematic flame/noise effects. Satellite and camera feeds retain their own rendering.
+
+Terrain is 1× vertical scale, with nominal DEM sample spacing of approximately 20 m Mati / 40 m Caldor, not a vertical-accuracy claim. Local relief fades into continuous streamed geography; elevations outside the local coverage are not measured regional terrain. The HUD distinguishes streamed context, local fallback and outside-DEM views. Current OSM context is not historical incident imagery. Without network access, local roads, fuel/water patterns and approximate 9 m building marks remain available; these marks are not surveyed footprints. Ground scale is measured from terrain intersections. Main-view backing resolution follows device density up to 2× within a four-megapixel budget. The layer panel shows hidden-layer counts and explains that hiding a finding does not clear its decision queue entry.
 
 Two themes share every token name. `<html data-theme="fcc | team">` swaps values in `tokens.css`; components never branch on theme.
 
@@ -161,6 +176,14 @@ JS API (`@ds`, `src/design-system/tokens/theme.ts`): `getTheme()`, `setTheme(id,
 ---
 
 ## 4. Semantic roles and tones
+
+### Image-lab review imagery
+
+The proposal's experimental image lab uses fixed existing data colors, not theme accents: H/ember `#FF3B30` priority inspection, V/FCC amber `#FFB800` potential vegetation fuel, O/violet `#A88CFF` object/anomaly, N/ice `#5CC8FF` visible non-fuel surface, U/ink-300 `#929298` unknown/obscured. These categories are not a risk probability scale. Numbered class labels, dashed vegetation boundaries and hatched unknown areas supplement color. Translucent data overlays are an imagery-only exception to the small-fill rule, never app chrome. Uncolored means unassessed, not safe. This generated image is not a validated segmentation raster or fire forecast. See `docs/IMAGE_LAB.md`.
+
+`ImageComparison` is exported from `@ds` and shown in section 05 after the component specimens. Props: optional `before`, `after` URLs, `beforeLabel`, `afterLabel`, `placeholder`, `className`. It shows independent uncropped contain-fit images, accessible captions, empty states, and load-error messages. It deliberately avoids a wipe that would imply pixel registration.
+
+`TileMosaic` is exported from `@ds` with a section 05 specimen. Props: `tiles` (`{src?, label, status?}[]`), `label`, `seams?`. Always renders exactly four square cells in row-major NW/NE/SW/SE order, with contain-fit imagery, explicit empty/error states and optional hairline boundaries. Never blends seams, stretches generated geometry, or substitutes source pixels for missing output. Satellite-mode prompts omit in-image text labels to avoid boundary artifacts; the bench provides external class labels and review controls. Its historical source attribution and license remain visible outside the imagery.
 
 Pick color by meaning, never by hue.
 

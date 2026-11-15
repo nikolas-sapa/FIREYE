@@ -84,4 +84,7 @@ assert.ok([...runSpread(noSeed, 0, () => weather, 100).t].every(t => t === Infin
 const short = runSpread(fixture(20), 0, () => weather, 1.1).t;
 assert.equal([...short].filter(Number.isFinite).length, 3);
 assert.ok([...short].every(t => t === Infinity || t <= 1.1), 'FP03: no stored arrivals beyond horizon');
+const edgeHorizon = 0.5000115401;
+const roundedEdge = runSpread(fixture(2, 1, grassRate * 0.50001154), 0, () => weather, edgeHorizon).t;
+assert.ok([...roundedEdge].every(t => t === Infinity || t <= edgeHorizon), 'FP03: Float32 rounding must not store an arrival past the horizon');
 console.log('FP03 PASS: blocked corridor, no seeds and short-horizon controls');

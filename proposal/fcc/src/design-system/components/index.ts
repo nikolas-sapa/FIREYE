@@ -21,6 +21,10 @@ export type {
 export { ThemeToggle, AppearanceToggle } from './theme';
 export type { ThemeToggleProps } from './theme';
 export { InstallAppButton } from './install';
+export { ImageComparison } from './ImageComparison';
+export type { ImageComparisonProps } from './ImageComparison';
+export { TileMosaic } from './TileMosaic';
+export type { TileMosaicProps, MosaicTile } from './TileMosaic';
 export {
   ZoneTag, WhyPopover, AutonomyDial, LensSelect, TimelineScrubber, LedgerCounter, DraftDocument, DirectiveToast, CaptionBar, DecisionCard,
   AudienceRow, ProvenanceTag, PredictionCheckCard, zoneMeta, actionKindIcon, actionKindLabel, consoleAudienceLabel,

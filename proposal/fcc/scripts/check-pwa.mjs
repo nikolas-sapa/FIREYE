@@ -33,7 +33,12 @@ assert.ok(urls.includes('/data/mati/arrival.bin') && urls.includes('/data/caldor
 assert.ok(urls.some((u) => u.startsWith('/cesium/')));
 assert.ok(urls.every((u) => !u.startsWith('/rev-') && !u.includes('.env') && !u.includes('?') && !u.includes('://')));
 for (const url of urls) assert.ok((await stat(join(dist, url))).isFile(), url);
-for (const url of ['https://tile.googleapis.com/v1/3dtiles/root.json?key=EXAMPLE', 'https://api.cesium.com/asset', 'https://fcc.test/private-api']) {
+for (const url of [
+  'https://tile.googleapis.com/v1/3dtiles/root.json?key=EXAMPLE', 'https://api.cesium.com/asset', 'https://fcc.test/private-api',
+  'https://queue.fal.run/google/nano-banana-2.1/edit', 'https://fal.media/example.png', 'https://tiles.maps.eox.at/wms',
+  'https://fcc.test/api/image-lab/config', 'https://fcc.test/api/image-lab/grid/example/imagery',
+  'https://fcc.test/api/image-lab/grid/example/output/0',
+]) {
   let intercepted = false;
   events.fetch({ request: new Request(url), respondWith: () => { intercepted = true; } });
   assert.equal(intercepted, false, 'Must not cache provider or unrelated API traffic');

@@ -235,7 +235,7 @@ export function Slider({ value, min, max, step = 1, onChange, label, unit, disab
           style={{ left: `${pct}%` }}
         />
       </div>
-      <div aria-hidden className="flex justify-between font-mono text-micro text-ink-400 fcc-num">
+      <div aria-hidden className="flex justify-between font-mono text-micro text-bone-mute fcc-num">
         <span>{min}</span>
         <span>{max}</span>
       </div>

@@ -8,7 +8,10 @@
     "build": "tsc --noEmit && vite build && node scripts/build-pwa.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/check-console.mjs",
+    "test:spread-precision": "node scripts/check-spread-precision.mjs",
     "test:pwa": "node scripts/check-pwa.mjs",
+    "test:image-lab": "node scripts/check-image-lab.mjs",
+    "test:monitoring": "node scripts/check-monitoring.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

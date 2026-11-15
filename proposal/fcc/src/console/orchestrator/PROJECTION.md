@@ -3,6 +3,8 @@
 This note documents the fire-spread model behind `Projection` (bands, head, `etaToPlaces`) and the
 prediction checks the console scores against the replay. Code: `src/console/agents/spread.ts` (model),
 `src/console/agents/projection.ts` (bands, ETAs, revisions), `src/console/agents/predictions.ts` (checks).
+The proposal's image lab runs the same solver (`runTravelTime`) on open-data Greek landscapes; see
+[`docs/IMAGE_LAB.md`](../../../docs/IMAGE_LAB.md).
 
 ## What the model may read
 
@@ -97,37 +99,64 @@ The final-perimeter comparison (EFFIS / CAL FIRE final) is not part of these che
 
 ## Results (scratch runs of the 3-minute Demo Director)
 
+Tour rows below were reproduced on 2026-11-15 with the stored-key precision fix; the pre-fix value follows each number in
+brackets. Reproduce with `npm test`, which prints the scored checks of both tours. The auxiliary sweep, caption and timing figures are inherited local measurements, not fresh receipts for this source; see `docs/REVIEW_RECEIPT.md`.
+
 Mati (issue time, horizon: IoU vs reconstruction; predicted vs replay area; checkpoint errors):
 
 | Check | IoU | Area pred / replay (ha) | Checkpoints (model minus documented) |
 |---|---|---|---|
-| rev 1, 16:43, +30 | 0.36 | 21 / 56 | none in window |
-| rev 1, 16:43, +60 | 0.19 | 56 / 289 | NV west edge +74 min |
-| rev 1, 16:43, to coast (+122) | 0.12 | 164 / 1,248 | NV west edge +74, Neos Voutzas +101, Marathonos +128, coast +178 min |
-| rev 4, 17:24, +30 | 0.44 | 200 / 436 | NV west edge +22 min |
-| rev 5, 17:44, +60 | 0.40 | 518 / 1,239 | Neos Voutzas +14, Marathonos +60 min |
-| rev 6, 18:05, +30 | 0.63 | 719 / 1,061 | Marathonos +16 min |
+| rev 1, 16:43, +30 | 0.30 [0.36] | 73 [21] / 56 | none in window |
+| rev 1, 16:43, +60 | 0.40 [0.19] | 177 [56] / 289 | NV west edge -33 [+74] min |
+| rev 1, 16:43, to coast (+122) | 0.37 [0.12] | 476 [164] / 1,248 | NV west edge -33 [+74], Neos Voutzas -30 [+101], Marathonos +19 [+128], coast +23 [+178] min |
+| rev 4, 17:24, +30 | 0.63 [0.44] | 282 [200] / 436 | NV west edge -4 [+22] min |
+| rev 5, 17:44, +60 | 0.53 [0.40] | 687 [518] / 1,239 | Neos Voutzas +10 [+14], Marathonos +17 [+60] min |
+| rev 6, 18:05, +30 | 0.71 [0.63] | 811 [719] / 1,061 | Marathonos +3 [+16] min |
 
-The model is much too slow on Mati: from detection it puts the head at Marathonos Ave about 224 min and
-the sea about 314 min out, against documented runs of about 98 and 124 min. Likely causes: no ember
-spotting, 10 m mean wind without gusts (gusts reached about 74 km/h), and coarse fuel classes. Later
-revisions are closer only because they start from a larger observed fire.
+From detection the model now reaches the west edge of Neos Voutzas about 30 min early, but Marathonos
+Ave and the coast about 20 min late, and by the coast time it has burned less than half the
+reconstructed area. The Director's ignition caption (Marathonos Ave site, 300 m radius) reads about 64 min
+to the road and 128 min to the sea [224 and 314]. Remaining likely causes of the late head and small area:
+no ember spotting, 10 m mean wind without gusts (gusts reached about 74 km/h), and coarse fuel classes.
+The reconstruction itself was built with a fitted travel-time model, so agreement with it is not
+independent skill; the sourced checkpoint times are the more meaningful comparison.
 
-Caldor: +30 min IoU 0.80 to 0.82, +60 min IoU 0.66; growth-only IoU 0.13 to 0.24; the model
-over-predicts area (for example 3,172 vs 2,128 ha at +60) yet is late reaching Grizzly Flats (model ETA
-225 min at 16:59 PDT against a replay arrival 90 min after that time), again consistent with missing spotting.
+Caldor: +30 min IoU 0.78 to 0.81 [0.80 to 0.82], +60 min IoU 0.61 [0.66]; growth-only IoU 0.11 to 0.23
+[0.13 to 0.24]. The fix makes Caldor slightly worse: the model already over-predicted area (3,426 [3,172]
+vs 2,128 ha at +60) yet is still late reaching Grizzly Flats (at the 16:59 PDT revision, model ETA about
+190 [198] min against a replay arrival about 104 min after issue), again consistent with missing spotting.
 
-Spread-model sweep on Caldor (offsets from manifest start): +30 IoU 0.79 to 0.91, +60 0.65 to 0.83,
-+180 0.37 to 0.62, +360 0.27 to 0.45.
+Spread-model sweep, eight issue times at ninths of each pack's span, IoU vs replay:
+Caldor +30 0.78 to 0.90 [0.82 to 0.92], +60 0.60 to 0.82 [0.66 to 0.85], +180 0.32 to 0.57 [0.37 to 0.62],
++360 0.24 to 0.38 [0.27 to 0.44]. Mati +30 0.49 to 0.90 [0.46 to 0.90], +60 0.48 to 0.81 [0.23 to 0.86],
++180 0.60 to 0.85 [0.32 to 0.75].
+
+## Known limitation: narrow fires at high wind
+
+The 16-neighbour stencil resolves directions only to about 26.6° near the head. Above about 30 km/h
+(shrub and forest LB above about 3) almost every stencil direction except straight downwind becomes very
+slow, so modelled area at a fixed time stops growing with wind and even falls (uniform flat shrub, 32 °C,
+20 % RH, 60 min: 1,206 cells at 30 km/h, 723 at 60 km/h) while the head still advances at the full rate.
+Area and flank width are therefore under-represented in strong wind; head arrival times are not affected.
+A larger stencil would fix it and is a model change, not yet made.
 
 ## Timings
 
-One `runSpread` call: typically 4 to 20 ms on both packs, at most 36 ms in any scratch run (Node, Apple
-silicon), under the 50 ms budget. Demo Director goto to
-any beat: Caldor up to about 160 ms, Mati up to about 310 ms.
+One `runSpread` call: in the sweep above, mean 12 ms and worst 16 ms on Caldor, mean 3 ms and worst 4 ms on
+Mati (Node, Apple silicon), under the 50 ms budget. Demo Director goto to
+any beat (measured before the fix, not re-measured): Caldor up to about 160 ms, Mati up to about 310 ms.
 
 ## Changes
 
+- 2026-11-15: fixed a solver bug. Arrival times are stored in a `Float32Array` but heap keys are float64;
+  when a time rounded down on storage, the stale-entry test (`tc > T[i]`) skipped the cell's own fresh
+  entry, so the front stalled at random cells and spread was slowed by roughly 1.2 to 2.7 times in burned
+  area. The fix now queues the exact Float32 value stored in the arrival array and retains the original
+  `tc > T[i]` guard; it does not add an epsilon or tune coefficients. Raw and stored arrival times must
+  both fit the horizon. Fractional explicit seeds use the same stored precision. Permanent FP01–FP03
+  regressions include the issue's pinned 20-cell RED/control, an independent scan-priority shortest-path
+  reference with improved queued routes, blocked/no-seed/horizon controls and ten identical runs.
+  Both scenario tours were rerun; inherited auxiliary figures are marked above.
 - REV D: replaced the replay-derived projection (pack arrival scaled by a bias) with this model.
 - Tried and dropped: a crowning threshold for TimberLitter (full 10 % rule when M <= 5 % and
   U10 >= 25 km/h), added after the first Mati run. It changed Mati IoU by at most 0.06 and Caldor not at

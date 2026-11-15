@@ -10,10 +10,13 @@ import './stage.css';
 import { MapControls } from './MapControls';
 import { useMapSettings } from './map-settings';
 import { getProfile } from './profile';
+import { formatMeters, scaleDistance } from './cartography';
 
 export type StageSelectKind = 'unit' | 'finding' | 'place' | 'action';
 
 export interface StageProps {
+  /** Extension layers may attach to this engine without starting the replay runtime. */
+  onEngineReady?: (engine: StageEngine | null) => void;
   className?: string;
   /**
    * Called when the user clicks a unit / finding / place / action route on the globe (null = empty ground).
@@ -39,7 +42,7 @@ const FADE_MS = 420;
 
 /** Store-agnostic stage (reads the stage mirror). `Stage` wraps this with the console store. */
 export function StageView({
-  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest,
+  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest, onEngineReady,
 }: StageProps & { onFocusRequest?: (g: Geo, rangeM?: number) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
@@ -51,6 +54,11 @@ export function StageView({
   const sel = selectedId !== undefined ? selectedId : localSel;
   const webgl = hasWebGL();
   const pack = useStageWorld((s) => s.pack);
+
+  useEffect(() => {
+    if (status.phase === 'ready') onEngineReady?.(engineRef.current);
+    return () => { onEngineReady?.(null); };
+  }, [status.phase, onEngineReady]);
 
   useEffect(() => {
     if (!hostRef.current || !webgl) return;
@@ -212,6 +220,10 @@ function StageOverlay({ engineRef }: { engineRef: React.MutableRefObject<StageEn
 function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<StageEngine | null>; basemap?: string }) {
   const settings = useMapSettings();
   const ref = useRef<HTMLSpanElement>(null);
+  const scaleRef = useRef<HTMLDivElement>(null);
+  const scaleBarRef = useRef<HTMLSpanElement>(null);
+  const scaleLabelRef = useRef<HTMLSpanElement>(null);
+  const detailRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -222,12 +234,27 @@ function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<S
       const alt = c.altM >= 10000 ? `${(c.altM / 1000).toFixed(1)} KM` : `${Math.round(c.altM)} M`;
       const pos = c.center ? `${fmtLat(c.center.lat, 3)} ${fmtLon(c.center.lon, 3)}` : '—';
       ref.current.textContent = `HDG ${pad(Math.round(c.headingDeg) % 360, 3)}° · PITCH ${Math.round(c.pitchDeg)}° · ALT ${alt} · ${pos}`;
+      const mpp = c.metersPerPixel ?? 0;
+      const distance = scaleDistance(mpp);
+      if (scaleRef.current) scaleRef.current.hidden = !distance;
+      if (scaleBarRef.current && distance) scaleBarRef.current.style.width = `${distance / mpp}px`;
+      if (scaleLabelRef.current) scaleLabelRef.current.textContent = formatMeters(distance);
+      if (detailRef.current) detailRef.current.textContent = settings.mode === 'outline'
+        ? `${c.streamedContext ? 'STREAMED' : 'LOCAL FALLBACK'} · ${c.localTerrain ? `DEM ~${formatMeters(c.demSpacingM ?? 0)}` : 'OUTSIDE LOCAL DEM'}`
+        : '';
     });
-  }, [engineRef]);
+  }, [engineRef, settings.mode]);
   return (
-    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex items-center gap-3 whitespace-nowrap bg-ink-950/85 px-1 font-mono text-micro uppercase text-bone-mute">
-      <span ref={ref} className="fcc-num" />
-      {basemap && <span className="text-bone-dim">{settings.mode === 'outline' ? 'Outline · DEM' : BASEMAP_SHORT[basemap] ?? basemap}</span>}
+    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex flex-col items-end gap-1 font-mono text-micro uppercase text-bone-mute">
+      <div ref={scaleRef} className="flex items-end gap-2 bg-ink-950/90 px-2 py-1" hidden>
+        <span ref={detailRef} className="fcc-num mr-2" />
+        <span ref={scaleBarRef} className="mb-0.5 inline-block h-1.5 border-x border-b border-bone-dim" />
+        <span ref={scaleLabelRef} className="fcc-num text-bone-dim" />
+      </div>
+      <div className="flex items-center gap-3 bg-ink-950/85 px-1">
+        <span ref={ref} className="fcc-num" />
+        {basemap && <span className="text-bone-dim">{settings.mode === 'outline' ? 'Outline · Cartography' : BASEMAP_SHORT[basemap] ?? basemap}</span>}
+      </div>
     </div>
   );
 }
@@ -241,7 +268,7 @@ function StageLoading({ phase }: { phase: StageStatus['phase'] }) {
           <span className="block h-px w-8 animate-pulse bg-bone-mute" />
         </span>
         <span className="font-mono text-nano uppercase text-bone-mute">
-          {!hasPack ? 'Stage · awaiting scenario pack' : phase === 'loading' ? 'Stage · building terrain and relief' : 'Stage · initialising'}
+          {!hasPack ? 'Stage · awaiting scenario pack' : phase === 'loading' ? 'Stage · preparing terrain and cartography' : 'Stage · initialising'}
         </span>
       </div>
     </div>

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn, fmtLat, fmtLon, pad, zulu } from '@ds';
 import type { Feed } from '../../contracts';
 import { MODEL_LABEL } from '../fx';
 import { useStageWorld } from '../world';
 import { FeedRenderer, FULL_H, FULL_W, THUMB_H, THUMB_W, type Detection, type FeedFrame } from './FeedRenderer';
+import { fitFeedFrame } from './dynamics';
+import { ArchiveCamera } from './ArchiveCamera';
 import '../stage.css';
 
 export interface FeedSurfaceProps {
@@ -20,11 +22,25 @@ const UAV = new Set<Feed['kind']>(['uav-nadir', 'uav-oblique', 'uav-chase']);
 /** Store-agnostic surface (reads the stage mirror). Used by Stage feed mode and the dev harness. */
 export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: FeedSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState<ReturnType<typeof fitFeedFrame> | null>(null);
   const [frame, setFrame] = useState<FeedFrame | null>(null);
   const [failed, setFailed] = useState(false);
   const feed = useStageWorld((s) => s.feeds.find((f) => f.id === feedId));
   const t = useStageWorld((s) => s.t);
+  const pack = useStageWorld((s) => s.pack);
+  const paused = useStageWorld((s) => s.paused);
   const hasFeed = !!feed;
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const resize = () => setViewport(fitFeedFrame(host.clientWidth, host.clientHeight));
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,24 +51,33 @@ export function FeedSurfaceView({ feedId, variant, className, hud = 'auto' }: Fe
       return;
     }
     setFrame(null);
-    return r.register({ feedId, variant, canvas, onFrame: setFrame });
+    setFailed(false);
+    canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+    return r.register({ feedId, variant, canvas, onFrame: (f) => { setFrame(f); setFailed(false); },
+      onError: () => { setFrame(null); setFailed(true); } });
   }, [feedId, variant, hasFeed]);
 
   const full = variant === 'full';
   const showHud = hud !== 'none';
+  const currentFrame = hasFeed && frame?.feedId === feedId ? frame : null;
 
   return (
-    <div className={cn('fcc-sensor relative h-full w-full overflow-hidden bg-void', className)}>
+    <div ref={hostRef} className={cn('fcc-sensor relative h-full w-full overflow-hidden bg-void', className)}>
+      <div className="absolute" style={viewport ?? { inset: 0 }}>
       <canvas
         ref={canvasRef}
         width={full ? FULL_W : THUMB_W}
         height={full ? FULL_H : THUMB_H}
-        className={cn('absolute inset-0 h-full w-full object-cover transition-opacity duration-base ease-servo', frame ? 'opacity-100' : 'opacity-0')}
+        className={cn('absolute inset-0 h-full w-full object-contain transition-opacity duration-base ease-servo', currentFrame ? 'opacity-100' : 'opacity-0')}
         aria-label={feed ? `Simulated camera feed ${feed.label}` : 'Camera feed'}
         role="img"
       />
-      {!frame && <Acquiring failed={failed || !feed} full={full} label={feed?.label} />}
-      {frame && showHud && feed && (full ? <FullHud feed={feed} frame={frame} t={t} /> : <ThumbHud feed={feed} frame={frame} />)}
+      {!currentFrame && (pack?.imagery && feed
+        ? <ArchiveCamera image={pack.imagery} label={`${feed.label} · archive fallback`} target={feed.pose?.target ?? feed.pose?.pos}
+            seed={feed.id.split('').reduce((n, c) => n + c.charCodeAt(0), 0) % 7} variant={variant} playing={!paused} />
+        : <Acquiring failed={failed || !feed} full={full} label={feed?.label} />)}
+      {currentFrame && showHud && feed && (full ? <FullHud feed={feed} frame={currentFrame} t={t} /> : <ThumbHud feed={feed} frame={currentFrame} />)}
+      </div>
     </div>
   );
 }
@@ -159,9 +184,8 @@ function FullHud({ feed, frame, t }: { feed: Feed; frame: FeedFrame; t: number }
           <span className="text-amber">{feed.kind === 'satellite' ? 'Not live · archived imagery' : 'Simulated clip'}</span>
         )}
         <span className="text-bone">{callsign}</span>
-        <span className="text-bone-mute">{feed.label}</span>
       </div>
-      <div className={cn('fcc-num absolute right-6 top-5 flex items-center gap-3 text-bone-dim', micro)}>
+      <div className={cn('fcc-feed-hud-model fcc-num absolute right-6 top-5 flex items-center gap-3 text-bone-dim', micro)}>
         {frame.nuc && <span className="bg-bone px-1 text-void">NUC</span>}
         <span className="text-bone">{frame.sat?.real ? frame.sat.sensor : MODEL_LABEL[m]}</span>
         {!frame.sat?.real && <span>FOV {Math.round(p.fovDeg)}°</span>}
@@ -173,7 +197,7 @@ function FullHud({ feed, frame, t }: { feed: Feed; frame: FeedFrame; t: number }
       )}
 
       {uav && (
-        <div className={cn('fcc-num absolute bottom-5 left-6 flex items-center gap-4 text-bone-dim', micro)}>
+        <div className={cn('fcc-feed-hud-bottom fcc-num absolute bottom-5 left-6 flex max-w-[60%] flex-wrap items-center gap-x-4 gap-y-1 text-bone-dim', micro)}>
           <span>
             {fmtLat(p.geo.lat)} {fmtLon(p.geo.lon)}
           </span>
@@ -185,7 +209,7 @@ function FullHud({ feed, frame, t }: { feed: Feed; frame: FeedFrame; t: number }
         </div>
       )}
       {!uav && !dash && !phone && !frame.sat?.real && (
-        <div className={cn('fcc-num absolute bottom-5 left-6 flex items-center gap-4 text-bone-dim', micro)}>
+        <div className={cn('fcc-feed-hud-bottom fcc-num absolute bottom-5 left-6 flex items-center gap-4 text-bone-dim', micro)}>
           <span>
             {fmtLat(p.geo.lat)} {fmtLon(p.geo.lon)}
           </span>
@@ -201,7 +225,7 @@ function FullHud({ feed, frame, t }: { feed: Feed; frame: FeedFrame; t: number }
       )}
       {dash && (
         // Camera on-screen display, burnt into the recording (UTC clock).
-        <div className="fcc-num absolute bottom-4 left-5 bg-void/40 px-1 font-mono text-micro tabular-nums text-bone">
+        <div className="fcc-feed-hud-bottom fcc-num absolute bottom-4 left-5 bg-void/40 px-1 font-mono text-micro tabular-nums text-bone">
           {date} {stamp} &nbsp; {callsign} &nbsp; {pad(kmh, 3)} KM/H &nbsp; {fmtLat(p.geo.lat)} {fmtLon(p.geo.lon)}
         </div>
       )}
@@ -209,15 +233,16 @@ function FullHud({ feed, frame, t }: { feed: Feed; frame: FeedFrame; t: number }
         <div className="absolute inset-y-0 left-1/2 w-[31.64%] -translate-x-1/2">
           <span className="absolute inset-y-0 left-0 w-px bg-line" />
           <span className="absolute inset-y-0 right-0 w-px bg-line" />
-          <div className={cn('absolute bottom-5 left-3 right-3 flex flex-col gap-0.5 text-bone-dim', micro)}>
+          <div className={cn('fcc-feed-hud-bottom absolute bottom-5 left-3 right-3 flex flex-col gap-0.5 text-bone-dim', micro)}>
             <span className="text-amber">Fictional clip · simulated</span>
             <span className="fcc-num">Location approx · {fmtLat(p.geo.lat)} {fmtLon(p.geo.lon)}</span>
           </div>
         </div>
       )}
-      <div className={cn('fcc-num absolute bottom-5 right-6 flex items-center gap-3 text-bone-dim', micro)}>
+      <div className={cn('fcc-feed-hud-bottom fcc-num absolute bottom-5 right-6 flex max-w-[35%] flex-wrap justify-end gap-x-3 gap-y-1 text-bone-dim', micro)}>
         <span className="text-bone">{stamp}</span>
         <span>F {pad(frame.frame % 100000, 5)}</span>
+        {(frame.replayRate ?? 1) > 1 && <span>REPLAY {frame.replayRate}×</span>}
       </div>
     </div>
   );

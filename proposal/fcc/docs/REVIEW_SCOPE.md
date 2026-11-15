@@ -20,7 +20,7 @@ Deliver the precision regression/fix and the owner's recent local presentation w
 
 Issues #8 and #9 remain open. The reviewed producer/coordinate/media mapping and backend acceptance are separate prerequisites. This follow-up does not adopt a backend schema, create a crew Runtime, manufacture thermal/receipt metadata, launch the backend/frontend integration, merge PR #2, deploy, provision machines or spend on providers.
 
-The 249 local experiment outputs, credentials, dependency directories, generated builds and browser/auth/scratch artifacts are excluded. Existing local working changes remain untouched; implementation occurs in an isolated worktree from a frozen explicit file snapshot.
+The 249 local experiment outputs and six associated study CLIs are excluded, along with credentials, dependency directories, generated builds and browser/auth/scratch artifacts. The six CLIs were initially claimed for audit but are released from publication: they depend on excluded local research inputs and their paid-ledger concurrency needs a separate fix/review. Existing local working changes remain untouched; implementation occurs in an isolated worktree from a frozen explicit file snapshot. The final scope is 108 paths, including 101 of the original 107 snapshot paths.
 
 ## Exact claimed paths
 
@@ -57,12 +57,6 @@ The following list is the complete proposed publication/review scope, not a wild
 - `proposal/fcc/scripts/check-monitoring.mjs`
 - `proposal/fcc/scripts/check-pwa.mjs`
 - `proposal/fcc/scripts/check-spread-precision.mjs`
-- `proposal/fcc/scripts/image-lab-model-eval.mjs`
-- `proposal/fcc/scripts/image-lab-model-study.mjs`
-- `proposal/fcc/scripts/image-lab-study-eval.mjs`
-- `proposal/fcc/scripts/image-lab-study-images.mjs`
-- `proposal/fcc/scripts/image-lab-study.mjs`
-- `proposal/fcc/scripts/image-lab-worldcover.mjs`
 - `proposal/fcc/scripts/save-monitoring-detail.mjs`
 - `proposal/fcc/scripts/save-monitoring.mjs`
 - `proposal/fcc/server/image-lab-grid.ts`
