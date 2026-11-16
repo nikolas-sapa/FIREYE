@@ -14,6 +14,7 @@ import type { LocalRole, LocalSetup } from '../scripts/start-local.ts';
 import { createDemoScenario, demoActor, initializeDemoScenario } from './scenario.ts';
 
 export interface DemoServiceOptions {
+  readonly await_producer?: boolean;
   readonly port?: number;
   readonly allowed_origin?: string;
   readonly capability_ttl_ms?: number;
@@ -74,7 +75,7 @@ export async function startDemoService(options: DemoServiceOptions = {}) {
   const initial = clock(); const scenario = createDemoScenario(initial);
   // Clock switches after immutable seed/received fixture setup; no hidden producer tick.
   let ready = false;
-  const real = createBridgeAuthority(scenario.seed, () => ready ? clock() : initial);
+  const real = createBridgeAuthority(scenario.seed, () => ready ? clock() : initial, { await_producer: options.await_producer });
   if (!real.ok) throw new TypeError('Demo authority invalid');
   const shared = real.value; initializeDemoScenario(shared, scenario); ready = true;
   const coordinator = createExerciseCoordinator(shared, { analyst: demoActor(scenario.seed, 'analyst'),

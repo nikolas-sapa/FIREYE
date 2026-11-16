@@ -6,10 +6,27 @@ import { rename, rmdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createImageLabMiddleware } from './server/image-lab';
 import { createMonitoringMiddleware } from './server/monitoring';
+import { createOpsHandoffMiddleware } from './server/ops-handoff';
 
 const p = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
 let thisBase = '/';
 let thisOutDir = 'dist';
+
+function opsHandoff(): Plugin {
+  return {
+    name: 'fcc-dev-ops-handoff',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(createOpsHandoffMiddleware(p('../../backend/.scratch'), () => {
+        const host = server.config.server.host;
+        const address = server.httpServer?.address();
+        if (typeof host !== 'string' || !['localhost', '127.0.0.1', '::1'].includes(host)
+          || !address || typeof address === 'string' || server.config.server.https) return null;
+        return `http://${host === '::1' ? '[::1]' : host}:${address.port}`;
+      }));
+    },
+  };
+}
 
 function imageLab(): Plugin {
   let key = '';
@@ -65,7 +82,7 @@ export default defineConfig({
         await rmdir(join(thisOutDir, prefix));
       },
     },
-  }, imageLab(), monitoring()],
+  }, imageLab(), monitoring(), opsHandoff()],
   resolve: {
     alias: [
       { find: /^@ds$/, replacement: p('./src/design-system/index.ts') },

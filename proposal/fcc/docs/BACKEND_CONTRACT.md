@@ -39,6 +39,61 @@ Frames older than 3 seconds of wall or replay time, future-seek frames, disconne
 surfaces and truth overlays are ineligible. This is not shared media transport,
 an operational camera, validated detection, independent evidence or a receipt.
 
+Ops can separately connect to the loopback backend using a private in-memory
+Chief/producer handoff. A human-approved single-drone action aliases a declared
+candidate for that same drone (Ops `uav-N` aliases backend exercise `dN`);
+fixture routes are not geographic route approval.
+After command discovery and producer preflight, local simulation executes. On
+completion the producer registers `frame.received` metadata for an actual local
+SVG execution-status card (exact byte length/SHA-256; synthetic, non-radiometric,
+uncalibrated registered feed; unknown acquisition/geography), then a terminal
+receipt citing its evidence ID. This is **simulated execution evidence**, not a
+camera capture or shared-media registration; bytes remain local and backend
+`media_verified` remains false. Dedicated per-command/stage streams start at 1;
+ambiguous replies retry identical events. The existing terminal evidence guard
+is unchanged.
+
+Run `cd backend && node scripts/start-local.ts --await-producer`, then
+`cd proposal/fcc && npm run dev -- --host localhost --port 5173 --strictPort`.
+Open `http://localhost:5173/console.html?tokens=0&context=0&boot=0` and paste the
+printed private `capabilities_file` contents into the backend control. Capabilities
+are never bundled, stored, or put in URLs. The backend requires the exact Origin
+`http://localhost:5173` (override with `FCC_LOCAL_ORIGIN` if using another origin).
+`--await-producer` also works with `--demo`: only the first successful producer
+heartbeat arms loss detection; the existing >5-second timeout then applies.
+Default startup remains unchanged. Candidate expiry is independent (plain local
+fixtures expire at tick 120; demo candidates have a much shorter finite scope).
+
+For development, `cd proposal/fcc && npm run dev:full` starts the plain local
+backend with `--await-producer`, then Vite at exactly `http://localhost:5173`.
+Ctrl-C/SIGTERM or either child exiting stops both. No additional dependencies
+are required; use Node >=24 and install both packages first. It defaults
+`FCC_LOCAL_TASK_TTL_S=2400` and `FCC_LOCAL_CAPABILITY_TTL_MS=1800000`; explicit
+environment settings override these defaults. Plain local task TTL accepts
+integer seconds 1–7200 and otherwise rejects startup; unset remains 120.
+This does not change the separate `--demo` toy-planner course expiry policy.
+
+Ops auto-connects once on load **only in Vite development**, using an empty POST
+to a dev-only same-origin handoff route. The middleware requires a loopback
+socket, exact dev Host/Origin and explicit exercise header, returns no-store,
+and exposes only Chief/producer roles from the newest private launcher handoff
+with a matching Origin and unexpired session. It never logs handoff contents.
+Missing/stale files or an unavailable backend leave manual paste and the local
+simulation available. Start the backend before opening Ops (or reload).
+The route is not installed in preview, and the production auto-connect import
+is removed. Every build scans dist for the endpoint/module markers and any
+current private capability strings, including with `VITE_BASE=/FIREYE/`.
+Crew remains manual and reader-only.
+
+**Presentation limit:** capabilities expire at 30 minutes maximum, enforced by
+both local configuration and `SESSION_TTL_MS` in the HTTP bridge. A 2400-second
+task TTL does not extend that session. A continuous presentation beyond 30 min
+is not supported without changing a safety cap; no cap was loosened here.
+Recommended: complete active receipts, stop `dev:full`, restart it and reload
+Ops before the 30-minute boundary (a new disposable exercise, not renewal or
+takeover). Keep the Ops tab active: after its first heartbeat, >5 s producer
+silence still freezes authority.
+
 The REV C console (`/console.html`) runs entirely in the browser. A simulated "brain" (`src/console/store.tsx` and `src/console/orchestrator/**`) publishes typed `BusEvent`s onto an in-process bus. The real backend replaces the simulator by publishing the **same events, with the same shapes**, over a WebSocket. Nothing in the UI or the 3D stage should need to change.
 
 Contents

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon, ScoreMeter, cn } from '@ds';
 import type { Finding, Unit } from '../contracts';
-import { useConsoleApi, useConsoleSelector } from '../store';
+import { consoleStore, useConsoleApi, useConsoleSelector } from '../store';
+import { BridgeRejected } from '../bus/ops-bridge';
 import { ago, localTime, packZone } from '../ui/format';
 import type { StageEngine } from '../stage3d/StageEngine';
 import { dive } from '../fireye/shell/Dive';
@@ -10,6 +11,7 @@ import { applyDecision } from '../fireye/data/decision';
 import { useFireye } from '../fireye/shell/ui';
 import { WEIGHT_KEYS, loadWeights, postSystem, saveWeights, type Weights } from './opsStore';
 import { STAGE_RANK, placeAlerts, useAlertVersion } from './alerts';
+import { opsBackend } from './OpsBackend';
 
 function Bar({ label, v }: { label: string; v: number }) {
   return (
@@ -132,6 +134,17 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
 
   const decide = (decision: 'approved' | 'rejected') => {
     if (!top) return;
+    if (decision === 'approved' && top.action?.kind === 'retask-drone') {
+      const reviewed = top;
+      void opsBackend.approve(top.action, () => {
+        const current = consoleStore.get().actions.find(a => a.id === reviewed.action?.id);
+        if (!current || current.status !== 'proposed' || current.proposedAt !== reviewed.action?.proposedAt) {
+          throw new BridgeRejected('Local task changed during approval; no local execution');
+        }
+        applyDecision(reviewed, t, decision, api);
+      }, Math.floor(t / 1000));
+      return;
+    }
     applyDecision(top, t, decision, api);
   };
 
