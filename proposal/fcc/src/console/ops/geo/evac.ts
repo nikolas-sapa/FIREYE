@@ -114,6 +114,40 @@ export function nearestNode(g: RoadGraph, p: Geo): Geo {
   return i < 0 ? { lon: p.lon, lat: p.lat } : { lon: g.lon[i], lat: g.lat[i] };
 }
 
+const coord = (p: Geo) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+interface Directions { origin: Geo; destination: Geo; waypoints?: Geo[]; travelmode?: 'driving' | 'walking' | 'bicycling' | 'transit' }
+
+export function googleMapsDirectionsUrl({ origin, destination, waypoints = [], travelmode = 'driving' }: Directions): string {
+  const q = new URLSearchParams({ api: '1', origin: coord(origin), destination: coord(destination), travelmode });
+  if (waypoints.length) q.set('waypoints', waypoints.slice(0, 9).map(coord).join('|'));
+  return `https://www.google.com/maps/dir/?${q}`;
+}
+
+export function googleMapsEmbedUrl({ origin, destination, waypoints = [] }: Directions, key: string): string {
+  const q = new URLSearchParams({ key, origin: coord(origin), destination: coord(destination), mode: 'driving' });
+  if (waypoints.length) q.set('waypoints', waypoints.slice(0, 9).map(coord).join('|'));
+  return `https://www.google.com/maps/embed/v1/directions?${q}`;
+}
+
+export function steeringWaypoints(path: Geo[], max = 3): Geo[] {
+  const count = Math.max(0, Math.min(9, Math.floor(max)));
+  if (path.length < 3 || !count) return [];
+  const ds = [0];
+  for (let i = 1; i < path.length; i++) ds.push(ds[i - 1] + distanceM(path[i - 1], path[i]));
+  const total = ds[ds.length - 1];
+  const out: Geo[] = [];
+  for (let k = 1; k <= count; k++) {
+    const target = total * k / (count + 1);
+    let best = -1;
+    for (let i = 1; i < path.length - 1; i++) {
+      if (ds[i] < 100 || total - ds[i] < 100 || out.includes(path[i])) continue;
+      if (best < 0 || Math.abs(ds[i] - target) < Math.abs(ds[best] - target)) best = i;
+    }
+    if (best >= 0) out.push(path[best]);
+  }
+  return out.sort((a, b) => path.indexOf(a) - path.indexOf(b));
+}
+
 // Exit nodes verified against public/data/mati/osm.json: last Marathonos Ave node at the
 // north bbox edge, the Marathonos Ave node at the west bbox edge (Pallini/Pikermi side),
 // and the Rafina port (east) end of Alexandrou Fleming highway (see check-evac.mts output).
@@ -202,7 +236,34 @@ class MinHeap {
   }
 }
 
-export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[]): EscapeRoute[] {
+export function polygonDistanceM(p: Geo, poly: Geo[]): number {
+  if (pointInPolygon(p, poly)) return 0;
+  let best = Infinity;
+  const sx = 111320 * Math.cos(p.lat * RAD), sy = 111320;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const ax = (a.lon - p.lon) * sx, ay = (a.lat - p.lat) * sy;
+    const dx = (b.lon - a.lon) * sx, dy = (b.lat - a.lat) * sy;
+    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+    best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return best;
+}
+
+function crosses(a: Geo, b: Geo, polys: PreparedPoly[]): boolean {
+  if (inAny(a, polys) || inAny(b, polys)) return true;
+  const side = (p: Geo, q: Geo, r: Geo) => (q.lon - p.lon) * (r.lat - p.lat) - (q.lat - p.lat) * (r.lon - p.lon);
+  return polys.some(({ poly, minLon, maxLon, minLat, maxLat }) => {
+    if (Math.max(a.lon, b.lon) < minLon || Math.min(a.lon, b.lon) > maxLon || Math.max(a.lat, b.lat) < minLat || Math.min(a.lat, b.lat) > maxLat) return false;
+    return poly.some((c, i) => {
+      const d = poly[(i + 1) % poly.length];
+      if (Math.max(a.lon, b.lon) < Math.min(c.lon, d.lon) || Math.min(a.lon, b.lon) > Math.max(c.lon, d.lon) || Math.max(a.lat, b.lat) < Math.min(c.lat, d.lat) || Math.min(a.lat, b.lat) > Math.max(c.lat, d.lat)) return false;
+      return side(a, b, c) * side(a, b, d) <= 0 && side(c, d, a) * side(c, d, b) <= 0;
+    });
+  });
+}
+
+export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[], options: { clearanceM?: number } = {}): EscapeRoute[] {
   const n = g.lon.length;
   if (n === 0) return [];
   const blocked = prepare(hazard.blocked);
@@ -213,7 +274,9 @@ export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
     return nodeBlocked[i] === 2;
   };
 
-  const start = nearestIndex(g, from);
+  const snapped = nearestNode(g, from);
+  const start = nearestIndex(g, snapped);
+  if (inAny(from, blocked) || crosses(from, snapped, blocked)) return [];
   const targets = new Map<number, Exit[]>();
   for (const exit of exits) {
     if (inNoExitZone(exit.pos)) continue;
@@ -243,9 +306,15 @@ export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
       const v = e.to;
       if (done[v] || isBlocked(v)) continue;
       const mid = { lon: (g.lon[u] + g.lon[v]) / 2, lat: (g.lat[u] + g.lat[v]) / 2 };
-      if (inAny(mid, blocked)) continue;
+      if (crosses({ lon: g.lon[u], lat: g.lat[u] }, { lon: g.lon[v], lat: g.lat[v] }, blocked)) continue;
       const slow = inAny(mid, caution) || inNoExitZone(mid);
-      const nd = d + e.lengthM * e.weight * (slow ? CAUTION_FACTOR : 1);
+      const clearance = options.clearanceM ?? 0;
+      let near = 0;
+      if (clearance > 0) {
+        const distance = Math.min(...[...blocked, ...caution].map((p) => polygonDistanceM(mid, p.poly)));
+        near = 8 * Math.max(0, 1 - distance / clearance);
+      }
+      const nd = d + e.lengthM * e.weight * ((slow ? CAUTION_FACTOR : 1) + near);
       if (nd < dist[v]) {
         dist[v] = nd;
         prev[v] = u;

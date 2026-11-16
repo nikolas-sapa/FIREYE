@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM, escapeRoutes, leaveBy, nearestNode, pointInPolygon, residentsNear, summarizeRoads,
+  MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM, escapeRoutes, googleMapsDirectionsUrl, googleMapsEmbedUrl, leaveBy, nearestNode, pointInPolygon, residentsNear, steeringWaypoints, summarizeRoads,
 } from './evac.ts';
 import type { Hazard, Road } from './evac.ts';
 
@@ -17,6 +17,18 @@ function check(ok: boolean, msg: string): void {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`);
   if (!ok) failures++;
 }
+const mapsOrigin = { lat: 38.123456, lon: 23.987654 };
+const mapsDestination = { lat: 38.234567, lon: 24.123456 };
+const mapsWaypoints = [{ lat: 38.15, lon: 24 }, { lat: 38.2, lon: 24.1 }];
+const maps = new URL(googleMapsDirectionsUrl({ origin: mapsOrigin, destination: mapsDestination, waypoints: mapsWaypoints }));
+check(maps.origin + maps.pathname === 'https://www.google.com/maps/dir/' && maps.searchParams.get('api') === '1', 'Maps directions endpoint and api=1');
+check(maps.searchParams.get('origin') === '38.12346,23.98765' && maps.searchParams.get('destination') === '38.23457,24.12346', 'Maps coordinates at five decimals');
+check(maps.searchParams.get('waypoints') === '38.15000,24.00000|38.20000,24.10000' && maps.searchParams.get('travelmode') === 'driving', 'Maps waypoints and default driving mode');
+check(!new URL(googleMapsDirectionsUrl({ origin: mapsOrigin, destination: mapsDestination })).searchParams.has('waypoints'), 'Maps empty waypoints omitted');
+check(new URL(googleMapsEmbedUrl({ origin: mapsOrigin, destination: mapsDestination }, 'fixture&key')).searchParams.get('key') === 'fixture&key', 'Maps embed key URL encoded');
+const steeringPath = Array.from({ length: 21 }, (_, i) => ({ lat: 38.02 + i * 0.001, lon: 23.98 }));
+check(steeringWaypoints(steeringPath).length === 3 && steeringWaypoints(steeringPath, 20).length === 9 && steeringWaypoints(steeringPath, 20).every((p) => steeringPath.includes(p)), 'Steering defaults to 3, clamps to 9, stays on path');
+check(steeringWaypoints([]).length === 0, 'Empty path has no steering waypoints');
 function place(id: string): Geo {
   const p = manifest.places.find((x) => x.id === id);
   if (!p) throw new Error(`missing place ${id}`);

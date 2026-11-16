@@ -463,7 +463,18 @@ export class StageEngine {
     return { id: m[2], kind };
   }
 
+  onMapPick: ((pos: Geo | null) => void) | null = null;
+
   private onClick(pos: Cesium.Cartesian2) {
+    if (this.onMapPick) {
+      const scene = this.viewer.scene;
+      const ray = this.viewer.camera.getPickRay(pos);
+      const rendered = !scene.globe.show && scene.pickPositionSupported ? scene.pickPosition(pos) : undefined;
+      const point = rendered ?? (ray && scene.globe.pick(ray, scene));
+      const geo = point ? Cesium.Cartographic.fromCartesian(point) : null;
+      this.onMapPick(geo ? { lat: Cesium.Math.toDegrees(geo.latitude), lon: Cesium.Math.toDegrees(geo.longitude) } : null);
+      return;
+    }
     const hit = this.parsePick(this.viewer.scene.pick(pos));
     this.o.onSelect?.(hit?.id ?? null, hit?.kind ?? null);
   }
