@@ -42,14 +42,25 @@ export function createFirecrawlClient(options: FirecrawlConfig = {}): FirecrawlC
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const operation = async (): Promise<FirecrawlResult> => {
+        let response: Response | undefined;
         let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+        let complete = false;
+        let cleanup: Promise<void> | undefined;
+        const cancel = () => {
+          if (!complete && response?.body && !cleanup) {
+            try { cleanup = (reader ? reader.cancel() : response.body.cancel()).catch(() => {}); }
+            catch { cleanup = Promise.resolve(); }
+          }
+        };
+        controller.signal.addEventListener('abort', cancel, { once: true });
         try {
-          const response = await config.transport!({ url: FIRECRAWL_ENDPOINT, method: 'POST', headers: Object.freeze({ 'Content-Type': 'application/json' }),
+          response = await config.transport!({ url: FIRECRAWL_ENDPOINT, method: 'POST', headers: Object.freeze({ 'Content-Type': 'application/json' }),
             body: requestBody, signal: controller.signal, redirect: 'error' });
+          if (controller.signal.aborted) return failure('DEADLINE');
           if (response.redirected || (response.status >= 300 && response.status < 400)) return failure('REDIRECT');
           if (!response.ok) return failure('TRANSPORT');
           const length = response.headers.get('content-length');
-          if (length !== null && (!/^\d+$/.test(length) || Number(length) > SOURCE_MAX_BYTES)) { await response.body?.cancel(); return failure('OVERSIZE'); }
+          if (length !== null && (!/^\d+$/.test(length) || Number(length) > SOURCE_MAX_BYTES)) return failure('OVERSIZE');
           if (!response.headers.get('content-type')?.toLowerCase().startsWith('application/json')) return failure('INVALID_REPLY');
           reader = response.body?.getReader();
           if (!reader) return failure('INVALID_REPLY');
@@ -58,9 +69,9 @@ export function createFirecrawlClient(options: FirecrawlConfig = {}): FirecrawlC
           while (true) {
             if (controller.signal.aborted) return failure('DEADLINE');
             const chunk = await reader.read();
-            if (chunk.done) break;
+            if (chunk.done) { complete = true; break; }
             bytes += chunk.value.byteLength;
-            if (bytes > SOURCE_MAX_BYTES) { await reader.cancel(); return failure('OVERSIZE'); }
+            if (bytes > SOURCE_MAX_BYTES) return failure('OVERSIZE');
             chunks.push(chunk.value);
           }
           const finished = now();
@@ -77,7 +88,12 @@ export function createFirecrawlClient(options: FirecrawlConfig = {}): FirecrawlC
             retrieved_at_ms: received, received_at_ms: received, links: [] }, { ...trusted, now_ms: received, received_cutoff_ms: received });
           return result.ok ? freeze({ ok: true, value: result.value, receipt: receipt('accepted') }) : failure(result.code);
         } catch { return failure(controller.signal.aborted ? 'DEADLINE' : 'TRANSPORT'); }
-        finally { if (reader) { try { await reader.cancel(); } catch { /* no retries */ } } }
+        finally {
+          cancel();
+          if (cleanup) await cleanup;
+          reader?.releaseLock();
+          controller.signal.removeEventListener('abort', cancel);
+        }
       };
       const deadline = new Promise<FirecrawlResult>(resolve => { timer = setTimeout(() => { controller.abort(); resolve(failure('DEADLINE')); }, config.deadline_ms); });
       const result = await Promise.race([operation(), deadline]);

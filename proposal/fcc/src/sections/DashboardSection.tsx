@@ -38,7 +38,7 @@ export default function DashboardSection() {
               units, people and events are simulated.
             </p>
           </div>
-          <Button variant="primary" size="lg" iconRight="arrow-right" onClick={() => window.location.assign('/console.html')}>
+          <Button variant="primary" size="lg" iconRight="arrow-right" onClick={() => window.location.assign(`${import.meta.env?.BASE_URL ?? '/'}console.html`)}>
             Open the full console
           </Button>
         </div>

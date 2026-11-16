@@ -86,7 +86,7 @@ export function FleetColumn({ compact = false, onDive, onFocusUnit, onFocusSenso
       {flowId && flowId !== 'connection' && <SourceFlow id={flowId} onClose={() => setFlowId(null)} onOpenFeed={onDive} />}
       <Modal open={flowId === 'connection'} onClose={() => setFlowId(null)} title="Read-only source connection">
         <p>FIREYE uses the local reconnaissance simulation. Received backend state is available in the isolated Crew reader.</p>
-        <a href="/console.html?mode=crew" className="mt-3 inline-block border border-line px-3 py-2 font-mono text-micro uppercase text-bone">Open Crew reader</a>
+        <a href={`${import.meta.env?.BASE_URL ?? '/'}console.html?mode=crew`} className="mt-3 inline-block border border-line px-3 py-2 font-mono text-micro uppercase text-bone">Open Crew reader</a>
         <p className="mt-3 text-xs text-bone-mute">GET-only. Reader capabilities stay in memory. No simulator fallback, mapped positions or verified media are implied.</p>
       </Modal>
     </section>
