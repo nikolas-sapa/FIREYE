@@ -4,10 +4,12 @@ import type { Geo } from '../contracts';
 import { useConsoleSelector } from '../store';
 import { localTime, packZone } from '../ui/format';
 import {
-  STAGE_RANK, alertFeed, counters, leaveBy, placeAlerts, routeRoads, useAlertVersion, useRoutes,
+  STAGE_RANK, alertFeed, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
 import type { AlertStage } from './geo/evac';
 import { Character } from './characters/Character';
+import { parseLocation } from './geo/saferoute';
+import { ResidentDirections, ResidentDisclaimer, ResidentLocationControls, type ResidentLocationProps } from './ResidentRoute';
 
 export const HOME_OPTIONS = ['neos-voutzas', 'mati', 'kokkino-limanaki', 'argyra-akti', 'nea-makri'] as const;
 const STAGE_COPY: Record<AlertStage, { title: string; body: string; cls: string }> = {
@@ -23,6 +25,10 @@ export function useHome(): { id: string; name: string; pos: Geo } | null {
   const id = useSyncExternalStore((fn) => { homeListeners.add(fn); return () => { homeListeners.delete(fn); }; },
     () => localStorage.getItem('ops.home') ?? 'neos-voutzas', () => 'neos-voutzas');
   return useMemo(() => {
+    if (pack && id.startsWith('custom:')) {
+      const result = parseLocation(id.slice(7), [], [], pack.raster.bbox);
+      if ('pos' in result) return { id, name: 'Custom location', pos: result.pos };
+    }
     const p = pack?.manifest.places.find((x) => x.id === id) ?? pack?.manifest.places.find((x) => x.id === 'neos-voutzas');
     return p ? { id: p.id, name: p.name, pos: p.pos } : null;
   }, [pack, id]);
@@ -41,7 +47,7 @@ function BigCounter({ k, v }: { k: string; v: number }) {
   );
 }
 
-export function CivilianPanel({ home }: { home: { id: string; name: string; pos: Geo } | null }) {
+export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps & { home: { id: string; name: string; pos: Geo } | null }) {
   const pack = useConsoleSelector((s) => s.pack);
   const t = useConsoleSelector((s) => s.clock.t);
   const proj = useConsoleSelector((s) => s.projection);
@@ -49,25 +55,29 @@ export function CivilianPanel({ home }: { home: { id: string; name: string; pos:
   const routes = useRoutes(home?.pos ?? null, proj?.rev ?? -1);
   const homeAlert = useMemo(() => {
     if (!pack || !home) return null;
+    if (home.id.startsWith('custom:')) return residentAlertAt(pack, t, home.pos);
     return placeAlerts(pack, t).find((p) => p.id === home.id) ?? null;
   }, [pack, t, home, v]);
   const feed = useMemo(() => alertFeed(pack, t).slice(-30).reverse(), [pack, t, v]);
   const counts = useMemo(() => counters(pack, t), [pack, t, v]);
   const tz = packZone(pack).label;
-  const stage = homeAlert?.stage ?? 'monitor';
+  const blocked = !!home && hazardAt(pack, t).blocked.some((p) => pointInPolygon(home.pos, p));
+  const stage = blocked ? 'shelter' : homeAlert?.stage ?? 'monitor';
   const copy = STAGE_COPY[stage];
   const leaveAt = homeAlert?.eta != null ? leaveBy(homeAlert.eta, 45) : null;
   const placeOptions = useMemo(() => (pack?.manifest.places ?? []).filter((p) => (HOME_OPTIONS as readonly string[]).includes(p.id)), [pack]);
   const best = routes.best;
 
   return (
-    <aside className="flex w-[400px] shrink-0 flex-col border-l border-line bg-ink-950" aria-label="Civilian panel">
+    <aside className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l border-line bg-ink-950 sm:w-[400px] sm:flex-none sm:overflow-visible" aria-label="Civilian panel">
       <div className="shrink-0 border-b border-line px-4 py-3">
         <label className="font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">Your location · simulated resident</label>
         <select value={home?.id ?? ''} onChange={(e) => setHome(e.target.value)} aria-label="Your location"
           className="mt-1.5 w-full border border-line-strong bg-ink-900 px-2 py-1.5 text-sm text-bone focus:outline-none">
           {placeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {home?.id.startsWith('custom:') && <option value={home.id}>{home.name} · {home.pos.lat.toFixed(5)}, {home.pos.lon.toFixed(5)}</option>}
         </select>
+        <ResidentLocationControls pack={pack} onSetHome={setHome} {...locationProps} />
       </div>
       <div className={cn('shrink-0 border-b-2 px-4 py-4', STAGE_RANK[stage] >= 2 ? 'border-ember' : stage === 'prepare' ? 'border-amber' : 'border-line')}>
         <div className="flex items-start gap-3">
@@ -83,7 +93,7 @@ export function CivilianPanel({ home }: { home: { id: string; name: string; pos:
         <p className="mt-2 text-sm leading-5 text-bone-dim">{copy.body}</p>
         <div className="mt-3 flex gap-6 font-mono">
           <div>
-            <div className="text-micro uppercase text-bone-mute">Fire ETA</div>
+            <div className="text-micro uppercase text-bone-mute">Fire ETA{home?.id.startsWith('custom:') ? ' · band estimate' : ''}</div>
             <div className="fcc-num mt-0.5 text-lg text-bone">{homeAlert?.eta != null ? `${localTime(homeAlert.eta, tz)} ${tz}` : '—'}</div>
           </div>
           {leaveAt != null && (
@@ -106,15 +116,17 @@ export function CivilianPanel({ home }: { home: { id: string; name: string; pos:
               {routeRoads(best).map((r, i) => <li key={i}>{i + 1}. {r}</li>)}
             </ol>
             {best.cautionM > 0 && <p className="mt-1 font-mono text-micro uppercase text-amber">{(best.cautionM / 1000).toFixed(1)} km through caution zone</p>}
+            {home && <ResidentDirections origin={home.pos} route={best} />}
             <p className="mt-2 border border-ember/50 bg-ember/10 px-2 py-1.5 text-xs leading-4 text-bone-dim">
               Do NOT go toward Mati coast — no road exit there.
             </p>
           </div>
         ) : (
-          <p className="mt-2 text-xs text-bone-mute">Computing route…</p>
+          <p className="mt-2 text-xs text-bone-mute">{routes.status === 'loading' ? 'Loading road graph / current projection…' : blocked ? 'No safe road route: your location is in the fire / predicted area. See the shelter guidance above.' : 'No safe road route available. Follow civil protection / 112 instructions.'}</p>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2" aria-label="Official alerts">
+      <ResidentDisclaimer />
+      <div className="shrink-0 px-4 py-2 sm:min-h-0 sm:flex-1 sm:shrink sm:overflow-y-auto" aria-label="Official alerts">
         <div className="font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">Official alerts · simulated</div>
         <ul className="mt-1.5">
           {feed.map((r, i) => (
