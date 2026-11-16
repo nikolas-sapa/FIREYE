@@ -29,12 +29,14 @@ const BAND_STYLE: Record<number, { fill: number; w: number; dash?: number }> = {
   180: { fill: 0.18, w: 3, dash: 14 },
   360: { fill: 0.07, w: 1.5, dash: 8 },
 };
-export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
+export function OpsOverlay({ engine, routes, showRoutes, showZones, home, compact = false }: {
   engine: StageEngine | null;
   routes: Routes;
   showRoutes: boolean;
   showZones: boolean;
   home: Geo | null;
+  /** Phone layout: home label sits below the dot and replaces the duplicate home place label. */
+  compact?: boolean;
 }) {
   const pack = useConsoleSelector((s) => s.pack);
   const t = useConsoleSelector((s) => Math.floor(s.clock.t / 60000) * 60000); // minute bucket: entities rebuild at most 1/min
@@ -58,7 +60,8 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
       position: cart(home, 10),
       point: { pixelSize: 10, color: accent(), outlineColor: chipBg, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
       label: { text: 'YOUR LOCATION · SIM', font: FONT, fillColor: accent(), showBackground: true, backgroundColor: chipBg,
-        pixelOffset: new Cesium.Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        pixelOffset: new Cesium.Cartesian2(0, compact ? 10 : -18), verticalOrigin: compact ? Cesium.VerticalOrigin.TOP : Cesium.VerticalOrigin.CENTER,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY },
     });
 
     // Red projection bands (draw 6H first so 1H stays on top).
@@ -115,11 +118,12 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
     const alerting = alerts.filter((p) => p.eta != null && STAGE_RANK[p.stage] >= 1);
     const ranked = [...alerting].sort((a, b) =>
       STAGE_RANK[b.stage] - STAGE_RANK[a.stage] || (a.eta ?? 0) - (b.eta ?? 0));
-    const labeled = new Set(ranked.slice(0, 3).map((p) => p.name));
+    const labeled = new Set(ranked.slice(0, compact ? 1 : 3).map((p) => p.name));
     if (home) {
       const hp = alerting.find((p) =>
         Math.abs(p.pos.lon - home.lon) < 0.005 && Math.abs(p.pos.lat - home.lat) < 0.005);
-      if (hp) labeled.add(hp.name);
+      if (hp && !compact) labeled.add(hp.name);
+      if (hp && compact) labeled.delete(hp.name);
     }
     for (const p of alerts) {
       if (p.eta == null || p.stage === 'monitor') continue;
@@ -200,7 +204,7 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
     }
 
     return () => { viewer.dataSources.remove(ds, true); };
-  }, [engine, proj, rev, alerts, routes, showRoutes, showZones, home, t, tz]);
+  }, [engine, proj, rev, alerts, routes, showRoutes, showZones, home, t, tz, compact]);
 
   return null;
 }

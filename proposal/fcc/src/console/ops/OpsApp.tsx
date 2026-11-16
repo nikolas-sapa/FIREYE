@@ -37,7 +37,9 @@ import { useHideCallout } from './useHideCallout';
 import './ops.css';
 import './characters/characters.css';
 import { OpsBackendControl, opsBackend } from './OpsBackend';
-import { skipCivilianBoot } from './mobile-boot';
+import { NARROW_QUERY, RESIDENT_MOBILE_VIS, fireFrame, residentMobileStart, skipCivilianBoot } from './mobile-boot';
+import { ResidentMap2D } from './ResidentMap2D';
+import { hasWebGL } from '../stage3d/capabilities';
 
 enableWorld3dFeeds();
 
@@ -78,6 +80,17 @@ function useJournalReapply() {
 }
 
 type RightTab = 'inspect' | 'comms';
+
+function useNarrow() {
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
 
 function useKeyboard(engine: StageEngine | null, composer: React.RefObject<HTMLInputElement | null>, openComms: () => void, openPalette: () => void) {
   const api = useConsoleApi();
@@ -124,6 +137,8 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const composer = useRef<HTMLInputElement | null>(null);
   const started = useRef(false);
+  const view = useOpsView();
+  const residentPhone = useNarrow() && view === 'civilian';
   useFireyeSync();
   useJournalReapply();
   useHideCallout();
@@ -156,7 +171,7 @@ function Shell() {
     const demoStart = Math.max(ctx.start, Math.min(ctx.end, ignition - 8 * 60000));
     api.seek(new URLSearchParams(window.location.search).get('t')
       ? startFrom(window.location.search, ctx.start, ctx.end, packZone(pack).offsetMin)
-      : demoStart);
+      : opsView.get() === 'civilian' && window.matchMedia(NARROW_QUERY).matches ? residentMobileStart(ignition, ctx.start, ctx.end) : demoStart);
     api.setSpeed(60);
     api.setPaused(new URLSearchParams(window.location.search).get('paused') === '1');
     if (import.meta.env.DEV) (window as unknown as { __ops?: unknown }).__ops = { api, ui: fireyeUi, journal, dive, store: consoleStore };
@@ -170,13 +185,18 @@ function Shell() {
   }, []);
 
   // Per-view appearance + hide the built-in (amber) projection layer; our red overlay replaces it.
-  const view = useOpsView();
   const { on: presenting } = usePresenter();
   useEffect(() => { setAppearance(view === 'civilian' ? 'light' : 'dark', { persist: false }); }, [view]);
   useEffect(() => {
     fireyeUi.setVis('projections', false);
     return () => fireyeUi.setVis('projections', true);
   }, []);
+  useEffect(() => {
+    if (!residentPhone) return;
+    const prev = fireyeUi.get();
+    fireyeUi.set({ vis: RESIDENT_MOBILE_VIS, preset: 'custom' }, { persist: false });
+    return () => fireyeUi.set({ vis: prev.vis, preset: prev.preset }, { persist: false });
+  }, [residentPhone]);
 
   const home = useHome();
   const [picking, setPicking] = useState(false);
@@ -261,15 +281,21 @@ function Shell() {
     engine.homeView(2.6);
   }, [engine, booted, pack]);
 
-  // Civilian view frames the selected home (~6 km range) on switch and on home change.
+  // Civilian view frames the selected home (~6 km range) on switch and on home change; phones frame fire + home.
   const lastHomeFly = useRef<string | null>(null);
   useEffect(() => {
     if (view !== 'civilian' || !engine || !booted || !home) return;
-    const key = home.id;
+    const key = `${home.id}:${residentPhone}`;
     if (lastHomeFly.current === key) return;
     lastHomeFly.current = key;
-    engine.flyTo(home.pos, { rangeM: 6000, duration: 1.6 });
-  }, [view, engine, booted, home]);
+    if (!residentPhone || !pack) { engine.flyTo(home.pos, { rangeM: 6000, duration: 1.6 }); return; }
+    const ign = (pack.manifest as { ignition?: { t?: number; pos?: Geo } }).ignition;
+    const now = Math.max(consoleStore.get().clock.t, residentMobileStart(ign?.t ?? pack.manifest.start, pack.manifest.start, pack.manifest.end));
+    const fire = [ign?.pos ?? pack.manifest.center, ...(pack.perimeters.filter((p) => p.t <= now).at(-1)?.polygon.flat() ?? [])];
+    const canvas = engine.viewer.scene.canvas;
+    const f = fireFrame(home.pos, fire, canvas.clientWidth, canvas.clientHeight, (engine.viewer.camera.frustum as { fov?: number }).fov);
+    engine.flyTo(f.center, { rangeM: f.rangeM, pitchDeg: -62, headingDeg: 0, duration: 1.6 });
+  }, [view, engine, booted, home, residentPhone, pack]);
 
   const seek = useCallback((t: Ms) => { api.seek(t); }, [api]);
   const focus = useCallback((g: Geo, rangeM = 2400) => { engine?.flyTo(g, { rangeM, duration: 1.6 }); }, [engine]);
@@ -290,10 +316,11 @@ function Shell() {
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className={cn('relative min-w-0 flex-1', civilian && 'h-[40vh] min-h-[240px] flex-none overflow-hidden sm:h-auto sm:min-h-0 sm:flex-1')}>
           <StageShell onFocus={focus} onEngine={setEngine} />
+          {civilian && !hasWebGL() && <ResidentMap2D home={home?.pos ?? null} route={routes.best} />}
           {booted && <div className="absolute left-3 top-16 z-hud border border-line bg-ink-950 px-2 py-1"><OpsBackendControl /></div>}
           {booted && (
             <OpsOverlay engine={engine} routes={routes} home={home?.pos ?? null}
-              showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} />
+              showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} compact={residentPhone} />
           )}
           {booted && presenting && <PresenterCaption />}
           {booted && <PresenterHud pack={pack} t={t} selected={selected} />}

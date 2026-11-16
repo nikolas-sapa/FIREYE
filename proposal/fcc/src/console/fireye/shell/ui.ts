@@ -100,12 +100,13 @@ const listeners = new Set<() => void>();
 export const fireyeUi = {
   get: () => state,
   subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
-  set(p: Partial<FireyeUi> | ((s: FireyeUi) => Partial<FireyeUi>)) {
+  set(p: Partial<FireyeUi> | ((s: FireyeUi) => Partial<FireyeUi>), o: { persist?: boolean } = {}) {
     const patch = typeof p === 'function' ? p(state) : p;
+    const persist = o.persist !== false;
     state = { ...state, ...patch };
-    if (patch.layout) { try { localStorage.setItem('fireye.layout.recon', JSON.stringify(state.layout)); } catch { /* optional */ } }
+    if (patch.layout && persist) { try { localStorage.setItem('fireye.layout.recon', JSON.stringify(state.layout)); } catch { /* optional */ } }
     if (patch.vis) {
-      try { localStorage.setItem('fireye.visibility', JSON.stringify(state.vis)); } catch { /* optional */ }
+      if (persist) { try { localStorage.setItem('fireye.visibility', JSON.stringify(state.vis)); } catch { /* optional */ } }
       setMapLayers(mapPatch(state.vis, state.reconProfile));
     }
     listeners.forEach((fn) => fn());

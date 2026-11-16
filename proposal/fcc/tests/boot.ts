@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { skipCivilianBoot } from '../src/console/ops/mobile-boot';
+import { RESIDENT_MOBILE_VIS, fireFrame, residentMobileStart, skipCivilianBoot } from '../src/console/ops/mobile-boot';
 import { mapFraming } from '../src/console/fireye/shell/map-framing';
 import { advanceGlobe, BOOT_MOTION as M, BOOT_RANGE_FACTOR, BOOT_STEPS, bootEnabled, bootReady, globePose, handoffTransform, sourceFrames, sourceLayout, type BootProbe } from '../src/console/fireye/boot/sequence';
 
@@ -11,6 +11,18 @@ assert.ok(!skipCivilianBoot('?boot=1', 375, 'civilian'));
 assert.ok(skipCivilianBoot('?boot=0', 1440, 'responder'));
 assert.ok(!skipCivilianBoot('', 375, 'responder'));
 assert.ok(skipCivilianBoot('?boot=invalid', 375, 'civilian'));
+const IGN = 1532353260000, START = 1532352000000, END = 1532372400000;
+assert.equal(residentMobileStart(IGN, START, END), IGN + 18 * 60000, 'phones open on a spreading fire, after ignition');
+assert.equal(residentMobileStart(END, START, END), END);
+assert.ok(RESIDENT_MOBILE_VIS.fireFront && RESIDENT_MOBILE_VIS.roadsPlaces && !RESIDENT_MOBILE_VIS.fleet && !RESIDENT_MOBILE_VIS.groundUnits && !RESIDENT_MOBILE_VIS.iot);
+{
+  const home = { lon: 23.98115, lat: 38.04226 }, ign = { lon: 23.95191, lat: 38.03991 };
+  const f = fireFrame(home, [ign], 390, 748);
+  assert.ok(Math.abs(f.center.lon - (home.lon + ign.lon) / 2) < 1e-9 && f.center.lat > ign.lat && f.center.lat < home.lat, 'frame centers between fire and home');
+  const halfW = (f.rangeM * Math.tan(Math.PI / 6) * 390) / 748;
+  assert.ok(halfW * 2 > 2560 * 1.2, 'fire and home both fit across a 390 px portrait width');
+  assert.ok(fireFrame(home, [home], 390, 748).rangeM >= 4000);
+}
 
 const pack = {
   elevation: new Float32Array([1]), fuel: new Uint8Array([1]), arrival: new Float64Array([0]),
