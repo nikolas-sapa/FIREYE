@@ -11,7 +11,7 @@ export function ResidentMap2D({ home, route }: { home: Geo | null; route: Escape
   const t = useConsoleSelector((s) => Math.floor(s.clock.t / 60000) * 60000);
   const proj = useConsoleSelector((s) => s.projection);
   const perimeter = useMemo(() => pack?.perimeters.filter((p) => p.t <= t).at(-1) ?? null, [pack, t]);
-  const bands = useMemo(() => (proj && proj.issuedAt <= t ? [...proj.bands].filter((b) => b.horizonMin <= 180 && b.polygon.length > 2).sort((a, b) => b.horizonMin - a.horizonMin) : []), [proj, t]);
+  const bands = useMemo(() => (proj ? [...proj.bands].filter((b) => b.horizonMin <= 180 && b.polygon.length > 2).sort((a, b) => b.horizonMin - a.horizonMin) : []), [proj]);
   if (!pack) return null;
   const [bw, bs, be, bn] = pack.manifest.bbox;
   const k = Math.cos((((bs + bn) / 2) * Math.PI) / 180);
