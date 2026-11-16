@@ -32,7 +32,7 @@ import { opsView, useOpsView, useOverlayOpts } from './view';
 import { useHideCallout } from './useHideCallout';
 import './ops.css';
 import './characters/characters.css';
-import { opsBackend } from './OpsBackend';
+import { OpsBackendControl, opsBackend } from './OpsBackend';
 
 enableWorld3dFeeds();
 
@@ -248,6 +248,7 @@ function Shell() {
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className="relative min-w-0 flex-1">
           <StageShell onFocus={focus} onEngine={setEngine} />
+          {booted && <div className="absolute left-3 top-16 z-hud border border-line bg-ink-950 px-2 py-1"><OpsBackendControl /></div>}
           {booted && (
             <OpsOverlay engine={engine} routes={routes} home={home?.pos ?? null}
               showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} />
