@@ -52,7 +52,10 @@ function closed(value: unknown, keys: readonly string[]): value is Record<string
       && descriptors[key].enumerable && Object.hasOwn(descriptors[key], 'value'));
 }
 
-export function createBridgeAuthority(seed: IncidentSeed, clock: () => TrustedClock): BridgeResult<BridgeAuthority> {
+export interface BridgeAuthorityOptions { readonly await_producer?: boolean }
+
+export function createBridgeAuthority(seed: IncidentSeed, clock: () => TrustedClock,
+  options: BridgeAuthorityOptions = {}): BridgeResult<BridgeAuthority> {
   const valid = validateSeed(seed);
   if (!valid.ok) return valid;
   let state = createIncidentState(valid.value);
@@ -65,6 +68,7 @@ export function createBridgeAuthority(seed: IncidentSeed, clock: () => TrustedCl
     lastClock = Object.freeze({ received_at: initial.received_at, sim_tick: initial.sim_tick });
   } catch { return reject('INVALID_TIME', 'Trusted exercise clock unavailable'); }
   let heartbeatTime = Date.parse(lastClock.received_at);
+  let producerArmed = !options.await_producer;
 
   function now(): TrustedClock {
     const next = clock();
@@ -119,7 +123,7 @@ export function createBridgeAuthority(seed: IncidentSeed, clock: () => TrustedCl
   }
 
   function expire(time: TrustedClock): BridgeResult<IncidentState> {
-    return Date.parse(time.received_at) - heartbeatTime > PRODUCER_TIMEOUT_MS ? freeze(time) : success(state);
+    return producerArmed && Date.parse(time.received_at) - heartbeatTime > PRODUCER_TIMEOUT_MS ? freeze(time) : success(state);
   }
 
   function active(context: CommitContext): BridgeResult<null> {
@@ -206,6 +210,7 @@ export function createBridgeAuthority(seed: IncidentSeed, clock: () => TrustedCl
     const live = active(context.value);
     if (!live.ok) return live;
     heartbeatTime = Date.parse(context.value.received_at);
+    producerArmed = true;
     return success(null);
   }
 

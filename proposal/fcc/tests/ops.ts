@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import type { AgentJob, ConsoleApi, ConsoleState } from '../src/console/contracts';
+import type { Action, AgentJob, ConsoleApi, ConsoleState } from '../src/console/contracts';
 import { consoleEntry } from '../src/console/entry';
 import { applyDecision } from '../src/console/fireye/data/decision';
-import { journal } from '../src/console/fireye/data/journal';
+import { actionKey, journal } from '../src/console/fireye/data/journal';
 import type { Decision } from '../src/console/fireye/shell/OrchestratorCallout';
 import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, subscribeCommRows, type CommRow } from '../src/console/ops/opsStore';
 
@@ -129,6 +129,26 @@ for (const choice of ['approved', 'rejected'] as const) {
   assert.deepEqual(journal.at(value.key, 13), { key: value.key, t: 13, decision: choice, title: value.title, actionKind: undefined });
 }
 console.log('OPS51-03 decisions: six action/item/chronicle branches PASS');
+
+journal.clear(); calls.length = 0;
+const replayActions = [
+  { id: 'drone-approved', kind: 'retask-drone', title: 'Drone approved', status: 'proposed' },
+  { id: 'drone-rejected', kind: 'retask-drone', title: 'Drone rejected', status: 'proposed' },
+  { id: 'scan-approved', kind: 'scan', title: 'Scan approved', status: 'proposed' },
+  { id: 'scan-rejected', kind: 'scan', title: 'Scan rejected', status: 'proposed' },
+] as Action[];
+for (const a of replayActions) journal.record({ key: actionKey(a), t: 10, title: a.title,
+  actionKind: a.kind, decision: a.id.endsWith('rejected') ? 'rejected' : 'approved' });
+assert.equal(journal.reapply(replayActions, 9, api, ['retask-drone']), 0);
+assert.deepEqual(calls, []);
+assert.equal(journal.reapply([], 11, api, ['retask-drone']), 0);
+assert.equal(journal.reapply(replayActions, 11, api, ['retask-drone']), 3);
+assert.deepEqual(calls, ['reject:drone-rejected', 'approve:scan-approved', 'reject:scan-rejected']);
+calls.length = 0;
+assert.equal(journal.reapply(replayActions, 11, api), 4);
+assert.deepEqual(calls, ['approve:drone-approved', 'reject:drone-rejected', 'approve:scan-approved', 'reject:scan-rejected']);
+journal.clear();
+console.log('OPS51-03 replay: rewind/empty replay 0; connected restores 3 non-gated decisions; offline restores all 4 PASS');
 
 const unitCard = readFileSync('src/console/ops/OpsInspect.tsx', 'utf8').split('function UnitCard')[1]?.split('function FindingCard')[0] ?? '';
 assert.match(unitCard, /Simulated state/);
