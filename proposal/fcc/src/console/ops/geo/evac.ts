@@ -409,6 +409,7 @@ export const BALANCED_MIN_PER_RISK_KM = 6;
 export const ETA_SAFETY_MARGIN_MIN = 15;
 /** Slack below this (minutes, beyond the margin) still adds exposure. */
 const ETA_SLACK_MIN = 60;
+const ETA_SAMPLE_M = 50;
 /** Closer than this to the blocked area (perimeter + 60-min projection) adds exposure. */
 const PROXIMITY_M = 1000;
 const RISK_LAMBDAS = [0, 0.5, 1, 2, 4, 8, 16, 64, 256];
@@ -527,6 +528,23 @@ function routeCandidates(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[],
     if (Number.isNaN(eta[i])) eta[i] = input.etaMinAt?.({ lon: g.lon[i], lat: g.lat[i] }) ?? Infinity;
     return eta[i];
   };
+  // Min over samples (~ETA_SAMPLE_M apart, endpoints included) of fire ETA minus the resident's offset into the edge.
+  const edgeEtaCache = new Map<number, number>();
+  const edgeEta = (u: number, v: number, lengthM: number, dt: number): number => {
+    if (!input.etaMinAt) return Infinity;
+    const key = u * n + v;
+    let m = edgeEtaCache.get(key);
+    if (m === undefined) {
+      m = Math.min(etaAt(u), etaAt(v) - dt);
+      const k = Math.ceil(lengthM / ETA_SAMPLE_M);
+      for (let j = 1; j < k; j++) {
+        const f = j / k;
+        m = Math.min(m, (input.etaMinAt({ lon: g.lon[u] + (g.lon[v] - g.lon[u]) * f, lat: g.lat[u] + (g.lat[v] - g.lat[u]) * f }) ?? Infinity) - f * dt);
+      }
+      edgeEtaCache.set(key, m);
+    }
+    return m;
+  };
   const shareCache = new Map<number, number>();
   const shareOf = (u: number, v: number, lengthM: number): number => {
     const key = u < v ? u * n + v : v * n + u;
@@ -559,6 +577,7 @@ function routeCandidates(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[],
   }
   if (targets.size === 0) return [];
   const startTime = distanceM(from, snapped) / (speedKph(1) / 3.6) / 60;
+  if (Math.min(input.etaMinAt?.(from) ?? Infinity, etaAt(start) - startTime) - marginMin < 0) return [];
 
   const seen = new Set<string>();
   const out: Candidate[] = [];
@@ -584,7 +603,7 @@ function routeCandidates(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[],
         if (done[v] || isBlocked(v) || crossesBlocked(u, v)) continue;
         const dt = e.lengthM / (speedKph(e.weight) / 3.6) / 60;
         const pass = time[u] + dt;
-        const slack = etaAt(v) - pass - marginMin;
+        const slack = edgeEta(u, v, e.lengthM, dt) - time[u] - marginMin;
         if (slack < 0) continue;
         const share = shareOf(u, v, e.lengthM);
         const risk = e.lengthM * (share + (nearAt(u) + nearAt(v)) / 2 + Math.max(0, 1 - slack / ETA_SLACK_MIN));
