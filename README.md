@@ -1,12 +1,18 @@
 # FIREYE
 
-**A wildfire command console that puts drones, cameras, sensors and field reports on one screen, and keeps a human in charge of every consequential decision.**
+**A tool for local residents to see where a fire is and get informed.**
 
-Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation, scrubbable from 14:00 to 22:00 local time. It is not an emergency service.
+Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation, scrubbable from 14:00 to 22:00 local time. It is not an emergency service or official evacuation advice. Follow **112 and civil protection** instructions. Its projections and routes are not validated forecasts or operational guidance.
 
 ## For judges: the short version
 
-**The problem.** In the first hour of a fast wildfire, an incident commander gets information from everywhere at once: radio, fixed cameras, drones, weather stations, news and social posts. It arrives late, out of order and with no sense of how old or how reliable it is. Mati showed how fast a wind-driven fire can outrun that.
+**The problem.** Residents need to understand where a fire is, what information applies to their area and when that information changes. FIREYE brings the exercise picture and announcements together without presenting a historical reconstruction as live safety advice.
+
+**Primary experience: [Civilian view](https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian).** Choose a simulated resident location to see fire location, **MONITOR / PREPARE TO LEAVE / LEAVE NOW / SHELTER IN PLACE**, **Fire ETA**, **Leave by** and **Your route out**. Leave by is the simulated ETA minus 45 minutes; an unavailable ETA displays a dash. The prototype least-risk route uses weighted OSM road paths, excludes blocked areas and penalizes caution zones; it is not a proven safest route. Without a computed route the panel shows “Computing route…”. Location selection currently uses scenario presets, not your own address or GPS.
+
+**Agents and announcements serve residents.** Chief / Scout and the orchestrator explain the exercise picture and surface changes. Demo replies are scripted/deterministic, not live AI inference. The resident feed is labelled **Official alerts · simulated**; its SMS and voice-call counts are simulation, not messages actually sent. Resident Chief chat and device notifications remain in progress.
+
+The secondary responder/ops views are **for authorities**, supporting the exercise's evidence review and human approvals, not a firefighting tool for field use. The existing UI appearance is unchanged.
 
 **What FIREYE does.**
 
@@ -18,7 +24,7 @@ Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Ma
 - Consequential actions need a human. The Ops view requires a human approval click, and the backend core enforces it properly: only the current human Chief can approve, approvals expire, stale or duplicate inputs are rejected, and the whole incident can be replayed exactly as it was known at any moment.
 - A Crew view reads only what the backend has actually received, so a crew never sees simulator "truth" they could not know.
 
-**Who it is for.** Fire chiefs and incident commanders, and the crews who need the same picture they do.
+**Who it is for.** Local residents first; authorities have secondary responder/ops views. The technical exercise features below support that information picture, not real drone control or field orders.
 
 **Try it (about two minutes).**
 
@@ -28,7 +34,16 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-Open `http://localhost:5173/console.html?mode=fireye` (add `&tokens=0` to run fully offline). Watch the boot sequence, then press `Space` to play, click a drone or camera in the Fleet rail to dive into its feed, press `T` for thermal, `/` or click the eye to open the orchestrator chat. Add `&boot=0` to skip the intro or `&t=16:00` to start at a given time. Other views: Ops with human approvals (`/console.html`), Crew (`?mode=crew`), Monitoring (`?mode=monitoring`), legacy Replay (`?mode=replay`).
+Open `http://localhost:5173/console.html?view=civilian` (add `&tokens=0` to disable optional map providers). Plain `/console.html` also defaults to Civilian unless `localStorage['ops.view']` holds a valid saved view; an explicit `?view=` takes priority. Secondary views: responder/Ops with human approvals (`?view=responder`), reconnaissance exercise (`?mode=fireye`), received-only Crew (`?mode=crew`), Monitoring (`?mode=monitoring`), legacy Replay (`?mode=replay`). In the reconnaissance exercise, press `Space` to play, click a drone or camera in the Fleet rail to dive into its feed, press `T` for thermal, `/` or click the eye for scripted orchestrator chat. Add `&boot=0` to skip its intro or `&t=16:00` to start at a given time.
+
+**Public demo:** https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian — static frontend published by [GitHub Pages](.github/workflows/pages.yml), following merged backend fixes [PR #65](https://github.com/nikolas-sapa/FIREYE/pull/65) and Pages [PR #66](https://github.com/nikolas-sapa/FIREYE/pull/66). Static hosting does not deploy the backend or enable live providers.
+
+### In progress
+
+- [PR #67](https://github.com/nikolas-sapa/FIREYE/pull/67): backend-approved drone execution in simulation; not completed by this change.
+- Google Maps least-risk/safest-route hand-off and own-location input; no Google Maps route safety guarantee or implemented hand-off is claimed.
+- On-device notifications; simulated announcements do not send real warnings.
+- Resident Chief chat; existing scripted demo chat is not a completed resident assistant.
 
 Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
 
@@ -42,7 +57,7 @@ Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
 | Backend approval, receipts and replay, covered by 320 tests (hosted CI green on Node 24 and 26) | Chief/Scout chat replies are scripted, not live model calls |
 | Received-only Crew view reading backend state | A backend-approved command does not yet move a frontend drone; FIREYE recon tasking is local simulation, not backend approvals |
 | Sponsor adapters (Gemini, Gemma, Oumi Iris, fal, Firecrawl, Treg, Boxd) coded server-side | All disabled or fixture-only by default; no genuine provider calls made |
-| | No public deployment, no real drone control, no real warnings |
+| Static public demo on GitHub Pages | No public backend deployment, no real drone control, no real warnings |
 
 Everything below is the detailed engineering reference.
 
@@ -50,7 +65,7 @@ Everything below is the detailed engineering reference.
 
 ## Engineering reference
 
-Fire Command Center (the repository's working name) combines a visual console with a separate bounded backend for received state, approval and receipts. The product end-user direction remains undecided; existing views are not a final civilian/responder strategy.
+Fire Command Center (the repository's working name) combines a visual console with a separate bounded backend for received state, approval and receipts. The product direction is resident-first fire information: Civilian is the primary experience, with responder/ops views secondary for authorities. This direction does not make the prototype operational evacuation guidance.
 
 Current main includes Ops/FIREYE, six simulated drones with distinct EO and thermal channels, monitoring/replay views, historical graphs and local scripted chat. Received-only Crew mode can read backend snapshots without simulator fallback. **Backend-approved command → frontend execution → factual completion remains unconnected**, pending mapping and contract work. No real warnings, drone/crew control or validated evacuation forecasts.
 
@@ -95,7 +110,7 @@ Source inventory snapshot: 2026-11-15, main `b87a5a2` (after PR #62: FIREYE reco
 | Planner and orchestration demo | Local/fixture | Finite toy planner supports up to three-drone courses; `--demo` registers exactly one single-drone fixture course. Neither is the six-drone frontend fleet. Changed/unregistered courses stay review-only. |
 | Provider/source/compute adapters | Fixture/dormant | Bounded server-side Iris/Gemini/Gemma/fal/Treg/Firecrawl/Boxd seams and explicit source/weather packets, disabled or fixture-only by default. No genuine inference/retrieval/remote execution established. |
 | Verification | Source-bound local/unit evidence | [Frontend checks](proposal/fcc/package.json) cover local simulation, channel registration, capture metadata and spread regression. Later local recording checks accepted 14 distinct camera paths and 20 actual AETOS-2 IR frame downloads; PR #62's local browser checks exported 20 distinct 960×540 thermal PNGs with matching hashes/provenance and ran all 20 World3D channels fullscreen (30 batch fps sampled, max 142 draws / 938,740 triangles). Ten-minute browser, soak and complete mobile acceptance remain open. |
-| Cloud, media and deployment | Pending | Real auth, Convex/persistence, media rights/ingestion and public deployment remain deferred. No operational or final submission acceptance. |
+| Cloud, media and deployment | Static demo / backend pending | The public frontend is hosted on GitHub Pages (PR #66). Real auth, Convex/persistence, media rights/ingestion and public backend deployment remain deferred. No operational or final submission acceptance. |
 
 The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-design.md) and [four-task plan](docs/superpowers/plans/2026-11-14-backend-protocol.md) authorized the historical first slice. Later exact-file claims authorized bounded additions, not full V1 or public launch. All 15 issue cards remain open at this snapshot. Administrative work and passing local tests are not full-product acceptance.
 
@@ -233,10 +248,12 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-Open `http://localhost:5173/console.html` (Ops). Explicit routes, as selected by [entry.ts](proposal/fcc/src/console/entry.ts):
+Open `http://localhost:5173/console.html?view=civilian` (primary resident experience). Plain `/console.html` uses Civilian unless a valid view preference is saved. [entry.ts](proposal/fcc/src/console/entry.ts) selects the Ops shell for both Civilian and responder; [view.ts](proposal/fcc/src/console/ops/view.ts) selects the view within it:
 
 | Route | Local view |
 |---|---|
+| `/console.html?view=civilian` | Primary resident fire-information simulation. |
+| `/console.html?view=responder` | Secondary responder/Ops view for authorities. |
 | `/console.html?mode=fireye` | FIREYE simulated incident console. |
 | `/console.html?mode=crew` | Received-only backend reader, no simulator fallback. |
 | `/console.html?mode=monitoring` | Source-labelled monitoring/context, not an emergency warning service. |
