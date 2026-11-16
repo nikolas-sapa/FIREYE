@@ -1,3 +1,27 @@
+@media (max-width: 767px) {
+  [data-fireye-dashboard] .mobile-recon-toggles { display: flex; }
+  [data-fireye-dashboard] [data-boot-resizer],
+  [data-fireye-dashboard] [data-boot-panel='left'],
+  [data-fireye-dashboard] [data-boot-panel='right'] { display: none; }
+  [data-fireye-dashboard][data-mobile-panel='left'] aside[data-boot-panel='left'],
+  [data-fireye-dashboard][data-mobile-panel='right'] aside[data-boot-panel='right'] {
+    display: block;
+    position: absolute;
+    top: 116px;
+    bottom: 160px;
+    width: min(320px, calc(100vw - 24px)) !important;
+    max-height: 55dvh;
+    overflow-y: auto;
+  }
+  [data-fireye-dashboard] aside[data-boot-panel='left'] { left: 12px; }
+  [data-fireye-dashboard] aside[data-boot-panel='right'] { right: 12px; }
+  [data-fireye-dashboard] > .pointer-events-none > button { display: none; }
+  [data-fireye-dashboard] button { min-height: 44px; min-width: 44px; }
+  [data-fireye-dashboard] .fireye-header { gap: 0; padding: 0 4px; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr); }
+  [data-fireye-dashboard] .fireye-header > div { gap: 4px; }
+  [data-fireye-dashboard] .fireye-header > div:first-child > span { display: none; }
+  [data-fireye-dashboard] .fireye-header [aria-label='Sensor view'] button { padding: 0 4px; }
+}
 /* FIREYE console motion. Every animation here is disabled by the global reduced-motion rule in src/index.css. */
 
 .fireye-header-agent .fireye-avatar .fireye-lids { animation: fireye-blink 8.7s var(--ease-servo) 2s infinite; }

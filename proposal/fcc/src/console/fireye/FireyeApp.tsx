@@ -147,6 +147,7 @@ function Shell() {
   const feeds = useStageWorld((s) => s.feeds.length);
   const ch = useChronicle();
   const booted = useFireye((s) => s.booted);
+  const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null);
   const layout = useFireye((s) => s.layout);
   const phase = useFireye((s) => s.dive.phase);
   const [engine, setEngine] = useState<StageEngine | null>(null);
@@ -262,9 +263,13 @@ function Shell() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-ink-950 text-bone">
-      <div ref={dashboard} data-fireye-dashboard data-boot-state={booted ? 'ready' : reveal}
+      <div ref={dashboard} data-fireye-dashboard data-mobile-panel={mobilePanel ?? 'none'} data-boot-state={booted ? 'ready' : reveal}
         aria-hidden={!booted} className="relative flex h-full w-full flex-col">
       <TopBar onOrch={() => fireyeUi.set({ chat: true, tab: 'ops' })} />
+      <div className="mobile-recon-toggles absolute left-3 top-16 z-hud hidden gap-2">
+        {(['left', 'right'] as const).map(side => <button key={side} type="button" aria-expanded={mobilePanel === side}
+          onClick={() => setMobilePanel(mobilePanel === side ? null : side)} className="min-h-11 min-w-11 border border-line bg-ink-950 px-3 text-xs text-bone">{side === 'left' ? 'Fleet' : 'Log'} {mobilePanel === side ? '−' : '+'}</button>)}
+      </div>
       <main ref={mapArea} data-fireye-map aria-label="Incident map" className="absolute inset-x-0 bottom-0 top-12">
         <StageShell insets={insets} onFocus={focus} onEngine={setEngine} />
       </main>

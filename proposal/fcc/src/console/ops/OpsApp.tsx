@@ -37,6 +37,7 @@ import { useHideCallout } from './useHideCallout';
 import './ops.css';
 import './characters/characters.css';
 import { OpsBackendControl, opsBackend } from './OpsBackend';
+import { skipCivilianBoot } from './mobile-boot';
 
 enableWorld3dFeeds();
 
@@ -279,10 +280,13 @@ function Shell() {
   }), [pack, ready, drones, feeds, engine, ch]);
 
   const civilian = view === 'civilian';
+  useEffect(() => {
+    if (skipCivilianBoot(window.location.search, window.innerWidth, view)) fireyeUi.set({ booted: true });
+  }, [view]);
   return (
     <div className="ops-root flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone" data-view={view}>
       {booted ? <OpsTopBar presenting={presenting} onPresent={togglePresent} /> : <div className="h-10 shrink-0 border-b border-line bg-ink-950" />}
-      <div className={cn('flex min-h-0 flex-1', civilian && 'flex-col sm:flex-row')}>
+      <div className={cn('flex min-h-0 flex-1', civilian && 'civilian-map-row flex-col sm:flex-row')}>
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className={cn('relative min-w-0 flex-1', civilian && 'h-[40vh] min-h-[240px] flex-none overflow-hidden sm:h-auto sm:min-h-0 sm:flex-1')}>
           <StageShell onFocus={focus} onEngine={setEngine} />

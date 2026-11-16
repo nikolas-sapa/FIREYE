@@ -1,4 +1,14 @@
 import assert from 'node:assert/strict';
+import { skipCivilianBoot } from '../src/console/ops/mobile-boot';
+
+assert.ok(skipCivilianBoot('', 390, 'civilian'));
+assert.ok(skipCivilianBoot('', 767, 'civilian'));
+assert.ok(!skipCivilianBoot('', 768, 'civilian'));
+assert.ok(!skipCivilianBoot('', 1440, 'civilian'));
+assert.ok(!skipCivilianBoot('?boot=1', 375, 'civilian'));
+assert.ok(skipCivilianBoot('?boot=0', 1440, 'responder'));
+assert.ok(!skipCivilianBoot('', 375, 'responder'));
+assert.ok(skipCivilianBoot('?boot=invalid', 375, 'civilian'));
 import { mapFraming } from '../src/console/fireye/shell/map-framing';
 import { advanceGlobe, BOOT_MOTION as M, BOOT_RANGE_FACTOR, BOOT_STEPS, bootEnabled, bootReady, globePose, handoffTransform, sourceFrames, sourceLayout, type BootProbe } from '../src/console/fireye/boot/sequence';
 
