@@ -217,6 +217,26 @@ test('OR04-S05 20 actual model inputs expose zero simulator-truth/future keys', 
   assert.equal(checked, 20);
 });
 
+test('OR03-S07 queue-full analysis can be retried after the shared queue drains', async () => {
+  const releases: (() => void)[] = [];
+  const f = setup({ enabled: true, frames: 10, transport: request =>
+    new Promise(resolve => releases.push(() => resolve(reply(request)))) });
+  const ranking = f.coordinator.assess(objective);
+  const analyses = Array.from({ length: 9 }, (_, n) => f.coordinator.analyzeEvidence(analysis(n + 1)));
+  assert.deepEqual(f.coordinator.sponsorCounts(), { in_flight: 2, queued: 8, retained: 10 });
+  const full = await f.coordinator.analyzeEvidence(analysis(10));
+  assert.equal(full.ok, false); if (!full.ok) assert.equal(full.code, 'QUEUE_FULL');
+  for (let n = 0; n < 10; n++) { await immediate(); releases.splice(0).forEach(release => release()); }
+  assert.ok((await ranking).ok); assert.ok((await Promise.all(analyses)).every(value => value.ok));
+  await immediate(); assert.equal(f.coordinator.sponsorCounts().in_flight, 0);
+  const retry = f.coordinator.analyzeEvidence(analysis(10));
+  await immediate(); releases.splice(0).forEach(release => release());
+  const result = await retry;
+  assert.ok(result.ok, result.ok ? '' : result.code);
+  assert.equal(f.calls(), 11); assert.deepEqual(f.budget.usage(), { calls: 11, reserved_micro: 1100 });
+  noEffects(f.authority);
+});
+
 test('OR03-S06 unknown evidence, wrong bytes, extra fields and unknown clocks invoke zero transports', async () => {
   const f = setup({ enabled: true, reader: () => ({ png_base64: 'not-png' }) });
   assert.equal((await f.coordinator.analyzeEvidence(analysis(99))).ok, false);

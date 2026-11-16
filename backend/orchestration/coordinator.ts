@@ -211,6 +211,7 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
       }
       const sponsor = job.snapshot;
       const result = await job.promise;
+      if (!result.ok && analyses.get(identity) === job) analyses.delete(identity);
       if (versions(authority.read()) !== expected || !sponsorConfig.is_current!(sponsor)
         || !validSnapshot(sponsor, Date.parse(authority.now().received_at))
         || !createPlanningSnapshot(authority, input.objective, layout).ok) return fail('STALE');
