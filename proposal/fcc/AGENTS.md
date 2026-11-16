@@ -1,5 +1,7 @@
 # AGENTS.md — operating rules for AI agents
 
+FIREYE is resident-first fire information: the existing Civilian view (`/console.html?view=civilian`) is the primary experience and default without a valid saved `ops.view`; responder/ops is secondary for authorities. Chief / Scout, the orchestrator and simulated announcements support residents; demo replies are scripted/deterministic, not live inference. This is a simulation of the 2018 Mati fire, not official evacuation advice or validated forecasting. Follow 112 / civil protection. Own-location input, Google Maps least-risk-route hand-off, on-device notifications, resident Chief chat and PR #67 backend-approved drone execution remain in progress. Preserve the existing visual appearance. Historical revision notes below document earlier directions, not a change to this resident-first audience.
+
 ## REV D integration notes (current work)
 
 FIREYE presentation boot (2026-11-15): open the canonical eye from two lines, land it on the measured centered header, then show eight source icons strictly one at a time, all four left before all four right. Each rests for 100 ms, then moves to its side and fades in 260 ms. Fade into a local view at 1.35× the goal range, with the goal heading/tilt unchanged, and make a short 1.8 s approach; only after arrival do panels enter. Pre-mount the final-size dashboard and a full-bleed map below the header, keep simulation paused/input inert during boot, and never resize the globe for panel entrances. Panels slide over the map, not empty slots. Preserve the panel-free view's scale/center using static overscan framing; keep HUD, credits and feed controls within that view. Keep the normal local basemap throughout, restore camera controls afterward, and keep sensor appearance unchanged. Reduced motion/Escape skip choreography but not required data. See `docs/FIREYE.md`.
@@ -34,7 +36,7 @@ These notes supersede Caldor-only and single-theme assumptions below. REV C rema
 - Rebuild: `node scripts/fetch-data.mjs --scenario mati`. Consistency check: `node scripts/check-mati.mjs`. Report it as consistency, not independent validation.
 - REV D simulation and stage integration are not complete until both scenarios build, real entry points run, screenshots are reviewed and prediction provenance is checked.
 
-FCC (Fire Command Center) is a proposal site plus a full-screen console: an Orchestrator-first command center for fire departments and first responders. The proposal site runs on a simulated incident; the REV C console replays the 2021 Caldor Fire from public data. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
+FCC (Fire Command Center) is the historical working name of this proposal site plus full-screen console, now resident-first with secondary responder/ops views for authorities. The proposal site runs on a simulated incident; the frozen REV C console replays the 2021 Caldor Fire from public data. Read this file, then `DESIGN_SYSTEM.md`, before you change anything.
 
 ## Revisions
 

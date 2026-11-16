@@ -16,11 +16,11 @@ function syncViewUrl(v: OpsView) {
 }
 
 let view: OpsView = (() => {
-  if (typeof window === 'undefined') return 'responder';
+  if (typeof window === 'undefined') return 'civilian';
   const q = new URLSearchParams(window.location.search).get('view');
   if (valid(q)) return q;
   try { const s = localStorage.getItem(KEY); if (valid(s)) return s; } catch { /* optional */ }
-  return 'responder';
+  return 'civilian';
 })();
 syncViewUrl(view);
 
