@@ -104,7 +104,7 @@ export async function simulatedExecutionFrame(command: Command, feed: Feed, prod
 }
 
 export class OpsBridge {
-  private commands = new Map<string, { command: Command; feed: Feed }>();
+  private commands = new Map<string, { command: Command; feed: Feed; cancelPending: boolean }>();
   private completions = new Map<string, { receipt: EventInput; frame: EventInput; image: string }>();
   constructor(private readonly setup: OpsSetup, private readonly fetchImpl: typeof fetch = fetch.bind(globalThis)) {}
 
@@ -137,6 +137,7 @@ export class OpsBridge {
   async heartbeat(): Promise<void> { await this.request('producer-heartbeats', 'producer'); }
 
   async approve(action: Action, execute: () => void, simTick: number): Promise<void> {
+    if (this.commands.has(action.id)) throw new BridgeRejected('Command already pending; await its terminal receipt');
     await this.heartbeat();
     const view = await this.snapshot();
     const candidate = candidateForAction(action, view.candidates);
@@ -157,15 +158,21 @@ export class OpsBridge {
     if (JSON.stringify(checked) !== JSON.stringify(command)) throw new BridgeRejected('Command changed before execution');
     const feed = current.feeds.find(f => f.asset_id === command.asset_id);
     if (!feed) throw new BridgeRejected('Producer capture scope unavailable');
-    await this.request('events', 'producer', receiptForCommand(command, this.setup.roles.producer.principal_id, feed.capture_epoch, 'running', simTick));
-    this.commands.set(action.id, { command, feed });
+    const binding = { command, feed, cancelPending: false };
+    this.commands.set(action.id, binding);
+    try {
+      await this.request('events', 'producer', receiptForCommand(command, this.setup.roles.producer.principal_id, feed.capture_epoch, 'running', simTick));
+    } catch (error) {
+      binding.cancelPending = true;
+      throw error;
+    }
     execute();
   }
 
   async observe(actions: readonly Action[], simTick: number): Promise<void> {
     for (const [id, binding] of this.commands) {
       const action = actions.find(a => a.id === id);
-      const stage = action?.status === 'done' ? 'completed' : !action || action.status === 'undone' ? 'cancelled' : null;
+      const stage = binding.cancelPending ? 'cancelled' : action?.status === 'done' ? 'completed' : !action || action.status === 'undone' ? 'cancelled' : null;
       if (!stage) continue;
       let completion = this.completions.get(id);
       if (!completion) {

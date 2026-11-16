@@ -38,4 +38,32 @@ try {
   await assert.rejects(approveWithBridge(denied, { ...action, id: 'denied' }, () => executed++, 0), /UNAUTHENTICATED/);
   assert.equal(executed, 1);
   console.log('OPS-BRIDGE-HTTP: real loopback approval, producer check, 1 execution, 1 completed Crew command; denied capability executes 0 PASS');
+  for (const [index, committed] of [[2, true], [3, false]]) {
+    const ambiguous = new OpsBridge(setup, async (url, options) => {
+      const event = options?.body ? JSON.parse(options.body) : null;
+      if (event?.kind === 'command.receipt' && event.payload.stage === 'running') {
+        if (committed) await http(url, options);
+        throw new TypeError('Lost running receipt reply');
+      }
+      return http(url, options);
+    });
+    const proposed = { ...action, id: `ambiguous-${index}`, unitIds: [`uav-${index}`] };
+    await assert.rejects(approveWithBridge(ambiguous, proposed, () => executed++, 0), /Backend unavailable/);
+    assert.equal(ambiguous.pending, 1);
+    assert.equal(executed, 1);
+    const count = Object.keys(backend.authority.read().commands).length;
+    await assert.rejects(approveWithBridge(ambiguous, proposed, () => executed++, 0), /already pending/);
+    assert.equal(Object.keys(backend.authority.read().commands).length, count);
+    await crew.pollOnce(0);
+    assert.equal(crew.get().view.commands.find(c => c.asset_id === `d${index}`).status, committed ? 'running' : 'enqueued');
+    await ambiguous.observe([proposed], 1);
+    await ambiguous.observe([proposed], 2);
+    await crew.pollOnce(0);
+    assert.equal(crew.get().view.commands.find(c => c.asset_id === `d${index}`).status, 'cancelled');
+    assert.equal(ambiguous.pending, 0);
+    assert.equal(executed, 1);
+    assert.equal(backend.authority.read().log.filter(e => e.kind === 'command.receipt'
+      && e.payload.stage === 'cancelled' && e.payload.mission_id === `m${index}`).length, 1);
+  }
+  console.log('OPS-BRIDGE-HTTP-AMBIGUOUS: committed/lost and uncommitted running replies retain binding, block duplicate approvals, execute 0 and reach exactly 1 cancelled Crew receipt each PASS');
 } finally { crew.stop(); await backend.close(); }
