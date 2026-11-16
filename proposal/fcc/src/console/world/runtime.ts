@@ -12,17 +12,20 @@ export class Runtime implements DirectorRuntime {
   sim: Sim;
   readonly director: Director;
   private readonly seed: number;
+  private readonly profile: 'legacy' | 'recon';
 
   constructor(
     readonly pack: ScenarioPack,
     readonly bus: Bus,
-    opts: { seed?: number; tokens?: ConsoleState['settings']['tokens']; t?: Ms } = {},
+    opts: { seed?: number; tokens?: ConsoleState['settings']['tokens']; t?: Ms; profile?: 'legacy' | 'recon' } = {},
   ) {
     const ctx = contextFor(pack);
     this.seed = opts.seed ?? ctx.script.seed;
+    this.profile = opts.profile ?? 'legacy';
     this.sim = createSim(pack, bus, {
+      profile: this.profile,
       seed: this.seed,
-      t: opts.t ?? ctx.T0,
+      t: opts.t ?? (this.profile === 'recon' ? ctx.start : ctx.T0),
       settings: { autonomy: 'assist', lens: 'ic', holdLayout: false, tokens: opts.tokens ?? { cesium: false, google: false } },
     });
     this.director = new Director(this, ctx.T0, ctx);
@@ -33,13 +36,15 @@ export class Runtime implements DirectorRuntime {
     const prev = this.sim;
     this.bus.clear();
     this.sim = createSim(this.pack, this.bus, {
+      profile: this.profile,
       seed: this.seed,
-      t,
+      t: this.profile === 'recon' ? prev.ctx.start : t,
       speed: prev.speed,
       paused: false,
       settings: { ...prev.settings },
       director: { ...prev.director },
     });
+    if (this.profile === 'recon' && t > this.sim.t) fastForward(this.sim, t, { speed: 120, dtReal: 0.5 });
     this.sim.fireRev = prev.fireRev + 1;
   }
 
@@ -69,7 +74,8 @@ export class Runtime implements DirectorRuntime {
     const paused = this.sim.paused;
     this.setMuted(true);
     try {
-      if (to > this.sim.t && to - this.sim.t <= MAX_FF_MS) fastForward(this.sim, to, { speed: Math.max(this.sim.speed, 120), dtReal: 0.5 });
+      if (this.profile === 'recon' && Math.abs(to - this.sim.t) > 1000) this.rebuild(to);
+      else if (to > this.sim.t && to - this.sim.t <= MAX_FF_MS) fastForward(this.sim, to, { speed: Math.max(this.sim.speed, 120), dtReal: 0.5 });
       else if (Math.abs(to - this.sim.t) > 1000) this.rebuild(to);
     } finally {
       this.setMuted(false);

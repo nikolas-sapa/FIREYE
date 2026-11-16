@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AppearanceToggle, Button, Icon, ThemeToggle, cn } from '@ds';
+import { AppearanceToggle, Button, FireyeMark, Icon, cn } from '@ds';
 import type { Geo, ScenarioPack } from '../contracts';
-import { finalPerimeter, loadScenario, scenarioExtras } from '../scenario/load';
+import { WildfireFatalityChart } from '../ui/WildfireFatalityChart';
+import { clc2018, finalPerimeter, loadScenario, scenarioExtras } from '../scenario/load';
+import type { EnvInput } from '../world3d/env';
 import type { ArchiveImage } from '../stage3d/feeds/ArchiveCamera';
 import { DEMO_FEEDS } from './feed-motion';
 import { SimulatedFeed, SimulatedFeedsProvider } from './SimulatedFeed';
@@ -76,7 +78,7 @@ export default function MonitoringApp() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    document.title = `FCC · ${VIEWS[view].name}${saved ? ' · saved data' : ''}`;
+    document.title = `FIREYE · ${VIEWS[view].name}${saved ? ' · saved data' : ''}`;
     const url = new URL(location.href); url.searchParams.set('view', view);
     if (saved) url.searchParams.set('saved', '1'); else url.searchParams.delete('saved');
     history.replaceState(null, '', url);
@@ -84,13 +86,13 @@ export default function MonitoringApp() {
   const context = useMemo(() => pack ? contextPack(pack) : null, [pack]);
   return <div className="fcc-console-shell flex h-dvh flex-col overflow-hidden bg-ink-950 text-bone" data-monitoring-mode="true">
     <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-line bg-ink-900 px-4 py-2">
-      <div className="mr-2 flex items-center gap-2"><Icon name="target" size={20} className="text-bone" /><div><h1 className="font-mono text-nano uppercase tracking-[0.16em]">FCC / public intelligence</h1><p className="font-mono text-micro uppercase text-bone-mute">Attica · source-linked wildfire awareness</p></div></div>
+      <div className="mr-2 flex items-center gap-2"><FireyeMark size={20} className="text-bone" /><div><h1 className="font-mono text-nano uppercase tracking-[0.16em]">FIREYE / public intelligence</h1><p className="font-mono text-micro uppercase text-bone-mute">Attica · source-linked wildfire awareness</p></div></div>
       <nav aria-label="Data view" className="flex border border-line">
         {(Object.keys(VIEWS) as ViewId[]).map(id => <Button key={id} size="sm" variant="ghost" aria-pressed={view === id} onClick={() => setView(id)} className={view === id ? 'bg-signal/10 text-signal' : ''}>{VIEWS[id].short}</Button>)}
       </nav>
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <label className={cn(field, 'flex items-center gap-2 uppercase')}><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Saved-data mode</label>
-        <ThemeToggle compact /><AppearanceToggle />
+        <AppearanceToggle />
         <a className="font-mono text-micro uppercase text-bone-mute underline" href="/console.html?mode=replay">Legacy replay</a>
       </div>
     </header>
@@ -191,6 +193,18 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
   const navigate = (pos: Geo, rangeM = 6000) => setFocus({ pos, rangeM, key: performance.now() });
   const weather = forecast.value?.data.find(w => Date.parse(w.time) >= time) ?? forecast.value?.data[0];
   const historicalWeather = view === 'mati' ? pack.weather.reduce<ScenarioPack['weather'][number] | undefined>((best, w) => !best || Math.abs(w.t - caseTime) < Math.abs(best.t - caseTime) ? w : best, undefined) : undefined;
+  const station = stations.value?.data[0];
+  const clc = useMemo(() => clc2018(pack), [pack]);
+  // Simulated feeds follow the selected view's clock and weather; missing values are listed as assumed by the world.
+  const worldEnv = useMemo<EnvInput>(() => {
+    const base = { view, timeMs: time, live: current && !saved, lat: 38.04, lon: 23.978 };
+    if (historicalWeather) return { ...base, weather: { tempC: historicalWeather.tempC, rh: historicalWeather.rh, windKph: historicalWeather.windKph,
+      windFromDeg: historicalWeather.windDirDeg, gustKph: historicalWeather.gustKph, precipMm: null, source: 'ERA5 reanalysis (Open-Meteo)' } };
+    if (current && (weather || station)) return { ...base, weather: { tempC: weather?.tempC ?? station?.tempC ?? null, rh: weather?.humidity ?? station?.humidity ?? null,
+      windKph: weather?.windKph ?? station?.windKph ?? null, windFromDeg: weather?.windFromDeg ?? station?.windFromDeg ?? null, gustKph: weather?.gustKph ?? station?.gustKph ?? null,
+      precipMm: weather?.precipitationMm ?? station?.precipitationMm ?? null, source: [weather && 'MET Norway forecast', station && `METAR ${station.id}`].filter(Boolean).join(' + ') } };
+    return { ...base, weather: { tempC: null, rh: null, windKph: null, windFromDeg: null, gustKph: null, precipMm: null, source: 'No weather source integrated for this view' } };
+  }, [view, time, current, saved, historicalWeather, weather, station]);
   function save() {
     const rows: [string, SourceResult<unknown> | undefined][] = [['firms', firms.value], ['forecast', forecast.value], ['metar', stations.value], ['case2024', mapping.value]];
     const available = rows.filter(([, v]) => v);
@@ -203,7 +217,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
     const d = detections.find(d => `real-${d.id}` === id);
     if (d) { setNotice(`${d.satellite} · ${stamp(d.observedAt)} · confidence ${d.confidence} · FRP ${num(d.frp, ' MW')}. Nominal 375 m pixel, not an exact ignition point.`); navigate(d); }
   };
-  return <SimulatedFeedsProvider pack={sensorPack}>
+  return <SimulatedFeedsProvider pack={sensorPack} clc={clc} env={worldEnv}>
     <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-3 border-b border-line px-4 py-2">
       <span className={cn('border px-2 py-1 font-mono text-micro uppercase', saved ? 'border-amber/40 text-amber' : current ? 'border-ice/40 text-ice' : 'border-line-strong text-bone-dim')}>
         {saved ? 'Saved snapshot' : current ? 'Current monitoring' : 'Historical case'}
@@ -213,7 +227,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
       <div className="ml-auto flex gap-2"><Button size="sm" variant="ghost" disabled={saved} onClick={() => { setNow(Date.now()); setRefresh(n => n + 1); }}>Refresh sources</Button>
         <Button size="sm" variant="ghost" onClick={save}>Save real data</Button></div>
     </div>
-    <div className="flex min-h-0 flex-1 max-[900px]:flex-col">
+    <div className={cn('flex min-h-0 flex-1 max-[900px]:flex-col', view === 'mati' && 'max-[900px]:overflow-y-auto')}>
       <main className="relative min-h-[280px] min-w-0 flex-1 overflow-hidden" aria-label="Source-aware globe">
         <MonitoringGlobe pack={context} view={view} time={time} detections={detections} cameras={cameras} geometry={geometry}
           imagery={satellite ? image : undefined} imageryBounds={imageMode === 'detail' ? detailImage.bbox : VIEWS[view].bbox}
@@ -237,7 +251,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
         </div>
         {danger && dangerImage && <img className="absolute bottom-14 right-4 z-[2] max-h-48 max-w-[180px] border border-line bg-ink-900" src={dangerImage.replace('kind=danger', 'kind=legend')} alt="EFFIS Fire Weather Index legend" />}
       </main>
-      <aside className="flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line bg-ink-900 max-[1100px]:w-[310px] max-[900px]:max-h-[38vh] max-[900px]:w-full max-[900px]:border-l-0 max-[900px]:border-t" aria-label="Source information">
+      <aside className={cn('flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line bg-ink-900 max-[1100px]:w-[310px] max-[900px]:max-h-[38vh] max-[900px]:w-full max-[900px]:border-l-0 max-[900px]:border-t', view === 'mati' && 'max-[900px]:h-[38vh]')} aria-label="Source information">
         <div className="flex shrink-0 border-b border-line">
           <Button className="flex-1" size="md" variant="ghost" aria-pressed={panel === 'sources'} onClick={() => setPanel('sources')}>Sources</Button>
           <Button className="flex-1" size="md" variant="ghost" aria-pressed={panel === 'cameras'} onClick={() => setPanel('cameras')}>Cameras · {cameras.length}</Button>
@@ -279,6 +293,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
               <Section title="Documented historical reports">
                 {(pack.reports ?? []).slice(0, 10).map(r => <article key={r.id} className="mb-3 border-b border-line pb-2"><p className="font-mono text-micro text-bone-mute">{stamp(r.t)} · {r.publisher}</p><p className="my-1 text-xs leading-5 text-bone-dim">{r.summary}</p><External href={r.url}>Original source</External></article>)}
               </Section>
+              <WildfireFatalityChart />
             </> : <Section title="Copernicus incident mapping">
               {mapping.value && <><p className="font-mono text-2xl fcc-num">{num(mapping.value.data.burnedHa, ' ha', 1)}</p>
                 <p className="mt-1 font-mono text-micro uppercase text-bone-mute">Initial mapped burned area · EMSR746</p>
@@ -295,7 +310,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
             {!saved && <Section title="Local configuration"><p className="font-mono text-micro leading-5 text-bone-mute">FIRMS key: {config.firms ? 'configured' : 'not set · public-download fallback'}<br />Windy key: {config.windy ? 'configured' : 'not set · curated camera links'}<br />MET contact: {config.contact ? 'configured' : 'set FCC_APP_CONTACT'}</p></Section>}
             <Section title="Saved presentation data"><Button size="sm" variant="ghost" onClick={() => { clearSaved(); setNotice('Local source snapshots removed.'); }}>Clear saved source snapshots</Button><p className="mt-2 text-xs text-bone-mute">Local snapshots exclude webcam media and keys. Historical bundled assets remain available.</p></Section>
           </> : <>
-            <Section title="Simulated terrain cameras"><p className="text-sm leading-5 text-bone-dim">Legacy-style 3D drone, ridge, trail and roadside views over the Mati terrain and 2018 archive. Camera placements and motion are simulated, not these third-party webcams.</p>
+            <Section title="Simulated terrain cameras"><p className="text-sm leading-5 text-bone-dim">Simulated 3D world drone, ridge, trail and roadside views over the Mati terrain. Vegetation, objects, people and animals are procedural stand-ins derived from land cover and OSM, not measurements. Camera placements and motion are simulated, not these third-party webcams.</p>
               <div className="mt-2 space-y-1">{DEMO_FEEDS.map((f, i) => <Button key={f.id} size="sm" variant="ghost" onClick={() => { setActiveFeed(i); setModal('drone'); }}>{f.label}</Button>)}</div>
             </Section>
             <Section title="Current cameras near the case"><p className="text-sm leading-5 text-bone-dim">Current views, not July 2018 footage. Camera operation and capture time are not verified by a source link.</p>
@@ -354,7 +369,7 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
             </div> : <p className="p-6 text-bone-mute">Imagery is not available in this saved snapshot.</p>}
         </div>
         <p className="border-t border-line p-3 font-mono text-micro uppercase leading-5 text-bone-mute">{modal === 'drone'
-          ? 'Simulated 3D camera · Mati sector in every case · SRTM terrain + EOX Sentinel-2 2018 archive · illustrative building shapes at OSM positions · simulated daylight and telemetry, not observed video or thermal measurements · CC BY-NC-SA 4.0'
+          ? 'Simulated 3D world · Mati sector in every case · local DEM, CORINE 2018 land cover, OSM roads and building positions, EOX Sentinel-2 2018 colours (CC BY-NC-SA 4.0) · vegetation, buildings, garbage, people and animals are procedural low-poly stand-ins, not measured objects · time, season and weather follow the selected view · not observed video or thermal measurements'
           : imageMode === 'detail' ? `${detailImage.source} · historical composite, not incident-date or current imagery · approximately 10 m source resolution · CC BY-NC-SA 4.0 · s2maps.eu`
             : `${nasaDate?.source ?? 'NASA GIBS / VIIRS'} · coarse optical overview may contain cloud or missing swaths · imagery date is not a continuous capture time`}</p>
       </div>

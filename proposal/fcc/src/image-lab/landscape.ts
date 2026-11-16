@@ -440,55 +440,173 @@ export function weatherFor(series: WeatherSeries | undefined, choice: WindChoice
   };
 }
 
+/**
+ * Where the fire starts. A point is one cell; a line is an active fire front through its vertices; an area is
+ * a closed shape already burning, so its whole inside counts as burned and the fire spreads from its edge.
+ * Vertices are model cell indices.
+ */
+export type FireStart = { kind: 'point'; index: number } | { kind: 'line' | 'area'; vertices: number[] };
+export const FRONT_MIN_VERTICES = { line: 2, area: 3 } as const;
+export const FRONT_MAX_VERTICES = 64;
+
+function segmentCells(a: number, b: number, out: Set<number>) {
+  const ax = a % MODEL_SIDE, ay = Math.floor(a / MODEL_SIDE), bx = b % MODEL_SIDE, by = Math.floor(b / MODEL_SIDE);
+  // Two samples per cell step: every cell the centre-to-centre segment passes through, without diagonal gaps.
+  const n = Math.max(1, 2 * Math.max(Math.abs(bx - ax), Math.abs(by - ay)));
+  for (let s = 0; s <= n; s++) {
+    const x = Math.round(ax + (bx - ax) * s / n), y = Math.round(ay + (by - ay) * s / n);
+    out.add(y * MODEL_SIDE + x);
+  }
+}
+
+/** Cells a fire start covers (`cells`) and the cells on its outline (`edge`, the part the fire spreads out from). */
+export function startCells(start: FireStart): { cells: number[]; edge: number[] } {
+  if (start.kind === 'point') return { cells: [start.index], edge: [start.index] };
+  const v = start.vertices, edge = new Set<number>();
+  for (let k = 0; k + 1 < v.length; k++) segmentCells(v[k], v[k + 1], edge);
+  if (start.kind === 'line' || v.length < 3) return { cells: [...edge], edge: [...edge] };
+  segmentCells(v[v.length - 1], v[0], edge);
+  const cells = new Set(edge);
+  const px = v.map(i => i % MODEL_SIDE), py = v.map(i => Math.floor(i / MODEL_SIDE));
+  const y0 = Math.min(...py), y1 = Math.max(...py);
+  for (let y = y0; y <= y1; y++) {
+    // Even-odd fill of cell centres; vertices sit on cell centres, so sample half a cell off them.
+    const sy = y + 0.5, xs: number[] = [];
+    for (let k = 0; k < v.length; k++) {
+      const j = (k + 1) % v.length, ya = py[k] + 0.5, yb = py[j] + 0.5;
+      if ((ya <= sy) !== (yb <= sy)) xs.push(px[k] + 0.5 + (sy - ya) / (yb - ya) * (px[j] - px[k]));
+    }
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      for (let x = Math.ceil(xs[k] - 0.5); x <= Math.floor(xs[k + 1] - 0.5); x++) if (x >= 0 && x < MODEL_SIDE) cells.add(y * MODEL_SIDE + x);
+    }
+  }
+  return { cells: [...cells], edge: [...edge] };
+}
+
+/**
+ * Nearest seed per cell, by propagating nearest-seed candidates in two raster passes (repeated), with exact
+ * Euclidean distance to each candidate. Accurate to well under a cell on open ground.
+ */
+function nearestSeed(seeds: number[]): Int32Array {
+  const near = new Int32Array(MODEL_CELLS).fill(-1), d2 = new Float64Array(MODEL_CELLS).fill(Infinity);
+  for (const s of seeds) { near[s] = s; d2[s] = 0; }
+  const offer = (i: number, x: number, y: number, j: number) => {
+    const s = near[j];
+    if (s < 0) return;
+    const dx = x - s % MODEL_SIDE, dy = y - Math.floor(s / MODEL_SIDE), d = dx * dx + dy * dy;
+    if (d < d2[i]) { d2[i] = d; near[i] = s; }
+  };
+  for (let round = 0; round < 2; round++) {
+    for (let y = 0; y < MODEL_SIDE; y++) for (let x = 0; x < MODEL_SIDE; x++) {
+      const i = y * MODEL_SIDE + x;
+      if (x > 0) offer(i, x, y, i - 1);
+      if (y > 0) { offer(i, x, y, i - MODEL_SIDE); if (x > 0) offer(i, x, y, i - MODEL_SIDE - 1); if (x + 1 < MODEL_SIDE) offer(i, x, y, i - MODEL_SIDE + 1); }
+    }
+    for (let y = MODEL_SIDE - 1; y >= 0; y--) for (let x = MODEL_SIDE - 1; x >= 0; x--) {
+      const i = y * MODEL_SIDE + x;
+      if (x + 1 < MODEL_SIDE) offer(i, x, y, i + 1);
+      if (y + 1 < MODEL_SIDE) { offer(i, x, y, i + MODEL_SIDE); if (x + 1 < MODEL_SIDE) offer(i, x, y, i + MODEL_SIDE + 1); if (x > 0) offer(i, x, y, i + MODEL_SIDE - 1); }
+    }
+  }
+  return near;
+}
+
 export interface SpreadResult {
+  /** The point ignition, or the first vertex of a fire front (see `start`). */
   ignition: number;
+  start: FireStart;
+  /** Burnable cells seeded at minute 0, and cells of the start skipped because their fuel cannot burn. */
+  seedCells: number;
+  skippedCells: number;
+  /** Area already burning at minute 0 (seeded cells). Included in `areasHa`. */
+  startHa: number;
   arrival: Float32Array;
   areasHa: Record<(typeof SPREAD_BANDS_MIN)[number], number>;
   /**
-   * Main run: compass bearing from ignition to the centroid of the modelled area, and the farthest reach
-   * along that bearing. The single farthest cell is not used; on the 16-neighbour stencil it sits on a
-   * corner of the head, tens of degrees off the wind.
+   * Main run. Point: compass bearing from ignition to the centroid of the modelled area, and the farthest reach
+   * along that bearing (the single farthest cell is not used; on the 16-neighbour stencil it sits on a corner of
+   * the head, tens of degrees off the wind). Front: the direction of the mean offset from the nearest part of the
+   * front to each modelled cell, and the farthest any cell lies from the front along it. Null without a clear direction.
    */
   run: { distanceM: number; bearingDeg: number } | null;
   reachedEdge: boolean;
   computeMs: number;
 }
 
-export function runLandscapeSpread(grid: ModelGrid, fuel: Uint8Array, elevation: Float32Array, ignition: number,
+export function runLandscapeSpread(grid: ModelGrid, fuel: Uint8Array, elevation: Float32Array, from: number | FireStart,
   weather: (hour: number) => SpreadWeather, horizonMin = SPREAD_HORIZON_MIN): SpreadResult {
-  if (ignition < 0 || ignition >= MODEL_CELLS) throw new Error('Ignition is outside the landscape.');
-  if (!FUEL_INFO[fuel[ignition] as FuelClass]?.burns) throw new Error('The ignition cell is not burnable in this fuel map.');
+  const start: FireStart = typeof from === 'number' ? { kind: 'point', index: from } : from;
+  const burns = (i: number) => !!FUEL_INFO[fuel[i] as FuelClass]?.burns;
+  if (start.kind === 'point') {
+    if (start.index < 0 || start.index >= MODEL_CELLS) throw new Error('Ignition is outside the landscape.');
+    if (!burns(start.index)) throw new Error('The ignition cell is not burnable in this fuel map.');
+  } else {
+    const min = FRONT_MIN_VERTICES[start.kind];
+    if (start.vertices.length < min) throw new Error(start.kind === 'line' ? 'Add at least two points for a fire line.' : 'Add at least three points for a burning area.');
+    if (start.vertices.length > FRONT_MAX_VERTICES) throw new Error(`Use at most ${FRONT_MAX_VERTICES} points.`);
+    if (start.vertices.some(i => !Number.isInteger(i) || i < 0 || i >= MODEL_CELLS)) throw new Error('A fire front point is outside the landscape.');
+  }
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const { cells, edge } = startCells(start);
+  const seeded = cells.filter(burns);
+  if (!seeded.length) throw new Error('None of this fire front is on burnable fuel.');
   const seeds = new SpreadSeeds();
-  seeds.push(ignition, 0);
+  for (const i of seeded) seeds.push(i, 0);
   const arrival = runTravelTime({ gw: MODEL_SIDE, gh: MODEL_SIDE, dxM: grid.cellM, dyM: grid.cellM, fuel, elev: elevation, horizonMin, weatherAt: weather }, seeds);
   const areasHa = { 60: 0, 180: 0, 360: 0 };
+  const ignition = start.kind === 'point' ? start.index : start.vertices[0];
   const ix = ignition % MODEL_SIDE, iy = Math.floor(ignition / MODEL_SIDE);
-  let sx = 0, sy = 0, cells = 0, reachedEdge = false;
+  let sx = 0, sy = 0, reached = 0, reachedEdge = false;
   for (let i = 0; i < arrival.length; i++) {
     const t = arrival[i];
     if (!(t <= horizonMin)) continue;
     for (const band of SPREAD_BANDS_MIN) if (t <= band) areasHa[band] += grid.cellHa;
     const x = i % MODEL_SIDE, y = Math.floor(i / MODEL_SIDE);
     if (x === 0 || y === 0 || x === MODEL_SIDE - 1 || y === MODEL_SIDE - 1) reachedEdge = true;
-    sx += x - ix; sy += y - iy; cells++;
+    sx += x - ix; sy += y - iy; reached++;
   }
   let run: SpreadResult['run'] = null;
-  const norm = Math.hypot(sx, sy);
-  if (cells > 1 && norm / cells > 0.5) {
-    const ux = sx / norm, uy = sy / norm;
-    let reach = 0;
-    for (let i = 0; i < arrival.length; i++) {
-      if (arrival[i] <= horizonMin) reach = Math.max(reach, (i % MODEL_SIDE - ix) * ux + (Math.floor(i / MODEL_SIDE) - iy) * uy);
+  if (start.kind === 'point') {
+    const norm = Math.hypot(sx, sy);
+    if (reached > 1 && norm / reached > 0.5) {
+      const ux = sx / norm, uy = sy / norm;
+      let reach = 0;
+      for (let i = 0; i < arrival.length; i++) {
+        if (arrival[i] <= horizonMin) reach = Math.max(reach, (i % MODEL_SIDE - ix) * ux + (Math.floor(i / MODEL_SIDE) - iy) * uy);
+      }
+      run = { distanceM: reach * grid.cellM, bearingDeg: (Math.atan2(ux, -uy) * 180 / Math.PI + 360) % 360 };
     }
-    run = { distanceM: reach * grid.cellM, bearingDeg: (Math.atan2(ux, -uy) * 180 / Math.PI + 360) % 360 };
+  } else {
+    const source = edge.filter(burns);
+    const near = nearestSeed(source.length ? source : seeded);
+    const offset = (i: number) => [i % MODEL_SIDE - near[i] % MODEL_SIDE, Math.floor(i / MODEL_SIDE) - Math.floor(near[i] / MODEL_SIDE)];
+    let mx = 0, my = 0, moved = 0;
+    for (let i = 0; i < arrival.length; i++) {
+      if (!(arrival[i] <= horizonMin) || near[i] === i) continue;
+      const [dx, dy] = offset(i);
+      mx += dx; my += dy; moved++;
+    }
+    const norm = Math.hypot(mx, my);
+    // Mean offset from the front (far cells weigh more, so the head wins over uniform outward growth), then the
+    // farthest reach along it, for the same stencil-corner reason as a point.
+    if (moved > 1 && norm / moved > 0.5) {
+      const ux = mx / norm, uy = my / norm;
+      let reach = 0;
+      for (let i = 0; i < arrival.length; i++) {
+        if (!(arrival[i] <= horizonMin)) continue;
+        const [dx, dy] = offset(i);
+        reach = Math.max(reach, dx * ux + dy * uy);
+      }
+      if (reach > 0.5) run = { distanceM: reach * grid.cellM, bearingDeg: (Math.atan2(ux, -uy) * 180 / Math.PI + 360) % 360 };
+    }
   }
   return {
-    ignition, arrival, areasHa, reachedEdge, run,
+    ignition, start, seedCells: seeded.length, skippedCells: cells.length - seeded.length, startHa: seeded.length * grid.cellHa,
+    arrival, areasHa, reachedEdge, run,
     computeMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0,
   };
 }
-
 /* ------------------------------------------------------------------ transport + export */
 
 export function toBase64(bytes: Uint8Array): string {
@@ -594,6 +712,10 @@ export function landscapeExport(input: LandscapeExportInput) {
     weather: { series: input.weather, choice: input.wind },
     spread: spread ? {
       ignition: { index: spread.ignition, ...cellLonLat(grid, spread.ignition) },
+      start: spread.start.kind === 'point' ? { kind: 'point' as const, seedCells: spread.seedCells, startHa: spread.startHa } : {
+        kind: spread.start.kind, vertices: spread.start.vertices.map(index => ({ index, ...cellLonLat(grid, index) })),
+        seedCells: spread.seedCells, skippedCells: spread.skippedCells, startHa: spread.startHa,
+      },
       horizonMin: SPREAD_HORIZON_MIN, bandsMin: SPREAD_BANDS_MIN, areasHa: spread.areasHa, run: spread.run,
       reachedEdge: spread.reachedEdge, arrivalMin: encodeArrival(spread.arrival), arrivalEncoding: 'uint16 minutes, 65535 = not reached',
     } : null,

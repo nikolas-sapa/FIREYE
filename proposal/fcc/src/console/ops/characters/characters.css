@@ -1,0 +1,53 @@
+/* Pixel mascot motion. Transform px on SVG children is in user units, so 1px = one art pixel. */
+.fcc-char {
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+  image-rendering: pixelated;
+}
+
+.fcc-char__blink {
+  opacity: 0;
+}
+
+.fcc-char--working .fcc-char__body {
+  animation: fcc-char-bob 1200ms steps(1, end) infinite;
+}
+
+.fcc-char--thinking .fcc-char__blink {
+  animation: fcc-char-blink 3200ms steps(1, end) infinite;
+}
+
+.fcc-char--alert .fcc-char__body {
+  animation: fcc-char-shake 320ms steps(1, end) 2;
+}
+
+@keyframes fcc-char-bob {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+@keyframes fcc-char-blink {
+  0% { opacity: 0; }
+  90% { opacity: 1; }
+  95% { opacity: 0; }
+}
+
+@keyframes fcc-char-shake {
+  0% { transform: translateX(-1px); }
+  25% { transform: translateX(1px); }
+  50% { transform: translateX(-1px); }
+  75% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fcc-char .fcc-char__body,
+  .fcc-char .fcc-char__blink {
+    animation: none;
+    transform: none;
+  }
+
+  .fcc-char__blink {
+    opacity: 0;
+  }
+}

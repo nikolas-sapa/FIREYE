@@ -437,6 +437,12 @@ Motion is mechanical, short and purposeful. It confirms an action or reveals a c
 - **Reduced motion:** `src/index.css` globally collapses CSS animation and transition durations under `prefers-reduced-motion: reduce`. JS-driven animation (requestAnimationFrame, SMIL `<animate>`) is not covered by that rule: check `window.matchMedia('(prefers-reduced-motion: reduce)')` and freeze or skip it (see `useReducedMotion` in `src/sections/Hero.tsx`).
 - Pause rAF loops when off-screen (IntersectionObserver).
 
+### 8.5 FIREYE presentation entrance
+
+The user-approved hackathon boot is a one-shot cinematic exception to short functional durations. Use the canonical eye geometry on ink-950: a flattened outline opens over 1.4 s, then its signal line opens into the pupil. Measure the real centered header mark for the transform-only handoff. Show one 72–96 px source icon at a time, with a 100 ms entrance, 100 ms stationary hold and 260 ms moving fade, four left then four right. No checklist, progress bar or wordmark; the only visible label is “Simulation build” (plus a retry affordance if required data stalls).
+
+Fade the loading field out over 700 ms while making a short 1.8 s approach from 1.35× the goal range. Keep the goal heading and tilt fixed, with logarithmic range and zero endpoint velocity/acceleration. Cap each camera step after long frames and pause progress in background tabs. Prewarm the nearby local view behind the loader; retain the normal basemap and atmosphere, with no orbital view or temporary Earth imagery. The map permanently fills the whole area below the header. Panels stay mounted in their final layout slots, off-screen during descent, then slide over that map in 760 ms with small offsets in timing. Static overscan framing preserves the original panel-free view's scale and center, including both stations; HUD, credits and dive controls follow its measured bounds. Never animate layout, framing, or the Cesium viewport size for this entrance. Keep the simulation paused and the dashboard inert until the sequence finishes. Reduced motion and Escape use a static eye and cut to the ready dashboard, without bypassing required data or leaving camera controls locked.
+
 ---
 
 ## 9. Textures and micrographics
@@ -951,7 +957,18 @@ Honest scoring of one projection run against what happened (contract `Prediction
 
 ### ThemeToggle (REV D)
 
-`{ compact?; hint?: string; onChange?(theme) }` in `src/design-system/components/theme.tsx`. Two segments, FCC and Team, each with a swatch of its own accent; the active segment is `bg-ink-700 text-bone`. Persists to localStorage `fcc.theme`. `hint` prints a keyboard hint (the console uses `T`). Placed in the proposal Nav and the console command strip.
+`{ compact?; hint?: string; onChange?(theme) }` in `src/design-system/components/theme.tsx`. Two segments, FCC and Team, each with a swatch of its own accent; the active segment is `bg-ink-700 text-bone`. Persists to localStorage `fcc.theme`. `hint` prints a keyboard hint. Retired: the brand is now locked to FCC and the toggle is no longer mounted anywhere.
+
+### FireyeMark, FireyeWordmark, OrchestratorAvatar (FIREYE)
+
+FIREYE's reconnaissance shell stays dark with satellite imagery. Its solid ink-950 header is 48 px tall and the map begins directly below it. The centered eye has a matching ink-950 backing built from the canonical lower-lid curve, closed upward into the header and padded by 12 px. This makes the header's lower edge follow the logo contour, without a gradient, a separate badge, or a seam. Time/date and SIM sit left; incident details and sensor/legend/layer controls sit right. One 96 px FIREYE eye is centered on the screen, half overflowing beneath the header, blinking occasionally and looking down-left/right briefly on drone commands. The notification is a compact 440 px message below that same eye, connected by a hairline, with no duplicate avatar or ORCH/count badge. Fire updates take precedence over tasking and use ember status; tasking uses ice. The chat launcher uses a send glyph rather than another persistent FIREYE mark.
+
+Fleet defaults to a 104 px two-column rail of 44 px square drone/station/camera/source tiles; hover or keyboard focus reveals details horizontally without shifting the map. Expanded width defaults to 220 px. Source popups use the existing Modal with recorded intake, analysis, Orchestrator and execution stages, evidence linkage, bounded history, and keyboard focus containment. Stations retain visible battery glyphs. Ground sensors use 5 px points (7 px alarm, 9 px selected), status tokens, and selected-only labels. Drone trails, flight paths and non-drone fleet controls are absent. Legacy replay approval patterns below remain unchanged.
+
+The feed deck is one horizontally scrolling row of equal-height 16:9 tiles, ordered by exact relevance among available feeds, with offline sources last and stable-ID ties. It exposes relevance scores, true live/total source counts and left/right scroll controls. There is no enlarged two-row lead layout. A full-feed toolbar starts at y=112 so its nonshrinking return button clears both the header and the eye; labels/sensor controls can wrap.
+
+`FireyeMark { size? = 24; weight? /* rendered px, default 1.5 (1.25 at ≥ 64) */; draw? = false; state?: OrchestratorState; look?: 'center' | 'down-left' | 'down-right'; title? = 'FIREYE' }`, `FireyeWordmark { size? = 20; className?; sub? }`, `OrchestratorAvatar { state? = 'idle'; size? = 20; framed? = false; title? }` in `src/design-system/components/brand.tsx`. Geometry is exported as `FIREYE_GEOMETRY` (32-unit grid): two hairline lids meeting at the canthi (2.5 / 29.5, apex 7.5 / 24.5) and an 8-unit diamond pupil, the only fill, in `signal`. Lid strokes keep the same rendered weight at every size. Directional attention translates a pupil wrapper without changing that geometry or interfering with state animation. The Orchestrator avatar is the same drawing with state: `idle` (slow blink), `listening` (lids narrowed), `thinking` (pupil scans), `speaking` (pupil pulses), `alert` (signal ring, Z0 only). Every keyframe ends at rest, so reduced motion shows the static mark. `draw` strokes the lids in (boot). Specimen C.10 includes both command gaze directions; proposal section 06 (`#identity`) retains the brand specimen. PWA icons in `public/icons/fireye*`.
+
 ---
 
 ## 12. Domain patterns

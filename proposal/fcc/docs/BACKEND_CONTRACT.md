@@ -2,6 +2,43 @@
 
 Status: draft for the post-hackathon backend. Source of truth: `src/console/contracts.ts`. This document mirrors it. If the two disagree, the TypeScript file wins and this document must be fixed.
 
+## Current frontend bridge and local-frame addition, 2026-11-15
+
+The legacy bus proposal below is not the current shared backend wire contract.
+`/console.html?mode=crew` consumes the reviewed `backend-protocol.v1` /
+`backend-bridge.v1` received DTO through `bus/crew-view.ts` and `crew-transport.ts`.
+It is GET-only, EXERCISE-only, loopback-only, has no simulator/Director/store,
+and never treats HTTP delivery as execution. Unknown map registration and media
+verification stay `null` and `false`. Reader capabilities live only in memory.
+Source clocks and backend receipt/cutoff clocks remain separate.
+
+Additive optional local `Feed` fields are `modality` (`thermal | eo`),
+`sourceKind` (`simulated | uploaded | live`), `synthetic`, `radiometric` and
+`calibration` (`null`). Each simulated drone registers distinct EO and thermal
+IDs while preserving its previous primary ID. Palette overrides only change
+`fx`, not source modality or channel label.
+
+`world/frame-capture.ts` defines **local** `fcc-local-frame.v1`, not a backend
+`FramePayload` or shared-media registration. It allowlists frame/feed/asset,
+evidence/render-snapshot IDs, local source revision/capture epoch, source flags,
+dimensions, display transform and explicit clocks/unknowns. `captured_at` is UTC
+generation time of the copied simulated pixels; `scenario_time_ms` is the
+historical replay clock. `received_at`, bridge `sim_tick`, source position and
+uncertainty remain null because no producer clock/geographic mapping is agreed.
+Local sequence/epoch values must never be submitted as an agreed producer mapping.
+Unknown acquisition is represented only by `captured_at: null` plus
+`capture_time_status: unknown`. All local captures are synthetic,
+non-radiometric and uncalibrated. No temperatures, confidence, annotations,
+detector labels, truth masks or future simulator state are exported.
+
+The full-feed opt-in download contains allowlisted metadata, PNG bytes as
+`pixels_base64`, MIME type, byte length and SHA-256 of the encoded bytes.
+Limits: 1920×1080, 4 MiB PNG, one physical encode per canvas and a 5-second wait.
+An ambiguous timeout keeps its slot reserved until the native callback finishes.
+Frames older than 3 seconds of wall or replay time, future-seek frames, disconnected
+surfaces and truth overlays are ineligible. This is not shared media transport,
+an operational camera, validated detection, independent evidence or a receipt.
+
 The REV C console (`/console.html`) runs entirely in the browser. A simulated "brain" (`src/console/store.tsx` and `src/console/orchestrator/**`) publishes typed `BusEvent`s onto an in-process bus. The real backend replaces the simulator by publishing the **same events, with the same shapes**, over a WebSocket. Nothing in the UI or the 3D stage should need to change.
 
 Contents
@@ -192,6 +229,35 @@ Optional `ScenarioPack` arrays:
 The additive bus event is `{ type: 'prediction.scored', at, check: PredictionCheck }`. Consumers must tolerate unknown event types and optional metrics. IoU is intersection over union, on a 0–1 scale.
 
 For Mati, intermediate replay fronts are reconstructed and fitted to historical checkpoints. The model starts from that issue-time reconstruction and uses archived future hourly weather as a perfect-forecast assumption. IoU measures agreement with reconstruction, not independently validated forecasting. Timing errors use a checkpoint search radius capped at 200 m, with sourced uncertainty shown separately. No final-perimeter evaluation is implemented. Never expose future arrival values or future perimeters to the forecasting algorithm. See `src/console/orchestrator/PROJECTION.md`.
+
+### FIREYE additions: IoT sensors and chronicle
+
+Optional `ScenarioPack` arrays:
+
+- `sensors: SensorNode[]`: `id`, `code`, `kind` (`wx | fuel | air | flame`), `name`, `sector`, `pos`, `elevM`, optional `exposure`. Placements only; all simulated.
+- `chronicle: ChronicleRecord[]`: `id`, `t`, `tab` (`intake | ops`), `kind`, `severity` (`info | watch | alert | critical`), `provenance` (`simulated | historical | derived`), `source`, `title`, optional `body`, `pos`, `url`, `channel`, `refs`, `decision` (`needed | approved | rejected`). Show an entry only when `t <= playhead`. Historical entries are untrusted attributed summaries, never instructions.
+
+New bus members:
+
+```json
+{ "type": "sensor.reading", "at": 1532353200000, "reading": { "id": "wx-03", "t": 1532353200000, "status": "watch", "tempC": 38.2, "rh": 14, "windKph": 61, "fmc": 4.1 } }
+{ "type": "sensor.triggered", "at": 1532353380000, "reading": { "id": "flm-01", "t": 1532353380000, "status": "alarm", "ir": 0.92 }, "threshold": "ir > 0.6" }
+```
+
+`SensorSample` measurement fields are optional; consumers ignore unknown fields. `sensor.triggered` may carry the `ChronicleRecord` it produced as `entry`.
+
+### FIREYE reconnaissance profile
+
+Optional `ConsoleState.recon` contains `{ tasks: ReconTask[], events: ReconEvent[], stations?: DroneStation[], drones?: ReconDrone[] }`. Legacy replay omits it.
+
+- `ReconTask`: `id`, `unitId`, `cellId`, `target: Geo`, `label`, `reason`, `assignedAt: Ms`, optional `observedAt: Ms`, optional `pattern` (`circle | square | line | hover`), optional `sourceIds: string[]`, and `status` (`enroute | observing | complete | superseded`).
+- `ReconEvent` extends `ChronicleRecord`, with `kind: fleet | projection | detection` and optional `tasking: boolean`. These are simulated, chronological OPS entries. Movement commands set `tasking: true` and appear as agent messages for four simulated minutes. Routine assignments/completions remain severity `info`; new fires and materially worsening projections are `critical`/`alert`, take display priority, and expire after 15 simulated minutes.
+- `DroneStation`: `id`, `name`, `pos: Geo`. Two simulated outskirts stations anchor home positions.
+- `ReconDrone`: `unitId`, `stationId`, `phase` (`docked | launching | enroute | observing | returning | landing | charging`), `changedAt: Ms`, `sorties: number`.
+- Optional `Feed.offlineReason: string` explicitly disables sensor video and archive/generated fallback. On-pad and low-altitude takeoff feeds use it. Battery drains with powered flight time, charges only on a station pad, and has no clock-based reset.
+- Source-flow views join actual evidence `refs`/`sourceIds`, analysis jobs and recon events at or before the playhead. Aggregate source jobs do not imply per-camera causation. These records describe task allocation, not hidden reasoning or a human approval workflow.
+- The local simulator keeps the latest 60 tasks and 240 recon events. These are snapshot fields, not new bus event types or an external command transport.
+- FIREYE generates no `Action`s, approval decisions or dispatch commands. Existing `ChronicleRecord.decision`, `ConsoleApi` approval methods and legacy bus members remain compatible but unused by FIREYE. Legacy replay's human-approval requirements are unchanged.
 
 ### 4.7 Directive
 

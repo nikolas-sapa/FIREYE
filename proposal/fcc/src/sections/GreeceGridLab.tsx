@@ -7,9 +7,9 @@ import {
   type GridSettings, type GridTileRun, type LoadedLandscape,
 } from '@/image-lab/grid-client';
 import {
-  FUEL_INFO, LANDSCAPE_SOURCES, LANDSCAPE_SCHEMA, MODEL_SIDE, N_MIN, REVIEW_CLASSES, REVIEW_MAX_OFF_PALETTE, REVIEW_PROMPT_VERSION,
+  FRONT_MAX_VERTICES, FRONT_MIN_VERTICES, FUEL_INFO, LANDSCAPE_SOURCES, LANDSCAPE_SCHEMA, MODEL_SIDE, N_MIN, REVIEW_CLASSES, REVIEW_MAX_OFF_PALETTE, REVIEW_PROMPT_VERSION,
   SPREAD_BANDS_MIN, SPREAD_HORIZON_MIN, V_MIN, cellLonLat, fuseFuel, landscapeExport, modelGrid, reviewPrompt, runLandscapeSpread,
-  weatherFor, type FusionMode, type ReviewCell, type WeatherSeries, type WindChoice,
+  weatherFor, type FireStart, type FusionMode, type ReviewCell, type WeatherSeries, type WindChoice,
 } from '@/image-lab/landscape';
 import { labRequest } from '@/image-lab/client';
 import { LAB_API, LAB_MODELS } from '@/image-lab/protocol';
@@ -34,6 +34,12 @@ const FUSION_HELP: Record<FusionMode, string> = {
   add: `Accepted review cells can turn non-burnable CORINE land into shrub where at least ${V_MIN * 100}% of the cell is vegetation. Adds spread paths, never removes one.`,
   full: `Also lets confident review cells change agriculture to shrub, and burnable land to rock where at least ${N_MIN * 100}% is exposed surface. Can speed up or slow down spread.`,
 };
+type StartMode = FireStart['kind'];
+const START_HELP: Record<StartMode, string> = {
+  point: 'Click one cell to start a fire there.',
+  line: `Click points along an active fire line, at least ${FRONT_MIN_VERTICES.line}. The fire spreads out from every burnable cell on the line.`,
+  area: `Click the corners of an area already burning, at least ${FRONT_MIN_VERTICES.area}. The shape closes itself; its inside counts as burned and the fire spreads from its edge.`,
+};
 const spreadLegend = (): LegendItem[] => [
   { label: `Modelled spread / darker = earlier (${SPREAD_BANDS_MIN.map(b => b / 60).join(', ')} h)`, color: color.ember },
   { label: 'Band edge', color: color.bone.DEFAULT, shape: 'line' },
@@ -49,6 +55,8 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
   const [weatherState, setWeatherState] = useState<SourceState>(IDLE);
   const [wind, setWind] = useState<WindChoice>(DEFAULT_WIND);
   const [ignition, setIgnition] = useState<number>();
+  const [startMode, setStartMode] = useState<StartMode>('point');
+  const [vertices, setVertices] = useState<number[]>([]);
   const [layers, setLayers] = useState<Record<MapLayer, boolean>>({ fuel: true, terrain: true, review: false, spread: true });
   const [fusion, setFusion] = useState<FusionMode>('base');
   const [model, setModel] = useState<string>(LAB_MODELS[0].value);
@@ -121,7 +129,7 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
     running.current = true;
     setLoading(true); setError(''); setConsent(false);
     setScene(undefined); setImageUrl(undefined); setTiles([]); setSettings(undefined);
-    setLand(undefined); setWeather(undefined); setLandState(IDLE); setWeatherState(IDLE); setIgnition(undefined);
+    setLand(undefined); setWeather(undefined); setLandState(IDLE); setWeatherState(IDLE); setIgnition(undefined); setVertices([]);
     setFusion('base'); setNotes(''); setWind(DEFAULT_WIND);
     const abort = new AbortController();
     controller.current?.abort(); controller.current = abort;
@@ -178,18 +186,28 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
   const fused = useMemo(() => land && fuseFuel(land.fuel, reviews, fusion), [land, reviews, fusion]);
   const weatherAt = useMemo(() => weatherFor(weather, wind), [weather, wind]);
   const now = weatherAt(0);
+  const front = useMemo(() => startMode === 'point' ? undefined : { kind: startMode, vertices }, [startMode, vertices]);
+  const fireStart = useMemo<FireStart | undefined>(() => {
+    if (startMode === 'point') return ignition === undefined ? undefined : { kind: 'point', index: ignition };
+    return vertices.length >= FRONT_MIN_VERTICES[startMode] ? { kind: startMode, vertices } : undefined;
+  }, [startMode, ignition, vertices]);
   const spread = useMemo(() => {
-    if (!grid || !fused || !land || ignition === undefined) return undefined;
-    try { return { result: runLandscapeSpread(grid, fused.fuel, land.elevation, ignition, weatherAt) }; }
+    if (!grid || !fused || !land || !fireStart) return undefined;
+    try { return { result: runLandscapeSpread(grid, fused.fuel, land.elevation, fireStart, weatherAt) }; }
     catch (e) { return { error: e instanceof Error ? e.message : 'Spread could not run.' }; }
-  }, [grid, fused, land, ignition, weatherAt]);
+  }, [grid, fused, land, fireStart, weatherAt]);
   const result = spread?.result;
+  const addVertex = (index: number) => setVertices(v => v.length >= FRONT_MAX_VERTICES || v[v.length - 1] === index ? v : [...v, index]);
+  const undoVertex = () => setVertices(v => v.slice(0, -1));
+  const needed = startMode === 'point' ? 0 : Math.max(0, FRONT_MIN_VERTICES[startMode] - vertices.length);
+  const idleStatus = startMode === 'point' ? 'Click the map to set ignition'
+    : needed ? `Add ${needed} more ${startMode === 'line' ? 'line' : 'area'} point${needed > 1 ? 's' : ''}` : 'Ready';
 
   const describe = (index: number) => {
     if (!grid || !land || !fused) return `Cell ${index % MODEL_SIDE}, ${Math.floor(index / MODEL_SIDE)}`;
     const { lat, lon } = cellLonLat(grid, index);
     const t = result?.arrival[index];
-    const reach = result ? (t !== undefined && t <= SPREAD_HORIZON_MIN ? `reached ${Math.round(t)} min` : 'not reached') : 'no ignition';
+    const reach = result ? (t !== undefined && t <= SPREAD_HORIZON_MIN ? `reached ${Math.round(t)} min` : 'not reached') : 'no fire start';
     const changed = fused.fuel[index] !== land.fuel[index] ? ' (AI-adjusted)' : '';
     return `${fmtLat(lat, 3)} ${fmtLon(lon, 3)} · ${FUEL_INFO[fused.fuel[index] as FuelClass].label}${changed} · ${Math.round(land.elevation[index])} m · ${reach}`;
   };
@@ -334,7 +352,7 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
           <span className="fcc-label text-bone">Spread path / prototype</span>
           <span role="status" aria-live="polite" className="font-mono text-nano uppercase text-bone-dim">
-            {loading ? 'Loading landscape' : busy ? `AI review ${completed} / 4` : !land ? 'No landscape' : result ? `Modelled ${SPREAD_HORIZON_MIN / 60} h in ${Math.max(1, Math.round(result.computeMs))} ms` : 'Click the map to set ignition'}
+            {loading ? 'Loading landscape' : busy ? `AI review ${completed} / 4` : !land ? 'No landscape' : result ? `Modelled ${SPREAD_HORIZON_MIN / 60} h in ${Math.max(1, Math.round(result.computeMs))} ms` : idleStatus}
           </span>
         </div>
         {error && <p role="alert" className="break-words border border-ember/40 bg-ember/10 p-3 text-sm text-ember">{error}</p>}
@@ -343,17 +361,34 @@ export default function GreeceGridLab({ configured, setupError, checkConnection,
             disabled={layer === 'review' && !reviews.some(Boolean)} label={layer === 'review' ? 'AI review' : layer}
             onChange={on => setLayers(previous => ({ ...previous, [layer]: on }))} />)}
         </div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="fcc-micro">Fire start</span>
+            <Segmented aria-label="Fire start" size="sm" value={startMode} onChange={value => setStartMode(value as StartMode)}
+              options={[{ value: 'point', label: 'Point' }, { value: 'line', label: 'Line' }, { value: 'area', label: 'Area' }]} />
+            {front && <>
+              <span className="fcc-num font-mono text-nano uppercase text-bone-dim">{vertices.length} / {FRONT_MAX_VERTICES} points</span>
+              <Button size="sm" disabled={!vertices.length} onClick={undoVertex}>Undo point</Button>
+              <Button size="sm" disabled={!vertices.length} onClick={() => setVertices([])}>Clear</Button>
+            </>}
+          </div>
+          <p className="text-xs text-bone-dim">{START_HELP[startMode]}{front && vertices.length >= FRONT_MAX_VERTICES ? ` Maximum of ${FRONT_MAX_VERTICES} points reached.` : ''}</p>
+        </div>
         <SpreadMap imageUrl={imageUrl} layers={layers} fuel={fused?.fuel} elevation={land?.elevation} reviews={reviews}
-          disagree={fused?.disagree} arrival={result?.arrival} ignition={ignition} wind={land ? { fromDeg: now.windDirDeg, kph: now.windKph } : undefined}
-          onIgnite={land ? setIgnition : undefined} describe={describe} />
+          disagree={fused?.disagree} arrival={result?.arrival} ignition={startMode === 'point' ? ignition : undefined} front={front} onUndo={undoVertex} wind={land ? { fromDeg: now.windDirDeg, kph: now.windKph } : undefined}
+          onIgnite={land ? (startMode === 'point' ? setIgnition : addVertex) : undefined} describe={describe} />
         {legend.length > 0 && <Legend items={legend} />}
-        {spread?.error && <p role="alert" className="text-sm text-amber">{spread.error} Pick a vegetated, agricultural or built-up cell.</p>}
+        {spread?.error && <p role="alert" className="text-sm text-amber">{spread.error} {startMode === 'point' ? 'Pick a vegetated, agricultural or built-up cell.' : 'Draw across vegetated, agricultural or built-up land.'}</p>}
         {result && <>
           <div className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
             {SPREAD_BANDS_MIN.map(b => <Metric key={b} size="sm" className="bg-ink-900 p-3" label={`Area ≤ ${b / 60} h`} value={Math.round(result.areasHa[b]).toLocaleString()} unit="ha" />)}
-            <Metric size="sm" className="bg-ink-900 p-3" label="Longest run" value={result.run ? (result.run.distanceM / 1000).toFixed(1) : '0'} unit="km"
-              sub={result.run ? `toward ${compass(result.run.bearingDeg)} (${Math.round(result.run.bearingDeg)}°)` : undefined} />
+            <Metric size="sm" className="bg-ink-900 p-3" label={result.start.kind === 'point' ? 'Longest run' : 'Front run'} value={result.run ? (result.run.distanceM / 1000).toFixed(1) : '0'} unit="km"
+              sub={result.run ? `toward ${compass(result.run.bearingDeg)} (${Math.round(result.run.bearingDeg)}°)` : 'No main direction'} />
           </div>
+          {result.start.kind !== 'point' && <p className="fcc-num font-mono text-nano uppercase text-bone-dim">
+            {result.start.kind === 'line' ? 'Fire line' : 'Burning area'}: {result.seedCells.toLocaleString()} cells · {result.startHa.toLocaleString(undefined, { maximumFractionDigits: 1 })} ha burning at start
+            {result.skippedCells > 0 && ` · ${result.skippedCells.toLocaleString()} non-burnable cells skipped`}
+          </p>}
           {result.reachedEdge && <p className="text-sm text-amber">The modelled fire reached the edge of this landscape, so areas and run length are truncated.</p>}
         </>}
         <div className="border border-amber/40 bg-amber/10 p-3 text-sm text-bone-dim">

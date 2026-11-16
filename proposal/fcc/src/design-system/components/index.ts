@@ -18,6 +18,8 @@ export type {
   OrchTier, OrchAlertClass, OrchAudience, MovementStatus, ScoreMeterProps, AlertCardProps, InterruptBannerProps, FreshnessProps,
   OrchBubbleProps, DrawerProps, IconRailItem, IconRailProps, FeedTileProps, PoolBarProps, MovementCardProps,
 } from './orchestrator';
+export { FIREYE_GEOMETRY, FireyeMark, FireyeWordmark, OrchestratorAvatar } from './brand';
+export type { FireyeMarkProps, FireyeWordmarkProps, OrchestratorAvatarProps, OrchestratorState } from './brand';
 export { ThemeToggle, AppearanceToggle } from './theme';
 export type { ThemeToggleProps } from './theme';
 export { InstallAppButton } from './install';

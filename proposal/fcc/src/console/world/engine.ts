@@ -19,6 +19,8 @@ import { updateBrief, updateSuggestions } from '../orchestrator/brief';
 import { ask as askQuestion, tickConversation } from '../orchestrator/conversation';
 import { addNote, recordEvent } from '../orchestrator/notes';
 import { say } from '../orchestrator/messages';
+import { createRecon, tickRecon } from './recon';
+import { initializeStations } from './drone-stations';
 
 /** Scenario ms per fire re-render step (fireRev). */
 export const FIRE_STEP_MS = 60_000;
@@ -74,6 +76,7 @@ function recordingBus(target: Bus, getSim: () => Sim | null): Bus {
 }
 
 export interface CreateOpts {
+  profile?: 'legacy' | 'recon';
   seed?: number;
   t?: Ms;
   speed?: number;
@@ -87,11 +90,15 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
   const ctx = contextFor(pack);
   const seed = opts.seed ?? ctx.script.seed ?? DEFAULT_SEED;
   const rng = createRng(seed);
-  const t = clamp(opts.t ?? ctx.T0, ctx.start, ctx.end);
-  const { units, umeta } = createUnits(ctx, rng, t);
+  const profile = opts.profile ?? 'legacy';
+  const t = clamp(opts.t ?? (profile === 'recon' ? ctx.start : ctx.T0), ctx.start, ctx.end);
+  const created = createUnits(ctx, rng, t);
+  const units = profile === 'recon' ? created.units.filter(u => u.kind === 'drone') : created.units;
+  const umeta = new Map([...created.umeta].filter(([id]) => units.some(u => u.id === id)));
   let ref: Sim | null = null;
   const brief: Brief = { headline: 'Building the picture', bullets: [], changed: [], at: t };
   const sim: Sim = {
+    profile, recon: profile === 'recon' ? createRecon() : null,
     ctx,
     bus: recordingBus(target, () => ref),
     rng,
@@ -149,17 +156,18 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
     fireReal: 0,
   };
   ref = sim;
+  if (sim.recon) initializeStations(sim);
   sim.feeds = createFeeds(sim);
   prefillFindings(sim);
   tickReports(sim, true);
   applyProjection(sim, 'initial');
   updateFeeds(sim);
   grade(sim);
-  runRules(sim);
+  if (sim.recon) tickRecon(sim); else runRules(sim);
   updateBrief(sim, true);
   updateSuggestions(sim);
   if (opts.intro !== false) {
-    say(sim, ctx.script.intro(sim));
+    say(sim, sim.recon ? 'Coordinating simulated drone reconnaissance from two stations. Prioritising high-sensitivity terrain and camera blind spots. Movement commands and important fire changes appear beneath FIREYE.' : ctx.script.intro(sim));
   }
   return sim;
 }
@@ -181,7 +189,10 @@ export function stepSim(sim: Sim, dtReal: number): void {
       tickSwarm(sim, dScen, dAgent);
       tickProjection(sim);
       tickPredictions(sim);
-      tickActions(sim);
+      if (sim.recon) {
+        tickRecon(sim);
+        for (const u of sim.units) { u.trail = []; u.route = undefined; }
+      } else tickActions(sim);
     }
     if (sim.t >= sim.ctx.end) sim.paused = true;
     updateFeeds(sim);
@@ -203,7 +214,7 @@ export function stepSim(sim: Sim, dtReal: number): void {
     sim.gradeDirty = false;
     sim.timers.grade = sim.realS + 0.5;
     grade(sim);
-    runRules(sim);
+    if (!sim.recon) runRules(sim);
   }
   updateBrief(sim);
   if (sim.realS >= sim.timers.orch) {
@@ -353,6 +364,7 @@ export function snapshot(sim: Sim, prev: ConsoleState | null, heavy: boolean, pa
     fireRev: sim.fireRev,
     scenarioId: pack.manifest.id,
     predictions: keep('predictions', sim.predictions),
+    recon: sim.recon ? { tasks: sim.recon.tasks, events: sim.recon.events, stations: sim.recon.stations, drones: sim.recon.drones.map(d => ({ ...d })) } : undefined,
   };
 }
 

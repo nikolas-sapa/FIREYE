@@ -1,6 +1,6 @@
 # Real-data presentation console
 
-The default `/console.html` is an informational, single-machine monitoring prototype. Its camera demos are explicitly simulated. It does not start the legacy incident runtime, generate a fire front, or invent responder counts, rescues, detections, forecasts, agent work or evacuation instructions.
+`/console.html?mode=monitoring` is an informational, single-machine monitoring prototype. Its camera demos are explicitly simulated. It does not start the legacy incident runtime, generate a fire front, or invent responder counts, rescues, detections, forecasts, agent work or evacuation instructions.
 
 ## Run the presentation
 
@@ -13,13 +13,15 @@ npm run preview -- --host localhost
 
 Use the local Vite dev or preview server, not a static file server, for current data. The provider middleware rejects non-loopback clients, foreign origins and non-GET methods. No public deployment/authentication system is included.
 
+Plain `/console.html` now opens FIREYE (see `FIREYE.md`). Add `mode=monitoring` to every monitoring link.
+
 | URL suffix on `/console.html` | View |
 |---|---|
-| none | Current Attica, with optional Greece-region bounding-box overview |
-| `?view=mati` | Mati, 23 July 2018 |
-| `?view=attica2024` | Attica / Varnavas, August 2024 |
-| `?saved=1` | Saved real-data presentation mode |
-| `?view=attica2024&saved=1&tokens=0&context=0` | Bounded local-only historical presentation |
+| `?mode=monitoring` | Current Attica, with optional Greece-region bounding-box overview |
+| `?mode=monitoring&view=mati` | Mati, 23 July 2018 |
+| `?mode=monitoring&view=attica2024` | Attica / Varnavas, August 2024 |
+| `?mode=monitoring&saved=1` | Saved real-data presentation mode |
+| `?mode=monitoring&view=attica2024&saved=1&tokens=0&context=0` | Bounded local-only historical presentation |
 | `?mode=replay` | Original simulated Mati replay |
 | `?scenario=caldor-2021` | Original simulated Caldor replay |
 
@@ -57,7 +59,7 @@ No fal/Gemini/LLM credentials or paid inference calls are used by monitoring.
 
 The globe's detailed local terrain remains limited to the Mati pack. The 2024 case and wider Greece view use contextual geography outside it, not fabricated detailed terrain. Raster overlays retain their colors independently of Outline styling. **Sharp archive · Sentinel-2** is the default image product; its fullscreen viewer supports 1–4× zoom, drag-to-pan and Fit. **Daily overview · NASA** preserves the date-selectable observational product. Changing image product never changes the observation dates or incident data.
 
-Six simulated 3D feeds reuse the legacy terrain renderer's camera geometry and sensor styling: three UAV views, a ridge PTZ, a fixed trail camera and a fixed roadside camera. They use the actual local SRTM terrain, dated EOX 2018 imagery and illustrative building shapes at OSM positions. Placements, flight paths, daylight and telemetry are simulated, not real camera locations, recorded footage, thermal measurements or detections. **All six remain in the Mati sector in every case**, including Current and Attica 2024. They do not claim detailed terrain coverage elsewhere.
+Six simulated 3D feeds show three UAV views, a ridge PTZ, a fixed trail camera and a fixed roadside camera. By default they render **World3D** (`src/console/world3d/`, three.js loaded on demand): a deterministic low-poly world built from the local SRTM terrain, CORINE 2018 land cover, dated EOX 2018 imagery and OSM roads/building positions, with procedurally placed trees, shrubs, grass, yard props, occasional garbage dumps (some with gas canisters), vehicles and simple fictional people and animals. Time, season and weather follow the selected view. `?world=stats` shows performance; `?world=debug` adds display-only time/weather overrides and a simulated ground-truth capture. `?feeds=legacy` restores the earlier Cesium feed renderer. See `docs/WORLD3D.md`. Placements, flight paths, objects, daylight and telemetry are simulated, not real camera locations, recorded footage, thermal measurements, detections or fuel measurements. **All six remain in the Mati sector in every case**, including Current and Attica 2024. They do not claim detailed terrain coverage elsewhere.
 
 Open any tile for a 960×540 player with Play/Pause and Previous/Next. Thumbnails are 384×216. WebGL enables the 3D views; preparing/unavailable 3D shows an explicitly labeled static archive fallback instead of a blank surface. No camera permissions, provider keys or external tiles are required. Reduced motion starts with a static frame; explicit Play opts into motion. The existing legacy view is not changed by this integration.
 
@@ -65,7 +67,7 @@ Open any tile for a 960×540 player with Play/Pause and Previous/Next. Thumbnail
 
 The legacy scheduler intentionally refreshed thumbnails roughly every two seconds, including a second warm-up render, and its lens filter could reset after those long gaps. Reading streamed terrain heights could also change ground-camera mounting height during refinement.
 
-Monitoring uses a separate renderer, not patches to the legacy renderer:
+Monitoring uses a separate renderer, not patches to the legacy renderer (World3D budgets and measurements are in `docs/WORLD3D.md`):
 
 - Phase-locked frame deadlines, independent continuous camera clocks and per-feed gimbal filters. No replay/store-tick stepping or catch-up bursts.
 - Stable native-DEM camera heights. Trail/road mounts do not inherit handheld shake, engine bob or animated sensor noise. The ridge PTZ follows a continuous bounded survey.
@@ -113,7 +115,7 @@ npm run test:pwa
 npm run test:image-lab
 ```
 
-Monitoring tests exercise parsing, UTC and unit conversion, real fixtures, sanitized terrain packs, missing keys, loopback/origin checks, secret-safe errors, response bounds, caching/deduplication, stale/saved fallback, local-storage limits and late-response cancellation. Feed tests cover display-rate aliasing, stable adaptive cadence, paused/background clocks, six bounded paths, fixed mount stability and exact legacy/worker detail equivalence. Browser smoke checks should cover all three views, saved mode, all six camera players, pause/resume, reduced motion, visibility, WebGL fallback, recording-safe camera links, light/dark themes, rapid switches and both legacy scenarios.
+Monitoring tests exercise parsing, UTC and unit conversion, real fixtures, sanitized terrain packs, missing keys, loopback/origin checks, secret-safe errors, response bounds, caching/deduplication, stale/saved fallback, local-storage limits and late-response cancellation. World3D tests (`tests/world3d.ts`) cover generator determinism, vegetation placement, dump/canister rates, seasons, sun, agents and ground truth. Feed tests cover display-rate aliasing, stable adaptive cadence, paused/background clocks, six bounded paths, fixed mount stability and exact legacy/worker detail equivalence. Browser smoke checks should cover all three views, saved mode, all six camera players, pause/resume, reduced motion, visibility, WebGL fallback, recording-safe camera links, light/dark themes, rapid switches and both legacy scenarios.
 
 Final production-browser receipt, 15 November 2026: 6.5-second samples measured approximately 30 fps for four scheduled tiles at 1536 px (95th-percentile gap 52 ms, worst 100 ms), 30 fps fullscreen (95th-percentile gap 38 ms, worst 68 ms), and 30 fps with all six visible at 2880 px (worst 95th-percentile gap 41 ms, worst gap 62 ms). All six terrain frames were ready by approximately 2.2 seconds. Earlier cold runs ranged from 28–30 fps with occasional gaps up to 184 ms. The separate legacy baseline reproduced thumbnail gaps of 2.53 seconds with its 14 surfaces. These are local observations, not frame-rate guarantees or equal-workload speedup claims.
 

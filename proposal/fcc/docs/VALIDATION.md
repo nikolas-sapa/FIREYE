@@ -1,5 +1,54 @@
 # REV D validation receipt
 
+## Frontend issue repair slice, 2026-11-15
+
+Local uncommitted branch `fix/frontend-issues`, limited to `proposal/fcc/**`.
+macOS 25.2, Apple silicon, 10 CPUs/16 GB; Node 22.14.0; Chromium headless,
+1280×633 viewport; scenario/bridge seeds unchanged. No new dependencies, backend
+edits, shared schema changes, provider calls, deployments or issue closure.
+
+- `npm test`: six of six Mati drones have uniquely registered thermal and EO
+  channels; 600 real Runtime ticks advance 60 simulation seconds with zero
+  provider calls. Rejects 100 malformed frame records; accepts ten explicit
+  unknowns. Twenty local encode fixtures preserve identity/bytes/hash. Stale,
+  future, disconnect, truth-overlay, concurrency and ambiguous encode-timeout
+  cases pass. Existing both-scenario tours/approval/provenance/motion checks pass.
+- Real-entry QA found fractional replay time rounded fresh pixels into the
+  future, silently blocking capture. A new regression failed before the fix.
+  Serialization now truncates to milliseconds, and the click handler samples
+  the current stage rather than a possibly older React clock.
+- `npm run test:thermal-browser`, after the no-key production build: enters
+  FIREYE at 17:00, selects 1× and AETOS-2's actual thermal full feed, invokes the
+  real export button 20 times, intercepts only the resulting local download
+  blobs (not the encoder), decodes every PNG and independently recomputes SHA-256.
+  **20/20 distinct rendered frames**, 960×540; largest PNG in the final run **981,177
+  bytes** (below 4 MiB), source `feed-uav-2`, null receipt and no truth/detection
+  metadata. Zero external resource requests in this local-only run.
+- `npm run test:crew`: actual exported backend code bundled for Node 22,
+  real loopback HTTP, two frontend readers, revision-zero initial read,
+  20/20 converged received revisions, ten rejoins and actual frame DTO provenance.
+  56 reads/21 fixture producer writes, **zero consumer writes/provider calls**.
+  Actual producer expiry increments authority epoch: the existing reader stops
+  showing connected; explicit reconnect reads frozen authority without takeover.
+  Static bundle inspection excludes Runtime/store/Director/world truth imports.
+- Short production crew browser QA used the actual bridge/CORS boundary:
+  connected at received revision 2, explicit unknown positions/unavailable media,
+  no simulator/3D chunks loaded, disconnect retained last facts. A native 2×1
+  canvas PNG round-trip independently decoded RGBA `[12,34,56,255]`.
+  The first text wait timed out because CSS uppercased the label; a text-content
+  predicate passed. A too-broad thermal selector first matched archived satellite;
+  the final check uses the exact AETOS-2 channel label.
+- Also passed: unchanged `test:spread-precision` FP01–FP04, `test:monitoring`,
+  mocked/non-billable `test:image-lab`, `check-mati.mjs` (consistency only),
+  typecheck, no-key production build and `test:pwa`.
+
+Screenshot-reviewed ignored local artifacts: `.scratch/qa/crew-connected.png`,
+`crew-disconnected.png`, `thermal-capture.png`. Browser sessions and finite
+loopback listeners were closed. No ten-minute endurance/FPS proof, accepted
+producer mapping, real SimController command execution or shared-media transport
+is claimed. Issues #8/#9 retain those gates. Earlier dated receipts below are
+historical evidence, not new results for this slice.
+
 ## Current stacked follow-up, 2026-11-15
 
 The source-pinned current checks and retained unfavorable prediction results are in

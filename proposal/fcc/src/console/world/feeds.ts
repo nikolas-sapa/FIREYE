@@ -3,6 +3,7 @@ import type { ScenarioContext } from './context';
 import type { Sim } from './sim';
 import { MIN, angDiff, bearingDeg, clamp, destination, distanceM } from './geo';
 import { requestConfirm } from '../agents/swarm';
+import { isOnPad } from './drone-stations';
 
 export function isNight(ctx: ScenarioContext, t: number): boolean {
   const h = (((t + ctx.tzOffsetMin * MIN) / 3_600_000) % 24 + 24) % 24;
@@ -27,6 +28,8 @@ export function createFeeds(sim: Sim): Feed[] {
       const fx = n === 3 ? 'eo' : n % 2 === 0 ? 'ir-ironbow' : 'eo';
       feeds.push({
         id: `feed-${u.id}`,
+        modality: n % 2 === 0 && n !== 3 ? 'thermal' : 'eo',
+        sourceKind: 'simulated', synthetic: true, radiometric: false, calibration: null,
         unitId: u.id,
         kind: gimbal ? 'uav-oblique' : 'uav-nadir',
         fx,
@@ -35,6 +38,14 @@ export function createFeeds(sim: Sim): Feed[] {
         pose: { mode: 'unit', pitchDeg: gimbal ? -40 : -90, fovDeg: gimbal ? 45 : 60 },
         relevance: 10,
         findingIds: [],
+      });
+      const primary = feeds[feeds.length - 1];
+      const modality = primary.modality === 'thermal' ? 'eo' : 'thermal';
+      feeds.push({
+        ...primary, id: `feed-${u.id}-${modality}`, modality,
+        fx: modality === 'thermal' ? 'ir-whitehot' : 'eo',
+        label: `${u.callsign} · ${modality === 'thermal' ? 'IR' : 'EO'} ${gimbal ? 'GIMBAL' : 'NADIR'}`,
+        pose: { ...primary.pose }, findingIds: [],
       });
     } else if (u.kind === 'engine' || u.kind === 'dozer') {
       feeds.push({ id: `feed-${u.id}`, unitId: u.id, kind: 'dash-cam', fx: 'eo', label: `${u.callsign} · DASH CAM`, live: true, pose: { mode: 'unit', pitchDeg: -6, fovDeg: 75 }, relevance: 8, findingIds: [] });
@@ -49,13 +60,28 @@ export function createFeeds(sim: Sim): Feed[] {
       fx: 'eo',
       label: r.name,
       live: true,
-      pose: { mode: 'fixed', pos: { lon: r.pos.lon, lat: r.pos.lat, alt: sim.ctx.elevAt(r.pos) + 18 }, ...ridgeAim(sim.ctx, r.pos, sim.ctx.sites.fireCenterT0), fovDeg: 50 },
+      pose: { mode: 'fixed', pos: { lon: r.pos.lon, lat: r.pos.lat, alt: sim.ctx.elevAt(r.pos) + 18 }, ...ridgeAim(sim.ctx, r.pos, sim.recon ? sim.ctx.pack.manifest.center : sim.ctx.sites.fireCenterT0), fovDeg: 50 },
       relevance: 20,
       findingIds: [],
     });
   }
+  if (sim.recon) {
+    const mounts: [string, string, number][] = [
+      ['neos-voutzas', 'VOUTZAS WUI CCTV', 270], ['mati', 'MATI WEST CCTV', 265],
+      ['kallitechnoupoli', 'KALLITECHNOUPOLI CCTV', 315], ['kokkino-limanaki', 'KOKKINO LIMANAKI CCTV', 285],
+      ['rafina', 'RAFINA NORTH CCTV', 330], ['nea-makri', 'NEA MAKRI SOUTH CCTV', 200],
+    ];
+    mounts.forEach(([id, label, heading], i) => {
+      const place = sim.ctx.pack.manifest.places.find(p => p.id === id);
+      const p = place?.pos ?? destination(sim.ctx.pack.manifest.center, i * 60, 1600);
+      const target = destination(p, heading, 650);
+      feeds.push({ id: `feed-cctv-${id}`, kind: 'ridge-cam', fx: 'eo', label: `${label} · SIMULATED`,
+        live: true, pose: { mode: 'fixed', pos: { ...p, alt: sim.ctx.elevAt(p) + 18 }, target, ...ridgeAim(sim.ctx, p, target), fovDeg: 65 },
+        relevance: 18, findingIds: [] });
+    });
+  }
   const c = sim.ctx.sites.fireCenterT0;
-  feeds.push({
+  if (sim.profile !== 'recon') feeds.push({
     id: 'feed-sat',
     kind: 'satellite',
     fx: 'sat',
@@ -71,6 +97,7 @@ export function createFeeds(sim: Sim): Feed[] {
 /** A transient, non-live feed for a social clip, placed where the clip was filmed. */
 export function addSocialFeed(sim: Sim, f: Finding): string {
   const id = `feed-social-${f.id}`;
+  if (sim.profile === 'recon') return id;
   if (sim.feeds.some((x) => x.id === id)) return id;
   const target = sim.projHead ?? sim.ctx.sites.fireCenterT0;
   sim.feeds.push({
@@ -92,6 +119,7 @@ export function removeFeedsFor(sim: Sim, findingId: string): void {
 
 /** Ground point a camera is looking at and the radius it covers. */
 export function footprint(sim: Sim, f: Feed, u: Unit | undefined): { center: Geo; r: number } | null {
+  if (sim.recon && f.pose.target && u) return { center: f.pose.target, r: 320 };
   if (f.pose.mode === 'orbit' && f.pose.target) return { center: f.pose.target, r: 320 };
   if (!u) return null;
   if (f.kind === 'uav-nadir') return { center: u.pos, r: 260 };
@@ -158,12 +186,28 @@ export function frameBox(sim: Sim, f: Feed, u: Unit | undefined, p: Geo, kind: F
 export function updateFeeds(sim: Sim): void {
   const night = isNight(sim.ctx, sim.t);
   const umap = new Map(sim.units.map((u) => [u.id, u]));
-  const look = sim.projHead ?? sim.ctx.sites.fireCenterT0;
+  const look = sim.projHead ?? (sim.recon ? sim.ctx.pack.manifest.center : sim.ctx.sites.fireCenterT0);
   for (const f of sim.feeds) {
     const u = f.unitId ? umap.get(f.unitId) : undefined;
     if (u && u.kind === 'drone') {
+      const drone = sim.recon?.drones.find(d => d.unitId === u.id);
+      const offline = drone && (isOnPad(drone) || (u.pos.alt ?? 0) < 12);
+      if (drone) {
+        f.live = !offline;
+        f.offlineReason = offline ? `${drone.phase === 'charging' ? 'Recharging' : drone.phase === 'launching' ? 'Taking off' : 'At station'} · camera powered down` : undefined;
+      }
+      if (offline) { f.findingIds = []; continue; }
       const m = sim.umeta.get(u.id);
-      if (m && m.plan.mode === 'orbit') {
+      const task = sim.recon?.tasks.find(t => t.id === u.taskId);
+      const n = Number(u.id.split('-')[1]), gimbal = n === 3 || n % 2 === 0;
+      if (sim.recon) {
+        f.kind = gimbal ? 'uav-oblique' : 'uav-nadir';
+        f.label = `${u.callsign} · ${f.modality === 'thermal' ? 'IR' : 'EO'} ${task?.pattern === 'hover' ? 'HOVER LOCK' : gimbal ? 'GIMBAL' : 'NADIR'}`;
+      }
+      if (task?.pattern === 'hover') {
+        f.kind = 'uav-oblique';
+        f.pose = { mode: 'unit', target: task.target, fovDeg: 45 };
+      } else if (m && m.plan.mode === 'orbit') {
         f.pose = { mode: 'orbit', target: { lon: m.plan.center.lon, lat: m.plan.center.lat }, rangeM: 420, pitchDeg: -35, headingDeg: (m.plan.ang + 180) % 360, fovDeg: 30 };
       } else {
         const nadir = f.kind === 'uav-nadir';
@@ -174,7 +218,7 @@ export function updateFeeds(sim: Sim): void {
       f.fx = night ? 'night' : 'eo';
     } else if (f.kind === 'ridge-cam' && f.pose.pos) {
       f.fx = night ? 'night' : 'eo';
-      f.pose = { ...f.pose, ...ridgeAim(sim.ctx, f.pose.pos, look) };
+      f.pose = { ...f.pose, ...ridgeAim(sim.ctx, f.pose.pos, f.pose.target ?? look) };
     }
     if (f.kind !== 'social') {
       const ids: string[] = [];

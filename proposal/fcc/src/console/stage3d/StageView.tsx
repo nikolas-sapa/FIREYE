@@ -29,6 +29,8 @@ export interface StageProps {
   hud?: boolean;
   /** Extra classes for the credits container (bottom-left by default). */
   creditsClassName?: string;
+  /** Built-in Outline/Satellite and layer controls, top-right. Default true. */
+  mapControls?: boolean;
 }
 
 
@@ -42,7 +44,7 @@ const FADE_MS = 420;
 
 /** Store-agnostic stage (reads the stage mirror). `Stage` wraps this with the console store. */
 export function StageView({
-  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest, onEngineReady,
+  className, onSelect, selectedId, hud = true, creditsClassName, onFocusRequest, onEngineReady, mapControls = true,
 }: StageProps & { onFocusRequest?: (g: Geo, rangeM?: number) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export function StageView({
     <div className={cn('fcc-stage relative h-full w-full overflow-hidden bg-void', className)}>
       <div ref={hostRef} className="absolute inset-0" />
       {status.phase === 'ready' && <StageOverlay engineRef={engineRef} />}
-      {status.phase === 'ready' && !feedOn && <MapControls contourM={pack ? getProfile(pack).contourM : 40} />}
+      {status.phase === 'ready' && !feedOn && mapControls && <MapControls contourM={pack ? getProfile(pack).contourM : 40} />}
       {!webgl || status.phase === 'error' ? (
         <StageFallback reason={!webgl ? 'WebGL unavailable' : status.error ?? 'Renderer error'} />
       ) : (
@@ -245,7 +247,7 @@ function CameraHud({ engineRef, basemap }: { engineRef: React.MutableRefObject<S
     });
   }, [engineRef, settings.mode]);
   return (
-    <div className="pointer-events-none absolute bottom-1.5 right-4 z-[1] flex flex-col items-end gap-1 font-mono text-micro uppercase text-bone-mute">
+    <div className="fcc-stage-camera-hud pointer-events-none absolute bottom-1.5 right-4 z-[1] flex flex-col items-end gap-1 font-mono text-micro uppercase text-bone-mute">
       <div ref={scaleRef} className="flex items-end gap-2 bg-ink-950/90 px-2 py-1" hidden>
         <span ref={detailRef} className="fcc-num mr-2" />
         <span ref={scaleBarRef} className="mb-0.5 inline-block h-1.5 border-x border-b border-bone-dim" />

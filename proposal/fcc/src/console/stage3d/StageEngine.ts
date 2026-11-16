@@ -1,6 +1,6 @@
 import * as Cesium from 'cesium';
 import type { Directive, Geo, ScenarioPack } from '../contracts';
-import { onThemeChange } from '@ds';
+import { onDaylightRender, onThemeChange } from '@ds';
 import { AtmospherePass } from './atmosphere';
 import { easeServo, prefersReducedMotion } from './easing';
 import { FireOverlay, getFireField, type FireField } from './fire';
@@ -60,6 +60,7 @@ export class StageEngine {
   private sunKey = NaN;
   private offTheme: () => void;
   private offMap: () => void;
+  private offDaylight: () => void;
   private outline: OutlineMap | null = null;
   private satellite: BasemapResult | null = null;
   private satelliteTask: Promise<void> | null = null;
@@ -112,6 +113,10 @@ export class StageEngine {
       this.viewer.scene.requestRender();
     });
     this.offMap = onMapSettingsChange(() => { void this.applyMapSettings(); });
+    // Palette-driven materials change during the appearance blend; demand-rendered scenes must repaint.
+    this.offDaylight = onDaylightRender(() => {
+      if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+    });
     scene.preRender.addEventListener(this.onPreRender);
     scene.postRender.addEventListener(this.onPostRender);
     this.handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
@@ -195,6 +200,7 @@ export class StageEngine {
     this.unsub();
     this.offTheme();
     this.offMap();
+    this.offDaylight();
     this.offTiles();
     this.handler.destroy();
     this.atmos?.destroy();
@@ -243,6 +249,8 @@ export class StageEngine {
     const pack = this.pack!;
     const L = this.layers!;
     if (keys.has('t') || keys.has('fireRev')) {
+      // Cesium's own sun and lighting read the viewer clock; keep it on scene time, not wall time.
+      if (w.t) Cesium.JulianDate.fromDate(new Date(w.t), this.viewer.clock.currentTime);
       if (w.dataMode !== 'monitoring' && this.field) {
         const updated = this.field.sync(w.t, w.fireRev);
         const wx = weatherAt(pack, w.t);

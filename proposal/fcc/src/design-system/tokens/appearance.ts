@@ -9,6 +9,9 @@ const dom = typeof window !== 'undefined' && typeof document !== 'undefined';
 const valid = (v: unknown): v is Appearance => v === 'auto' || v === 'light' || v === 'dark';
 let mode: Appearance = 'auto';
 let solar: number | null = null;
+/** Solar daylight claims in claim order; the newest claim with a value wins. */
+const claims = new Map<symbol, number | null>();
+const blendListeners = new Set<(blend: number) => void>();
 let frame = 0;
 let rendered = 0;
 let target = 0;
@@ -31,6 +34,11 @@ export function onAppearanceChange(fn: () => void) {
   listeners.add(fn);
   return () => { listeners.delete(fn); };
 }
+/** Called with the rendered day/night blend on every painted step, including animation frames. */
+export function onDaylightRender(fn: (blend: number) => void) {
+  blendListeners.add(fn);
+  return () => { blendListeners.delete(fn); };
+}
 export function useAppearance() {
   return useSyncExternalStore(onAppearanceChange, getAppearance, () => 'auto' as Appearance);
 }
@@ -47,6 +55,7 @@ function paint() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', p['ink-950']);
     lastMeta = p['ink-950'];
   }
+  blendListeners.forEach((fn) => fn(rendered));
 }
 
 function animate(now: number) {
@@ -73,20 +82,61 @@ function update() {
   } else if (!frame) paint();
 }
 
-/** Auto in the console follows the same solar factor as the map, not the computer's clock. */
-export function setSolarDaylight(value: number | null) {
-  const next = value == null || !Number.isFinite(value) ? null : Math.max(0, Math.min(1, value));
+function resolveSolar() {
+  let next: number | null = null;
+  for (const v of claims.values()) if (v != null) next = v;
   if (next === solar) return;
   solar = next;
   update();
 }
 
-export function setAppearance(value: Appearance, opts: { persist?: boolean } = {}) {
+const clampSolar = (value: number | null) => (value == null || !Number.isFinite(value) ? null : Math.max(0, Math.min(1, value)));
+
+export interface SolarClaim {
+  set(value: number | null): void;
+  /** Removes only this claim; another view's newer value stays in force. */
+  release(): void;
+}
+
+/**
+ * Scoped solar daylight for one view. A view that mounts while another unmounts keeps its value even
+ * when the outgoing view's cleanup runs later, because a release only drops its own claim.
+ */
+export function claimSolarDaylight(): SolarClaim {
+  const key = Symbol('solar');
+  claims.set(key, null);
+  return {
+    set(value) {
+      if (!claims.has(key)) return;
+      claims.set(key, clampSolar(value));
+      resolveSolar();
+    },
+    release() {
+      if (claims.delete(key)) resolveSolar();
+    },
+  };
+}
+
+const legacyClaim = Symbol('solar-legacy');
+/** Auto in the console follows the same solar factor as the map, not the computer's clock. */
+export function setSolarDaylight(value: number | null) {
+  const next = clampSolar(value);
+  if (next == null) claims.delete(legacyClaim);
+  else {
+    claims.delete(legacyClaim);
+    claims.set(legacyClaim, next);
+  }
+  resolveSolar();
+}
+
+export function setAppearance(value: Appearance, opts: { persist?: boolean; immediate?: boolean } = {}) {
   if (!valid(value)) return;
   mode = value;
   if (dom && opts.persist !== false) {
     try { localStorage.setItem(APPEARANCE_STORAGE_KEY, value); } catch { /* optional */ }
   }
+  // Fixed-appearance surfaces must not animate through a saved opposite appearance on mount.
+  if (opts.immediate) initialized = false;
   update();
   listeners.forEach((fn) => fn());
 }

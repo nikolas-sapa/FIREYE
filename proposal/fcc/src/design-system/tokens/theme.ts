@@ -57,18 +57,18 @@ const hasDom = typeof window !== 'undefined' && typeof document !== 'undefined';
 let current: ThemeId = 'fcc';
 const listeners = new Set<(t: ThemeId) => void>();
 
+/**
+ * The product is locked to the FCC brand theme. The Team tokens stay defined (and `setTheme` still
+ * works for code that asks), but no saved, query or attribute choice selects them at start-up.
+ */
 function readInitial(): ThemeId {
   if (!hasDom) return 'fcc';
   try {
-    const q = new URLSearchParams(window.location.search).get('theme');
-    if (isTheme(q)) return q;
-    const s = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (isTheme(s)) return s;
+    if (window.localStorage.getItem(THEME_STORAGE_KEY) !== 'fcc') window.localStorage.removeItem(THEME_STORAGE_KEY);
   } catch {
     /* storage can throw in private mode */
   }
-  const attr = document.documentElement.dataset.theme;
-  return isTheme(attr) ? attr : 'fcc';
+  return 'fcc';
 }
 
 function apply(id: ThemeId) {
