@@ -128,6 +128,7 @@ function Shell() {
     wireComms();
     wireAlerts();
     ensureOsm();
+    if (import.meta.env.DEV) void import('./dev-autoconnect').then(module => module.autoConnectOps());
     const heartbeat = window.setInterval(() => {
       const s = consoleStore.get();
       void opsBackend.poll(s.actions, Math.floor(s.clock.t / 1000));

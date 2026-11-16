@@ -34,11 +34,12 @@ export interface LocalBackend {
 
 /** Importing this module never opens a listener, writes files or starts work. */
 export async function startLocalBackend(config: LocalDemoConfig = readLocalDemoConfig(),
-  clock?: () => TrustedClock, seed: IncidentSeed = createLocalDemoSeed(), options: BridgeAuthorityOptions = {}): Promise<LocalBackend> {
+  clock?: () => TrustedClock, seed: IncidentSeed = createLocalDemoSeed(config.task_ttl_s), options: BridgeAuthorityOptions = {}): Promise<LocalBackend> {
   // Revalidate programmatic configuration before any listener or capability creation.
   const valid = readLocalDemoConfig({ FCC_LOCAL_MODE: config.mode, FCC_LOCAL_PROVIDERS: config.providers,
     FCC_LOCAL_PORT: String(config.port), FCC_LOCAL_ORIGIN: config.allowed_origin,
-    FCC_LOCAL_CAPABILITY_TTL_MS: String(config.capability_ttl_ms) });
+    FCC_LOCAL_CAPABILITY_TTL_MS: String(config.capability_ttl_ms),
+    ...(config.task_ttl_s === undefined ? {} : { FCC_LOCAL_TASK_TTL_S: String(config.task_ttl_s) }) });
   const epoch = Date.now(); const started = performance.now();
   const trustedClock = clock ?? (() => {
     const elapsed = Math.floor(performance.now() - started);
