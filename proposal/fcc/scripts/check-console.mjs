@@ -1,6 +1,7 @@
 // Uses the esbuild bundled with Vite. No additional test dependency.
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
+import './check-pages-assets.mjs';
 const nodeRequire = createRequire(import.meta.url);
 try {
   for (const test of ['provider-policy', 'thermal', 'crew-store', 'console', 'ops', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye', 'recon', 'boot']) {
