@@ -4,10 +4,11 @@ import type { Geo } from '../contracts';
 import { useConsoleSelector } from '../store';
 import { localTime, packZone } from '../ui/format';
 import {
-  STAGE_RANK, alertFeed, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
+  STAGE_RANK, alertFeed, fireUpdates, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
 import type { AlertStage } from './geo/evac';
 import { Character } from './characters/Character';
+import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
 import { ResidentDirections, ResidentDisclaimer, ResidentLocationControls, type ResidentLocationProps } from './ResidentRoute';
 
@@ -59,11 +60,12 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
     if (home.id.startsWith('custom:')) return residentAlertAt(pack, t, home.pos);
     return placeAlerts(pack, t).find((p) => p.id === home.id) ?? null;
   }, [pack, t, home, v]);
-  const feed = useMemo(() => alertFeed(pack, t).slice(-30).reverse(), [pack, t, v]);
+  const feed = useMemo(() => [...alertFeed(pack, t), ...fireUpdates(pack, t, home?.pos ?? null)].sort((a, b) => a.t - b.t).slice(-30).reverse(), [pack, t, v, home]);
   const counts = useMemo(() => counters(pack, t), [pack, t, v]);
   const tz = packZone(pack).label;
   const blocked = !!home && hazardAt(pack, t).blocked.some((p) => pointInPolygon(home.pos, p));
   const stage = blocked ? 'shelter' : homeAlert?.stage ?? 'monitor';
+  const announcements = useStageAnnouncements(home?.id ?? null, stage, home?.name ?? 'Your area');
   const copy = STAGE_COPY[stage];
   const leaveAt = homeAlert?.eta != null ? leaveBy(homeAlert.eta, 45) : null;
   const placeOptions = useMemo(() => (pack?.manifest.places ?? []).filter((p) => (HOME_OPTIONS as readonly string[]).includes(p.id)), [pack]);
@@ -138,7 +140,13 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
       </div>
       <ResidentDisclaimer />
       <div className="shrink-0 px-4 py-2 sm:min-h-0 sm:flex-1 sm:shrink sm:overflow-y-auto" aria-label="Official alerts">
-        <div className="font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">Official alerts · simulated</div>
+        <div className="flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">
+          <span>Official alerts · simulated</span>
+          {announcements.supported && <div className="flex gap-1">
+            <button className="border border-line px-2 py-1 uppercase" onClick={() => void announcements.enable()} disabled={announcements.permission === 'granted'}>{announcements.permission === 'granted' ? 'Alerts on' : 'Enable alerts'}</button>
+            {announcements.permission === 'granted' && <button className="border border-line px-2 py-1 uppercase" aria-pressed={announcements.voice} onClick={announcements.toggleVoice}>Voice {announcements.voice ? 'on' : 'off'}</button>}
+          </div>}
+        </div>
         <ul className="mt-1.5">
           {feed.map((r, i) => (
             <li key={`${r.t}-${i}`} className="border-b border-line-faint py-1.5 last:border-0">

@@ -57,6 +57,20 @@ self.addEventListener('activate', event => {
     await self.clients.claim();
   })());
 });
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const url = new URL(BASE + 'console.html?view=civilian', self.location.origin).href;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const resident = windows.find(client => {
+      const location = new URL(client.url);
+      return location.origin === self.location.origin && location.pathname === BASE + 'console.html'
+        && location.searchParams.get('view') === 'civilian';
+    });
+    if (resident) return resident.focus();
+    return self.clients.openWindow(url);
+  })());
+});
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);

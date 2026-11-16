@@ -159,7 +159,7 @@ export function OrchestratorChat() {
       </div>
       {suggestions.length > 0 && (
         <div className="flex shrink-0 gap-1 overflow-x-auto border-t border-line px-2 py-1.5">
-          {suggestions.slice(0, 4).map((s) => (
+          {suggestions.map((s) => (
             <button key={s} type="button" onClick={() => send(s)} className="shrink-0 border border-line px-1.5 font-mono text-micro uppercase leading-5 text-bone-mute hover:text-bone">{s}</button>
           ))}
         </div>
