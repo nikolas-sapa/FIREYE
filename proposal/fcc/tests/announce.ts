@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import type { ScenarioPack } from '../src/console/contracts';
 import { alertFeed, fireUpdates, type RevEntry } from '../src/console/ops/alerts';
 import { ANNOUNCE_LABEL, announcementFor, deliverAnnouncement, shouldAnnounce } from '../src/console/ops/announce';
-import { opsView } from '../src/console/ops/view';
 
 for (const stage of ['monitor', 'prepare', 'leave', 'shelter'] as const) {
   assert.ok(announcementFor(stage, 'Mati').body.endsWith(ANNOUNCE_LABEL));
@@ -57,7 +56,7 @@ await deliverAnnouncement('prepare', 'Mati', false);
 assert.equal(vibrations, 1);
 delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
 delete (globalThis as { SpeechSynthesisUtterance?: unknown }).SpeechSynthesisUtterance;
-const location = { href: 'https://fcc.test/console.html?appearance=light#map' };
+const location = { href: 'https://fcc.test/console.html?appearance=light#map', search: '?appearance=light' };
 const historyState = { exercise: true };
 Object.defineProperty(globalThis, 'window', { configurable: true, value: {
   location, history: { state: historyState, replaceState: (state: unknown, _title: string, url: URL) => {
@@ -65,6 +64,12 @@ Object.defineProperty(globalThis, 'window', { configurable: true, value: {
     location.href = url.href;
   } },
 } });
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => 'civilian', setItem: () => {} } });
+const { opsView } = await import('../src/console/ops/view');
+assert.equal(opsView.get(), 'civilian');
+assert.equal(new URL(location.href).searchParams.get('view'), 'civilian');
+assert.equal(new URL(location.href).searchParams.get('appearance'), 'light');
+assert.equal(new URL(location.href).hash, '#map');
 for (const view of ['civilian', 'responder'] as const) {
   opsView.set(view);
   const url = new URL(location.href);
@@ -76,4 +81,5 @@ Object.defineProperty(globalThis, 'window', { configurable: true, value: { locat
 opsView.set('civilian');
 assert.equal(opsView.get(), 'civilian');
 delete (globalThis as { window?: unknown }).window;
+delete (globalThis as { localStorage?: unknown }).localStorage;
 console.log('Resident announcements: labels, stage rises, revision rules, distance/seek filtering, unchanged alert feed and unavailable browser capabilities PASS');

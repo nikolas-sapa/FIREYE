@@ -5,6 +5,16 @@ export type OpsView = 'responder' | 'civilian';
 const KEY = 'ops.view';
 const valid = (v: unknown): v is OpsView => v === 'responder' || v === 'civilian';
 
+function syncViewUrl(v: OpsView) {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('view') === v) return;
+    url.searchParams.set('view', v);
+    window.history.replaceState(window.history.state, '', url);
+  } catch { /* optional */ }
+}
+
 let view: OpsView = (() => {
   if (typeof window === 'undefined') return 'responder';
   const q = new URLSearchParams(window.location.search).get('view');
@@ -12,6 +22,7 @@ let view: OpsView = (() => {
   try { const s = localStorage.getItem(KEY); if (valid(s)) return s; } catch { /* optional */ }
   return 'responder';
 })();
+syncViewUrl(view);
 
 const listeners = new Set<() => void>();
 
@@ -21,13 +32,7 @@ export const opsView = {
   set(v: OpsView) {
     view = v;
     try { localStorage.setItem(KEY, v); } catch { /* optional */ }
-    if (typeof window !== 'undefined') {
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('view', v);
-        window.history.replaceState(window.history.state, '', url);
-      } catch { /* optional */ }
-    }
+    syncViewUrl(v);
     listeners.forEach((fn) => fn());
   },
 };
