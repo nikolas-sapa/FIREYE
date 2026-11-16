@@ -56,7 +56,6 @@ export function createReceivedView(state: IncidentState, cutoff: string, current
     && event.payload.plan_revision === current.plan_revision && event.payload.reservation_revision === current.reservation_revision
     && event.payload.chief_epoch === current.chief_epoch && event.payload.expires_at_sim_tick > tick
     && event.payload.candidate_ids.every(id => candidates.some(candidate => candidate.candidate_id === id))).map(event => event.payload);
-  const referenced = new Set(proposals.flatMap(value => value.candidate_ids));
   const commands = Object.values(current.commands).map(command => Object.freeze({
     command_id: command.command_id, command_version: command.command_version, asset_id: command.asset_id,
     mission_id: command.mission_id, mission_version: command.mission_version, approval_id: command.approval_id,
@@ -68,6 +67,6 @@ export function createReceivedView(state: IncidentState, cutoff: string, current
     plan_revision: current.plan_revision, reservation_revision: current.reservation_revision, chief_epoch: current.chief_epoch,
     authority_active: current.authority_active, as_of_received_at: cutoff, media_verified: false, coordinate_frame: null,
     feeds: current.seed.feeds, telemetry: rows(current.telemetry), frames: rows(current.frames), hypotheses: rows(current.hypotheses),
-    proposals: Object.freeze(proposals), candidates: Object.freeze(candidates.filter(value => referenced.has(value.candidate_id))),
+    proposals: Object.freeze(proposals), candidates: Object.freeze(candidates),
     commands: Object.freeze(commands) }) });
 }

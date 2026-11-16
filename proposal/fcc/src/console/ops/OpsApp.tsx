@@ -35,6 +35,7 @@ import { opsView, useOpsView, useOverlayOpts } from './view';
 import { useHideCallout } from './useHideCallout';
 import './ops.css';
 import './characters/characters.css';
+import { OpsBackendControl, opsBackend } from './OpsBackend';
 
 enableWorld3dFeeds();
 
@@ -65,7 +66,11 @@ function useJournalReapply() {
       if (s.actions === last || queued) return;
       last = s.actions;
       queued = true;
-      queueMicrotask(() => { queued = false; journal.reapply(consoleStore.get().actions, consoleStore.get().clock.t, api); });
+      queueMicrotask(() => {
+        queued = false;
+        journal.reapply(consoleStore.get().actions, consoleStore.get().clock.t, api,
+          opsBackend.get().configured ? ['retask-drone'] : []);
+      });
     });
   }, [api]);
 }
@@ -129,8 +134,13 @@ function Shell() {
     wireComms();
     wireAlerts();
     ensureOsm();
+    if (import.meta.env.DEV) void import('./dev-autoconnect').then(module => module.autoConnectOps());
+    const heartbeat = window.setInterval(() => {
+      const s = consoleStore.get();
+      void opsBackend.poll(s.actions, Math.floor(s.clock.t / 1000));
+    }, 2000);
     if (import.meta.env.DEV) (window as unknown as { __opsAlerts?: unknown }).__opsAlerts = { opsView, hazardNow, routesNow, counters, placeAlerts, alertFeed };
-    return () => { setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); stopPresenter(); };
+    return () => { window.clearInterval(heartbeat); setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); stopPresenter(); };
   }, []);
 
   useEffect(() => {
@@ -261,6 +271,7 @@ function Shell() {
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
         <main className="relative min-w-0 flex-1">
           <StageShell onFocus={focus} onEngine={setEngine} />
+          {booted && <div className="absolute left-3 top-16 z-hud border border-line bg-ink-950 px-2 py-1"><OpsBackendControl /></div>}
           {booted && (
             <OpsOverlay engine={engine} routes={routes} home={home?.pos ?? null}
               showRoutes={civilian || overlayOpts.routes} showZones={civilian || overlayOpts.zones} />

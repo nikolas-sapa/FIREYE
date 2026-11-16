@@ -37,12 +37,13 @@ export const journal = {
   },
   clear() { entries.clear(); version++; listeners.forEach((fn) => fn()); },
   /** Re-apply in-force runtime decisions to a rebuilt simulation (matched by kind and title). */
-  reapply(actions: Action[], t: Ms, api: Pick<ConsoleApi, 'approve' | 'reject'>): number {
+  reapply(actions: Action[], t: Ms, api: Pick<ConsoleApi, 'approve' | 'reject'>, skipApprovedKinds: readonly Action['kind'][] = []): number {
     let n = 0;
     for (const a of actions) {
       if (a.status !== 'proposed') continue;
       const e = journal.at(actionKey(a), t);
       if (!e) continue;
+      if (e.decision === 'approved' && skipApprovedKinds.includes(a.kind)) continue;
       if (e.decision === 'approved') api.approve(a.id); else api.reject(a.id);
       n++;
     }
