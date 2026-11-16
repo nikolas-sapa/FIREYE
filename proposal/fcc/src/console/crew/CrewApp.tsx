@@ -40,7 +40,7 @@ export default function CrewApp() {
       <FireyeMark size={20} /><h1 className={micro}>FIREYE / received crew</h1>
       <span className={cn(micro, 'border border-amber/40 px-2 py-1 text-amber')}>Exercise · read only</span>
       <div className="ml-auto"><AppearanceToggle /></div>
-      <a href="/console.html" className={cn(micro, 'text-bone-dim underline')}>Separate local simulation</a>
+      <a href={`${import.meta.env?.BASE_URL ?? '/'}console.html`} className={cn(micro, 'text-bone-dim underline')}>Separate local simulation</a>
     </header>
     <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 lg:px-10">
       <form className="flex flex-wrap items-end gap-3 border-b border-line pb-5" onSubmit={e => { e.preventDefault(); connect(); }}>

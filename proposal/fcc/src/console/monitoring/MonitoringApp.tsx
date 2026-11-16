@@ -15,7 +15,7 @@ import { ATTICA, VIEWS, contextPack, distanceKm, inside, type Camera, type Detec
 const field = 'border border-line-strong bg-ink-900 px-2 py-1 font-mono text-micro text-bone focus-visible:outline-signal';
 const link = 'text-ice underline decoration-ice/30 underline-offset-2 hover:text-bone focus-visible:outline focus-visible:outline-1 focus-visible:outline-signal';
 const emptyDetections: Detection[] = [];
-const ATTICA_DETAIL: ArchiveImage = { url: '/data/monitoring/attica-detail-2020.jpg', bbox: ATTICA, date: '2020 cloudless composite',
+const ATTICA_DETAIL: ArchiveImage = { url: `${import.meta.env?.BASE_URL ?? '/'}data/monitoring/attica-detail-2020.jpg`, bbox: ATTICA, date: '2020 cloudless composite',
   source: 'Sentinel-2 cloudless 2020 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2020)' };
 const stamp = (s?: string | number) => s === undefined ? 'Unknown' : Number.isFinite(new Date(s).getTime()) ? new Date(s).toISOString().replace('T', ' ').slice(0, 16) + 'Z' : 'Unknown';
 const num = (n: number | null | undefined, unit = '', digits = 0) => n == null || !Number.isFinite(n) ? '—' : `${n.toFixed(digits)}${unit}`;
@@ -93,7 +93,7 @@ export default function MonitoringApp() {
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <label className={cn(field, 'flex items-center gap-2 uppercase')}><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Saved-data mode</label>
         <AppearanceToggle />
-        <a className="font-mono text-micro uppercase text-bone-mute underline" href="/console.html?mode=replay">Legacy replay</a>
+        <a className="font-mono text-micro uppercase text-bone-mute underline" href={`${import.meta.env?.BASE_URL ?? '/'}console.html?mode=replay`}>Legacy replay</a>
       </div>
     </header>
     {error ? <div role="alert" className="m-auto max-w-lg border border-line p-6 text-bone-dim">{error}</div>
@@ -128,14 +128,14 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
   const [notice, setNotice] = useState('');
   const [layerNotice, setLayerNotice] = useState('');
   useEffect(() => setLayerNotice(''), [satellite, danger, date, imageMode]);
-  const firms = useSource<Detection[]>('firms', current, saved, refresh, '/data/monitoring/current-firms.json');
+  const firms = useSource<Detection[]>('firms', current, saved, refresh, `${import.meta.env?.BASE_URL ?? '/'}data/monitoring/current-firms.json`);
   const forecast = useSource<Weather[]>('forecast', current, saved, refresh);
-  const stations = useSource<Station[]>('metar', current, saved, refresh, '/data/monitoring/current-metar.json');
-  const mapping = useSource<Mapping>('case2024', view === 'attica2024', saved, refresh, '/data/monitoring/attica2024.json');
+  const stations = useSource<Station[]>('metar', current, saved, refresh, `${import.meta.env?.BASE_URL ?? '/'}data/monitoring/current-metar.json`);
+  const mapping = useSource<Mapping>('case2024', view === 'attica2024', saved, refresh, `${import.meta.env?.BASE_URL ?? '/'}data/monitoring/attica2024.json`);
   const webcams = useSource<Camera[]>('cameras', panel === 'cameras' && !saved, false, refresh);
   const [config, setConfig] = useState<{ firms?: boolean; windy?: boolean; contact?: boolean }>({});
   useEffect(() => { if (saved) return; const c = new AbortController();
-    void fetch('/api/monitor/config', { signal: c.signal }).then(r => r.json()).then(setConfig).catch(() => undefined);
+    void fetch(`${import.meta.env?.BASE_URL ?? '/'}api/monitor/config`, { signal: c.signal }).then(r => r.json()).then(setConfig).catch(() => undefined);
     return () => c.abort();
   }, [saved]);
   useEffect(() => { if (!current || saved) return; const timer = window.setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, [current, saved]);
@@ -181,15 +181,15 @@ function CaseView({ pack, context, view, saved }: { pack: ScenarioPack; context:
   }, [webcams.value]);
   const nasaDate = scenarioExtras(pack).imageryExtra?.find(im => im.date === date && im.url.endsWith('.jpg'));
   const dailyImage = view === 'mati' && nasaDate ? nasaDate.url : saved
-    ? view === 'attica2024' && date === '2024-08-12' ? '/data/monitoring/attica2024-gibs.jpg' : undefined
-    : `/api/monitor/image?kind=gibs&view=${view}&date=${date}`;
+    ? view === 'attica2024' && date === '2024-08-12' ? `${import.meta.env?.BASE_URL ?? '/'}data/monitoring/attica2024-gibs.jpg` : undefined
+    : `${import.meta.env?.BASE_URL ?? '/'}api/monitor/image?kind=gibs&view=${view}&date=${date}`;
   const detailImage = view === 'mati' && pack.imagery ? pack.imagery : ATTICA_DETAIL;
   const image = imageMode === 'detail' ? detailImage.url : dailyImage;
   const imageTitle = imageMode === 'detail' ? `Sentinel-2 archive · ${view === 'mati' ? '2018' : '2020'}` : `NASA GIBS · ${date}`;
   const cameraImage = pack.imagery ?? ATTICA_DETAIL;
   const sensorPack = useMemo(() => ({ ...context, imagery: pack.imagery }), [context, pack]);
   useEffect(() => { setImageZoom(1); setImagePan({ x: 0, y: 0 }); }, [image, modal]);
-  const dangerImage = current && !saved ? `/api/monitor/image?kind=danger&view=current&date=${new Date(now).toISOString().slice(0, 10)}` : undefined;
+  const dangerImage = current && !saved ? `${import.meta.env?.BASE_URL ?? '/'}api/monitor/image?kind=danger&view=current&date=${new Date(now).toISOString().slice(0, 10)}` : undefined;
   const navigate = (pos: Geo, rangeM = 6000) => setFocus({ pos, rangeM, key: performance.now() });
   const weather = forecast.value?.data.find(w => Date.parse(w.time) >= time) ?? forecast.value?.data[0];
   const historicalWeather = view === 'mati' ? pack.weather.reduce<ScenarioPack['weather'][number] | undefined>((best, w) => !best || Math.abs(w.t - caseTime) < Math.abs(best.t - caseTime) ? w : best, undefined) : undefined;

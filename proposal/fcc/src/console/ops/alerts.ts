@@ -31,7 +31,7 @@ export const osmStatus = () => ({ loading, osm: !!osm, graph: !!graph });
 export function ensureOsm() {
   if (loading || osm || typeof window === 'undefined') return;
   loading = true;
-  void fetch('/data/mati/osm.json')
+  void fetch(`${import.meta.env?.BASE_URL ?? '/'}data/mati/osm.json`)
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`osm ${r.status}`))))
     .then((d: OsmData) => {
       osm = d;

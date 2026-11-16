@@ -66,7 +66,7 @@ export async function loadResource<T>(key: string, saved: boolean, bundled: stri
   };
   signal.throwIfAborted();
   if (saved && last) return { value: last, loading: false, saved: true, origin: lastOrigin };
-  const url = saved ? bundled : `/api/monitor/${key}`;
+  const url = saved ? bundled : `${import.meta.env?.BASE_URL ?? '/'}api/monitor/${key}`;
   if (!url) return { loading: false, error: 'No saved snapshot for this source. Refresh current data first.' };
   try {
     return { value: await get(url), loading: false, saved, origin: saved ? 'bundled' : 'retrieved' };

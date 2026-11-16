@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AppearanceToggle, Button, Dot, Icon, InstallAppButton, Serial, cn, zulu } from '@ds';
 
-export const REV_A_HREF = '/rev-a/index.html';
-export const REV_B_HREF = '/rev-b/index.html';
-export const REV_C_HREF = '/rev-c/index.html';
-export const CONSOLE_HREF = '/console.html';
+export const REV_A_HREF = `${import.meta.env?.BASE_URL ?? '/'}rev-a/index.html`;
+export const REV_B_HREF = `${import.meta.env?.BASE_URL ?? '/'}rev-b/index.html`;
+export const REV_C_HREF = `${import.meta.env?.BASE_URL ?? '/'}rev-c/index.html`;
+export const CONSOLE_HREF = `${import.meta.env?.BASE_URL ?? '/'}console.html`;
 
 const LINKS = [
   { id: 'top', index: '01', label: 'Overview' },

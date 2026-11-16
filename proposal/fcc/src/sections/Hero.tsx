@@ -529,7 +529,7 @@ export default function Hero() {
               <Button variant="primary" size="lg" iconRight="arrow-right" onClick={scrollTo('dashboard')}>
                 Enter live ops
               </Button>
-              <Button variant="secondary" size="lg" iconRight="arrow-up-right" onClick={() => window.location.assign('/console.html')}>
+              <Button variant="secondary" size="lg" iconRight="arrow-up-right" onClick={() => window.location.assign(`${import.meta.env?.BASE_URL ?? '/'}console.html`)}>
                 Open live console
               </Button>
               <Button variant="ghost" size="lg" onClick={scrollTo('architecture')}>

@@ -8,7 +8,7 @@ export const LAB_MODELS = [
 
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const MAX_PROMPT_LENGTH = 16000;
-export const LAB_API = '/api/image-lab';
+export const LAB_API = `${import.meta.env?.BASE_URL ?? '/'}api/image-lab`;
 
 export interface LabResult {
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED';
