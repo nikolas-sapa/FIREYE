@@ -54,6 +54,12 @@ export function OpsOverlay({ engine, routes, showRoutes, showZones, home }: {
     const red = danger();
     const chipBg = cesiumOf(color.ink[950], 0.7);
     const chipPad = new Cesium.Cartesian2(4, 2);
+    if (home && showRoutes) e.add({
+      position: cart(home, 10),
+      point: { pixelSize: 10, color: accent(), outlineColor: chipBg, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      label: { text: 'YOUR LOCATION · SIM', font: FONT, fillColor: accent(), showBackground: true, backgroundColor: chipBg,
+        pixelOffset: new Cesium.Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY },
+    });
 
     // Red projection bands (draw 6H first so 1H stays on top).
     if (proj) {
