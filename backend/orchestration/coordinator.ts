@@ -1,13 +1,16 @@
 import { createHash } from 'node:crypto';
 import { types } from 'node:util';
 import { generateMissionCandidates } from '../planning/mission-candidates.ts';
-import { createIrisClient } from '../integrations/iris/client.ts';
-import { closed, freeze, plainJson, serverReceipt, validSnapshot } from '../integrations/receipts.ts';
+import { SponsorJobs } from '../integrations/jobs.ts';
+import { closed, fail, freeze, plainJson, serverReceipt, validSnapshot } from '../integrations/receipts.ts';
+import { createQueuedIrisClient } from './queued-iris.ts';
+import { createQueuedGeminiClient } from './queued-gemini.ts';
 import type { BridgeAuthority, BridgeResult } from '../integration/session.ts';
 import type { ActorContext, IncidentState, Result } from '../protocol/types.ts';
 import type { MissionPlanningSnapshot, ProposedMissionOption } from '../planning/mission-types.ts';
 import type { IrisRanking } from '../integrations/iris/types.ts';
-import type { Receipt, Snapshot } from '../integrations/receipts.ts';
+import type { EvidenceAnalysis } from '../integrations/gemini/types.ts';
+import type { ClientConfig, Receipt, Result as SponsorResult, Snapshot } from '../integrations/receipts.ts';
 import type { ExerciseAssessment, ExerciseCoordinatorConfig, ExerciseCoordinatorState, ExerciseLayout, ExerciseObjective } from './types.ts';
 
 const success = <T>(value: T): Result<T> => Object.freeze({ ok: true, value });
@@ -151,9 +154,75 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
   const analyst = freeze(structuredClone(config.analyst));
   const layout = freeze(structuredClone(config.layout));
   const manifests = freeze(structuredClone(config.reviewed_courses));
-  const iris = config.iris ?? createIrisClient();
+  const scope = authority.read();
+  const sponsorVersions = new Map<string, string>();
+  const enabled = config.sponsors?.enabled === true;
+  const readEvidence = config.sponsors?.read_evidence;
+  const sponsorConfig: ClientConfig = { enabled, authorization_id: config.sponsors?.authorization_id,
+    budget: config.sponsors?.budget, max_call_micro: config.sponsors?.max_call_micro,
+    deadline_ms: config.sponsors?.deadline_ms, now: () => Date.parse(authority.now().received_at),
+    is_current: snapshot => {
+      const state = authority.read();
+      return state.authority_active && state.incident_id === scope.incident_id && state.run_id === scope.run_id
+        && snapshot.incident_id === state.incident_id && snapshot.run_id === state.run_id
+        && snapshot.authority_epoch === state.authority_epoch && snapshot.input_revision === state.input_revision
+        && sponsorVersions.get(snapshot.snapshot_id) === versions(state);
+    } };
+  const sponsorJobs = new SponsorJobs(sponsorConfig);
+  const iris = config.iris ?? createQueuedIrisClient({ ...sponsorConfig,
+    model: config.sponsors?.iris?.model, transport: config.sponsors?.iris?.transport,
+    transport_mode: config.sponsors?.iris?.transport_mode,
+    registered_candidate_ids: scope.seed.candidates.map(candidate => candidate.candidate_id) }, sponsorJobs);
+  const gemini = createQueuedGeminiClient({ ...sponsorConfig,
+    model: config.sponsors?.gemini?.model, transport: config.sponsors?.gemini?.transport,
+    transport_mode: config.sponsors?.gemini?.transport_mode }, sponsorJobs);
   const jobs = new Map<string, { assessment: ExerciseAssessment; promise: Promise<Result<ExerciseAssessment>>; versions: string; snapshot: MissionPlanningSnapshot }>();
+  const analyses = new Map<string, { promise: Promise<SponsorResult<EvidenceAnalysis>>; snapshot: Snapshot; deadline_at_ms: number }>();
   let inFlight = 0;
+
+  function rememberSponsor(snapshot: Snapshot, state: IncidentState): boolean {
+    if (!sponsorVersions.has(snapshot.snapshot_id) && sponsorVersions.size >= 256) return false;
+    sponsorVersions.set(snapshot.snapshot_id, versions(state));
+    return true;
+  }
+
+  async function analyzeEvidence(input: unknown): Promise<SponsorResult<EvidenceAnalysis>> {
+    if (!enabled) return fail('DISABLED');
+    if (!plainJson(input) || !closed(input, ['objective', 'evidence_id']) || !localId(input.evidence_id)) return fail('INVALID_INPUT');
+    try {
+      const projected = createPlanningSnapshot(authority, input.objective, layout);
+      if (!projected.ok) return fail(projected.code === 'INVALID_SCHEMA' ? 'INVALID_INPUT' : 'STALE');
+      const state = authority.read(); const expected = versions(state);
+      const identity = hash([projected.value, input.evidence_id, expected]);
+      let job = analyses.get(identity);
+      if (!job) {
+        if (analyses.size >= 256) return fail('QUEUE_FULL');
+        const sponsor = sponsorSnapshot(state, projected.value, layout, Date.parse(authority.now().received_at));
+        if (!sponsor || !sponsor.evidence.some(e => e.evidence_id === input.evidence_id && e.modality === 'eo')) return fail('INVALID_INPUT');
+        if (!rememberSponsor(sponsor, state)) return fail('QUEUE_FULL');
+        if (!sponsorConfig.is_current!(sponsor)) return fail('STALE');
+        if (!readEvidence) return fail('UNSUPPORTED');
+        const frame = state.log.find(row => row.kind === 'frame.received' && row.payload.evidence_id === input.evidence_id);
+        if (!frame || frame.kind !== 'frame.received') return fail('INVALID_INPUT');
+        const bytes = readEvidence(input.evidence_id, frame.payload.media_ref);
+        if (!plainJson(bytes) || !closed(bytes, ['png_base64'])) return fail('INVALID_INPUT');
+        const deadline_at_ms = Date.parse(authority.now().received_at) + (sponsorConfig.deadline_ms ?? 0);
+        job = { promise: gemini.analyze({ snapshot: sponsor, evidence_id: input.evidence_id, png_base64: bytes.png_base64 }), snapshot: sponsor, deadline_at_ms };
+        analyses.set(identity, job);
+      }
+      const sponsor = job.snapshot;
+      const result = await job.promise;
+      if (!result.ok && analyses.get(identity) === job) analyses.delete(identity);
+      if (versions(authority.read()) !== expected || !sponsorConfig.is_current!(sponsor)
+        || !validSnapshot(sponsor, Date.parse(authority.now().received_at))
+        || !createPlanningSnapshot(authority, input.objective, layout).ok) return fail('STALE');
+      if (result.ok && Date.parse(authority.now().received_at) >= job.deadline_at_ms) {
+        if (analyses.get(identity) === job) analyses.delete(identity);
+        return fail('DEADLINE');
+      }
+      return result;
+    } catch { return fail('STALE'); }
+  }
 
   function refresh(): void {
     const current = versions(authority.read());
@@ -218,7 +287,7 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
       let ranking: ExerciseAssessment['ranking'] = { source: 'deterministic-fallback', reason: ids.length ? 'RECEIVED_METADATA_UNAVAILABLE' : 'NO_REVIEWED_REGISTRATION', receipt: null };
       let selected: ProposedMissionOption | null = courses[0] ?? null;
       try {
-        if (ids.length > 0 && sponsor) {
+        if (ids.length > 0 && sponsor && (!enabled || rememberSponsor(sponsor, state))) {
           const reply = replyValues(await iris.analyze({ snapshot: sponsor, candidate_ids: ids }));
           const receipt = boundReceipt(reply.receipt, sponsor, ids, reply.ok ? 'accepted' : reply.code);
           if (reply.ok && rankingGuard(reply.value, ids)) {
@@ -295,5 +364,6 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
     refresh(); return freeze({ mode: 'EXERCISE', assessment_count: jobs.size, in_flight: inFlight,
       assessments: [...jobs.values()].map(job => job.assessment) });
   }
-  return Object.freeze({ assess, refresh, commitReview, approve, read });
+  return Object.freeze({ assess, analyzeEvidence, refresh, commitReview, approve, read,
+    sponsorCounts: () => sponsorJobs.counts() });
 }

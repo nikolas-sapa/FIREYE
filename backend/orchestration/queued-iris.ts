@@ -17,13 +17,13 @@ function ranking(value: unknown): value is IrisRanking {
 }
 
 // Inert construction. No caller callbacks, job IDs or per-input configuration.
-export function createQueuedIrisClient(options: QueuedIrisConfig = {}): QueuedIrisClient {
+export function createQueuedIrisClient(options: QueuedIrisConfig = {}, sharedJobs?: SponsorJobs): QueuedIrisClient {
   const config: QueuedIrisConfig = { enabled: options.enabled, authorization_id: options.authorization_id,
     budget: options.budget, max_call_micro: options.max_call_micro, deadline_ms: options.deadline_ms,
     now: options.now, is_current: options.is_current, model: options.model,
     registered_candidate_ids: options.registered_candidate_ids?.slice(),
     transport: options.transport, transport_mode: options.transport_mode };
-  const jobs = new SponsorJobs(config);
+  const jobs = sharedJobs ?? new SponsorJobs(config);
   const deadlines = new Map<string, number>();
   return Object.freeze({ counts: () => Object.freeze({ ...jobs.counts(), physical_in_flight: config.budget?.inFlight() ?? 0 }), async analyze(input: unknown): Promise<Result<IrisRanking>> {
     try {

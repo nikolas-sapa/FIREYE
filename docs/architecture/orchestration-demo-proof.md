@@ -4,7 +4,7 @@
 
 ## Scope and dependency receipts
 
-Root integrated actual dependency commits into this worktree: bridge `1bde6dc`, planner `61a0440`, sponsor adapters `feec47d`. No dependency copies, core changes or schema mutation. Root owns final independent review/delivery and later dependency review fixes. Current orchestration calls direct actual Iris client, not `SponsorJobs`.
+Root integrated actual dependency commits into this worktree: bridge `1bde6dc`, planner `61a0440`, sponsor adapters `feec47d`. No dependency copies, core changes or schema mutation. Root owns final independent review/delivery and later dependency review fixes. At this original receipt, orchestration called direct actual Iris, not `SponsorJobs`; the follow-up below supersedes that composition limitation only.
 
 Review follow-up dependencies integrated by root: bridge `603e49e`, sponsors `dad7fa3`, planner identity `acff252`. Planner identity now stable during valid clock advancement, all current eligibility/lease/expiry constraints retained. No orchestration workaround or core guard relaxation.
 
@@ -44,3 +44,42 @@ Exports: `createPlanningSnapshot`, `exerciseCourseFingerprint`, `createExerciseC
 - Raw bridge callers can bypass coordinator-only objective supersession since core has no objective-revision field. Existing core input/plan/Chief/lease checks remain authoritative. Expose coordinator approval seam for this slice; broader API integration requires separate ownership/review.
 - Actual observations change strict input revision and may invalidate pending command. Coordinator never relaxes core equality or revives stale approvals.
 - No login/auth implementation, Convex/cloud/provisioning/deployment, live providers, media pixels, rendering, simulator adapter or frontend integration. No production/field/readiness claim.
+
+## Issue #15 dormant coordinator composition follow-up
+
+2026-11-16, Linux/Node 24.22.2, branch
+`devin/1794828143-backend-candidate-registration`, main base `0fc2e85` merged before
+work (already up to date). Owner/coordinator explicitly authorized orchestration
+and documentation paths; no demo-service, stale-command or core ownership taken.
+The standalone #19 proposal registry remains independent of this slice.
+
+Current coordinator construction uses one actual `SponsorJobs` queue shared by
+actual queued Iris and Gemini clients, disabled by default. `analyzeEvidence`
+accepts only objective/evidence identity, projects bridge-received metadata and
+resolves known EO fixture bytes through explicit trusted local lookup. It returns
+only unverified analysis/actual client receipt, never proposal commits, approval,
+commands or claimed completion. Default deterministic fallback is preserved;
+legacy explicitly injected Iris remains supported outside the shared queue.
+
+The named numeric tests and configuration/trust boundaries are specified in
+`../contracts/orchestration-demo.v1.md` under bounded queued composition. Tests use
+the actual bridge, planner, SponsorJobs, queued adapters and native clients with
+injected synthetic PNG/HTTP-response fixtures only. They read no environment
+secrets and make no live network/provider requests. The whole existing backend
+suite also retains its own non-mocked loopback transport checks; this is not
+genuine inference evidence.
+
+Outstanding OR01–OR04 acceptance: fixed seed only/no dynamic core registration or
+real simulator execution (OR01); local—not distributed/durable—dedupe and no raw
+bridge objective-version guard (OR02); demo-service default/HTTP Gemini wiring and
+eligible EO source integration untouched, genuine provider inference/live spend
+and latency unverified (OR03); local fixture identity/Chief/producer receipts only,
+no frontend/Marco runtime or operational proof (OR04). No issue closure, provider
+enablement, deployment or full-product acceptance follows from this change.
+
+Verification on the machine above: `set -o pipefail; npm test && npm run typecheck`
+in `backend/` completed with 343 tests, 343 pass, 0 fail/cancelled/skipped/todo;
+TypeScript exit 0. All six new numeric composition tests passed. Existing native
+queued-Iris/Gemini, sponsor, bridge, planner, core approval and orchestration tests
+were included. `git diff --check` exited 0. No separate compiled/hosted CI,
+browser, live-provider or deployment verification was run for this follow-up.

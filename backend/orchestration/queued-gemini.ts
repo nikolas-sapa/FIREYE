@@ -18,12 +18,12 @@ function analysis(value: unknown): value is EvidenceAnalysis {
 }
 
 // Inert construction. No caller callback, job identity or per-input config.
-export function createQueuedGeminiClient(options: QueuedGeminiConfig = {}): QueuedGeminiClient {
+export function createQueuedGeminiClient(options: QueuedGeminiConfig = {}, sharedJobs?: SponsorJobs): QueuedGeminiClient {
   const config: QueuedGeminiConfig = { enabled: options.enabled, authorization_id: options.authorization_id,
     budget: options.budget, max_call_micro: options.max_call_micro, deadline_ms: options.deadline_ms,
     now: options.now, is_current: options.is_current, model: options.model,
     transport: options.transport, transport_mode: options.transport_mode };
-  const jobs = new SponsorJobs(config);
+  const jobs = sharedJobs ?? new SponsorJobs(config);
   const deadlines = new Map<string, number>();
   return Object.freeze({ counts: () => Object.freeze({ ...jobs.counts(), physical_in_flight: config.budget?.inFlight() ?? 0 }), async analyze(input: unknown): Promise<Result<EvidenceAnalysis>> {
     try {

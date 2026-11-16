@@ -52,3 +52,80 @@ Open integration boundary: call coordinator approval methods for this slice. A c
 Iris client defaults disabled. Optional injected actual client remains a trusted deployment seam subject to separate spend authorization. Ranking must include exactly the currently eligible registered candidate IDs, finite [0,1] scores summing to 1, exact scale and current snapshot. Invalid/disabled/failed ranking uses deterministic planner order, explicitly labelled fallback. No sponsor receipt invented, no pixels supplied. Sponsor snapshot evidence includes only config-provided rights-manifest identifiers and valid existing frame hashes/clocks; unknown/invalid fields omit optional ranking, never fabricate metadata.
 
 Receipt provenance requires actual `serverReceipt` brand plus exact Iris adapter/endpoint/model/status, snapshot, request input hash and ordered evidence binding. Untrusted receipt discarded without property traversal. Unbranded custom ranking stays fixture-labelled, never provider evidence. Failure codes finite allowlist; cache resolution repeats currentness/expiry checks. Planner identity excludes current tick only, eligibility/lease/freshness/expiry still checked against real current tick.
+
+## Bounded queued sponsor composition (issue #15 follow-up)
+
+Owner-authorized scope: `backend/orchestration/**`, the new
+`backend/tests/orchestration-sponsor-composition.test.ts`, and the two orchestration
+contract/proof documents. Demo service and stale-command handling remain untouched.
+
+Tests specified before this slice:
+
+| Test | Numeric pass criterion |
+|---|---|
+| OR03-S01 | 600 independent disabled ticks, 0 sponsor jobs/readers/transports/reservations |
+| OR03-S02 | 20 identical received snapshots, 1 Iris and 1 Gemini invocation/reservation, actual issued fixture receipts |
+| OR02-S03 | 20 late stale/wrong-run/frozen results and replay/offline attempts, 0 extra jobs or canonical effects |
+| OR03-S04 | Shared Iris/Gemini queue holds exactly 2 in flight/8 queued, eleventh rejected; 10 accepted jobs invoke/reserve exactly 10 times |
+| OR04-S05 | 20 actual model-input checks, 0 simulator-truth/future keys, 0 model approvals |
+| OR03-S06 | Unknown evidence/clocks, invalid bytes and extra body fields invoke 0 transports |
+
+The coordinator now constructs actual `SponsorJobs`, `createQueuedIrisClient` and
+`createQueuedGeminiClient` by default. All share one scheduler. Without explicit
+trusted `sponsors.enabled: true`, both are disabled; no job is submitted and no
+evidence reader/transport is invoked. Existing deterministic assessment fallback
+is unchanged. An explicitly supplied legacy `iris` client still takes precedence;
+it is outside the new shared queue's guarantee and remains the caller's bounded
+trusted seam. Do not mix it in when claiming shared Iris/Gemini queue composition.
+
+Trusted `ExerciseSponsorConfig` supplies an authorization ID, `SponsorBudget`,
+positive per-call cap/deadline (maximum 10 seconds), and optional per-adapter model,
+injected transport and `fixture`/`local-http` provenance. No environment lookup,
+credential configuration, default fetch or live-provider route is added. Model
+names/endpoints still pass the existing actual clients' allowlists. The queued
+factories accept an optional shared `SponsorJobs` instance; composition code must
+use the same budget, caps, clock and currentness policy for queue and clients.
+Omitting that argument retains each standalone client's previous behavior.
+
+`assess` uses queued Iris only for exact reviewed seed candidates and valid
+received sponsor metadata. New explicit `analyzeEvidence({ objective, evidence_id })`
+uses the same received planner projection and resolves only a cited received EO
+frame through trusted synchronous `read_evidence(evidence_id, media_ref)`. The
+reader returns only `{ png_base64 }`; it is a local content lookup, not permission
+to fetch media. The request cannot supply snapshots, pixels, configuration,
+reviewer identity, replay/offline mode, truth labels or arbitrary geometry. The
+actual Gemini client checks PNG bytes, hash, dimensions and EO modality against
+received frame metadata. Unknown rights/clocks, non-EO or absent evidence cannot
+yield model analysis. No general media ingestion, thermal inference or runtime
+camera integration is provided.
+
+The route returns the actual sponsor result and server-issued fixture/local-HTTP
+receipt. Analysis remains `verification_status: unverified`; hypotheses are not
+facts, actions or approvals. It neither feeds an approval path nor changes the
+planner/core state. Gemini analysis is explicitly requested, not automatically
+run for every assessment/tick. `sponsorCounts()` exposes shared queue diagnostics.
+
+The coordinator derives clock/currentness from bridge authority, pins original
+incident/run and binds sponsor snapshots to current authority/input/plan/
+reservation/Chief versions. Analysis caches at most 256 received identities,
+independent of clock-only advancement, and rechecks currentness, sponsor expiry
+and planner freshness/intent expiry at every read, including cached promise reads.
+Queued clients enforce original deadlines, one budget prepayment and one actual
+transport invocation per admitted job, with no retries. Both providers share the
+2 physical/8 queued limits, including body-settlement slot retention. State and
+queue are local to one coordinator instance, not durable/distributed coordination.
+
+### Remaining issue acceptance boundaries
+
+- OR01: fixed reviewed single-assignment loop exists; dynamic core registration,
+  arbitrary/multi-asset missions and real simulator execution remain unimplemented.
+- OR02: local currentness/dedupe and strict core guards are covered; no distributed
+  queue, durable dedupe, or protection for raw bridge callers bypassing coordinator
+  objective supersession is claimed.
+- OR03: actual keyless queued Iris/Gemini coordinator seams are composed, but
+  `backend/demo/**` default service/HTTP wiring is unchanged. Telemetry-only demo
+  fixtures still provide no eligible EO bytes; genuine inference/credentials,
+  provider enablement and measured live cost/latency remain unverified/unapproved.
+- OR04: existing Chief-race/bridge/planner tests and the new received-only model
+  projections are local fixtures. No genuine provider receipt, real identity,
+  frontend/Marco runtime acceptance or operational execution proof is claimed.
