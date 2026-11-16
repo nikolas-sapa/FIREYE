@@ -25,6 +25,43 @@ function config(extra: Partial<IrisConfig> = {}): IrisConfig {
     registered_candidate_ids: [candidate], model, transport_mode: 'fixture', transport: async () => reply(), ...extra };
 }
 
+test('Queued Iris never dispatches after its original deadline at synchronous clock boundaries', async () => {
+  for (let crossing = 7; crossing <= 14; crossing++) {
+    let reads = 0;
+    let time = wall;
+    let lateCalls = 0;
+    const client = createQueuedIrisClient(config({ now: () => {
+      if (++reads >= crossing) time = wall + 1000;
+      return time;
+    }, transport: async () => { if (time >= wall + 1000) lateCalls++; return reply(); } }));
+    assert.deepEqual(await client.analyze(input()), { ok: false, code: 'DEADLINE' });
+    assert.equal(lateCalls, 0, `late transport at clock boundary ${crossing}`);
+  }
+});
+
+test('Queued Iris forwards scheduler abort while a delayed client transport remains in flight', async () => {
+  let checks = 0;
+  let dispatched: AbortSignal | undefined;
+  let release!: () => void;
+  const bound = input();
+  const now = Date.now();
+  const snapshot = { ...bound.snapshot, received_cutoff_ms: now, valid_until_ms: now + 10_000,
+    evidence: bound.snapshot.evidence.map(item => ({ ...item, captured_at_ms: now - 10, received_at_ms: now - 5 })) };
+  const client = createQueuedIrisClient(config({ now: Date.now, deadline_ms: 100, is_current: () => {
+    if (++checks === 4) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
+    return true;
+  }, transport: async request => {
+    dispatched = request.signal;
+    await new Promise<void>(resolve => { release = resolve; });
+    return reply();
+  } }));
+  try {
+    assert.deepEqual(await client.analyze({ ...bound, snapshot }), { ok: false, code: 'DEADLINE' });
+    assert.ok(dispatched);
+    assert.equal(dispatched.aborted, true, 'original scheduler deadline must abort physical transport');
+  } finally { release?.(); await delay(100); }
+});
+
 test('QI01 20 duplicates bind 1 actual transport/reservation and immutable exact hash', async () => {
   let calls = 0;
   const budget = new SponsorBudget(1, 100);
