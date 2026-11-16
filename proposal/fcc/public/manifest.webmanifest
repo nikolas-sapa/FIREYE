@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FIREYE — incident console",
+  "name": "FIREYE — resident fire information",
   "short_name": "FIREYE",
-  "description": "A simulated incident command console: the Mati 2018 exercise, real-data monitoring and cached historical fire replays.",
+  "description": "Fire information for local residents: the simulated Mati 2018 exercise, resident stages and prototype routes. Not official evacuation advice; follow 112 and civil protection.",
   "lang": "en",
   "start_url": "./console.html?source=pwa",
   "scope": "./",
