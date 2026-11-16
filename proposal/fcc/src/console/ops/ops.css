@@ -186,7 +186,7 @@
   .ops-root[data-view='civilian'] .fireye-boot-hud:has(.chief-chat) { z-index: 4; }
   .ops-root[data-view='civilian'] .chief-chat > .overflow-x-auto { min-height: 56px; }
   .ops-root[data-view='civilian'] > .fireye-enter { height: 48px; overflow: hidden; }
-  .ops-root[data-view='civilian'] > .fireye-enter > :first-child { width: 144px; padding: 0 8px; }
+  .ops-root[data-view='civilian'] > .fireye-enter > :first-child { width: 160px; padding: 0 8px; }
   .ops-root[data-view='civilian'] > .fireye-enter [aria-label='Replay speed'],
   .ops-root[data-view='civilian'] > .fireye-enter > :last-child { display: none; }
 }
