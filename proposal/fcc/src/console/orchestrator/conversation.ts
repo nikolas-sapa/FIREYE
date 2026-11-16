@@ -34,7 +34,7 @@ export function setResidentContext(fn: (() => ResidentInfo | null) | null): void
   residentContext = fn;
 }
 
-function residentAnswer(info: ResidentInfo, q: string): Reply {
+function residentAnswer(info: ResidentInfo, q: string, now: number): Reply {
   const home = info.home?.name ?? 'your selected home (still loading)';
   const shelter = info.stage === 'shelter' || info.inBlocked;
   const status = shelter
@@ -61,7 +61,7 @@ function residentAnswer(info: ResidentInfo, q: string): Reply {
         : 'The road exit route is still computing or unavailable. Do not assume an unlisted road is open.';
     detail += ' There is no road exit toward the Mati coast; do not head toward the coast as a road escape.';
   } else if (/\b(when|leave|leaving|evacuate|evacuation)\b/.test(q)) {
-    detail = `${timing}${!shelter && info.leaveBy ? ` The exercise leave-by target is ${info.leaveBy}, allowing 45 minutes before estimated arrival; it is not permission to wait.` : ''}`;
+    detail = `${timing}${!shelter && info.leaveBy ? (info.eta != null && info.eta - 45 * MIN <= now ? ` The exercise leave-by target (${info.leaveBy}) has already passed; leave now if official instructions allow.` : ` The exercise leave-by target is ${info.leaveBy}, allowing 45 minutes before estimated arrival; it is not permission to wait.`) : ''}`;
   } else {
     detail = timing;
   }
@@ -108,7 +108,7 @@ const CALLSIGN = /\b(hawk|e|crew|dz|m|so|h|t)[- ]?(\d{1,3})\b/i;
 export function answer(sim: Sim, raw: string): Reply {
   const q = raw.toLowerCase();
   const resident = residentContext?.();
-  if (resident) return residentAnswer(resident, q);
+  if (resident) return residentAnswer(resident, q, sim.t);
   if (sim.recon) {
     if (/dispatch|evac|approve|reject|crew|engine|helicopter|tanker/.test(q)) return { text: 'I only coordinate simulated drone reconnaissance. I do not dispatch ground units, aircraft or public advisories.' };
     if (/project|spread|advanc|faster/.test(q)) return projection(sim);
