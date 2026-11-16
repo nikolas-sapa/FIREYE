@@ -176,6 +176,21 @@ try {
     await crew.pollOnce(0);
     assert.equal(crew.get().view.commands.find(c => c.approval_id === approvalIds[0]).status, 'cancelled');
   }
+  {
+    // Committed approval whose command is no longer acceptable by any producer (e.g. acceptance deadline passed).
+    let lose = true, hideCommands = false, runs = 0;
+    const expired = new OpsBridge(setup, async (url, options) => {
+      if (String(url).endsWith('/approvals') && lose) { lose = false; await http(url, options); hideCommands = true; throw new TypeError('Lost approval reply'); }
+      if (hideCommands && String(url).endsWith('/commands')) return new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return http(url, options);
+    });
+    const proposed = { ...action, id: 'lost-approval-expired', unitIds: ['uav-6'] };
+    await assert.rejects(approveWithBridge(expired, proposed, () => runs++, 0), /Backend unavailable|outcome is unknown/);
+    assert.equal(expired.pending, 1);
+    await expired.observe([proposed], 1);
+    assert.equal(expired.pending, 0, 'unacceptable committed command releases the retained attempt');
+    assert.equal(runs, 0);
+  }
   console.log('F04 real HTTP: committed/lost, uncommitted, malformed approval replies and lost command query retain identity; offline fallback executes 0; reconciliation cancels exactly 1 old command and explicit retries succeed (4/4) PASS');
 
   await withExercise(async ({ backend, setup, http, crew }) => {

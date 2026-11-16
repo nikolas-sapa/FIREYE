@@ -167,7 +167,11 @@ export class OpsBridge {
     }
     const commands = await this.request<Command[]>('commands', 'producer');
     const command = commands.find(c => c.approval_id === attempt.approval.approval_id);
-    if (!command) throw new BridgeRejected('Approval outcome retained; command is not currently available for reconciliation');
+    if (!command) {
+      // Committed but no longer acceptable by any producer (e.g. its acceptance deadline passed): it can never execute.
+      if (row) { this.attempts.delete(id); return; }
+      throw new BridgeRejected('Approval outcome retained; command is not currently available for reconciliation');
+    }
     localActionId(command, { actionId: id, approvalId: attempt.approval.approval_id, candidate: attempt.candidate });
     const feed = view.feeds.find(f => f.asset_id === command.asset_id);
     if (!feed) throw new BridgeRejected('Producer capture scope unavailable; approval outcome retained');
