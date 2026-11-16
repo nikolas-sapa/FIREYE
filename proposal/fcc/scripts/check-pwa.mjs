@@ -30,6 +30,14 @@ vm.runInNewContext(worker + '\nself.__urls = PRECACHE; self.__cache = CACHE;', c
 const urls = context.self.__urls;
 const base = new URL(manifest.scope, 'https://fcc.test' + (process.env.VITE_BASE || '/')).pathname;
 const local = path => base + path.replace(/^\//, '');
+const offline = await readFile(join(dist, 'offline.html'), 'utf8');
+const offlineLinks = [...offline.matchAll(/href="([^"]+)"/g)].map(match => match[1]);
+assert.deepEqual(offlineLinks, [local('/console.html?tokens=0'), base]);
+for (const nested of ['missing', 'nested/uncached/page']) {
+  for (const link of offlineLinks) {
+    assert.equal(new URL(link, `https://fcc.test${base}${nested}`).pathname.startsWith(base), true);
+  }
+}
 assert.ok(urls.includes(local('/console.html')) && urls.includes(local('/index.html')) && urls.includes(local('/offline.html')));
 assert.ok(urls.includes(local('/data/mati/arrival.bin')) && urls.includes(local('/data/caldor/arrival.bin')));
 assert.ok(urls.some((u) => u.startsWith(local('/cesium/'))));
@@ -58,5 +66,14 @@ events.fetch({
 assert.equal(await response, cachedShell, 'Navigation must use the shell matching the active worker');
 assert.equal(networkCalls, 0, 'Do not fetch a newer app shell while an older worker is active');
 assert.equal(context.self.skipWaiting, undefined, 'Never force activation over a running decision');
+context.fetch = async () => { throw new TypeError('Offline'); };
+const fallback = new Response(offline);
+context.caches = { open: async () => ({ match: async path => path === local('/offline.html') ? fallback : undefined }) };
+events.fetch({
+  request: { url: `https://fcc.test${base}nested/uncached/page`, method: 'GET', mode: 'navigate' },
+  respondWith: promise => { response = promise; },
+});
+assert.equal(await response, fallback, 'Uncached nested navigation receives the base-absolute offline shell');
+console.log('Nested offline navigation and base-absolute recovery links PASS');
 console.log(`PWA manifest, PNG dimensions, both entries, ${urls.length} precached files and provider-cache exclusion PASS`);
 console.log('Version-pinned navigation, scenario-query canonicalization and deferred activation PASS');

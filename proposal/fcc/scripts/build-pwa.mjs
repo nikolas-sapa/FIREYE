@@ -6,6 +6,12 @@ import { join, relative } from 'node:path';
 import { prepareArchives } from './pages-assets.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+const html = await readFile(join(dist, 'console.html'), 'utf8');
+const base = new URL(html.match(/src="([^"]*assets\/[^"/]+\.js)"/)[1], 'https://fcc.test').pathname.split('assets/')[0];
+const offlinePath = join(dist, 'offline.html');
+const offline = await readFile(offlinePath, 'utf8');
+await writeFile(offlinePath, offline.replace(/href="\.\//g, `href="${base}`));
+await prepareArchives(dist, base);
 const files = [];
 async function walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -25,9 +31,6 @@ for (const path of files) {
   bytes += data.length;
 }
 const version = hash.digest('hex').slice(0, 16);
-const html = await readFile(join(dist, 'console.html'), 'utf8');
-const base = new URL(html.match(/src="([^"]*assets\/[^"/]+\.js)"/)[1], 'https://fcc.test').pathname.split('assets/')[0];
-await prepareArchives(dist, base);
 const urls = files.map((p) => base + relative(dist, p).split('\\').join('/'));
 const worker = `
 const BASE = ${JSON.stringify(base)};
