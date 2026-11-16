@@ -14,11 +14,11 @@ export function shouldAnnounce(previous: { home: string | null; stage: AlertStag
 
 export async function deliverAnnouncement(stage: AlertStage, name: string, voice: boolean) {
   const { title, body } = announcementFor(stage, name);
-  try { navigator.vibrate?.([200, 100, 200]); } catch { /* optional device capability */ }
   if (voice && typeof speechSynthesis !== 'undefined') {
     try { speechSynthesis.speak(new SpeechSynthesisUtterance(`${title}. ${body}`)); } catch { /* optional */ }
   }
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try { navigator.vibrate?.([200, 100, 200]); } catch { /* optional device capability */ }
   try {
     const registration = await navigator.serviceWorker?.getRegistration();
     if (registration) await registration.showNotification(title, { body, tag: 'fireye-stage', renotify: true } as NotificationOptions);

@@ -35,8 +35,25 @@ Object.defineProperty(globalThis, 'Notification', { configurable: true, value: c
 await deliverAnnouncement('leave', 'Mati', false);
 assert.equal(vibrations, 1);
 assert.equal(notifications, 1);
+let narrations = 0;
+Object.defineProperty(globalThis, 'speechSynthesis', { configurable: true, value: { speak: () => { narrations++; } } });
+Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', { configurable: true, value: class {} });
+for (const permission of ['default', 'denied']) {
+  Object.defineProperty(globalThis, 'Notification', { configurable: true, value: class { static permission = permission; } });
+  await deliverAnnouncement('prepare', 'Mati', false);
+  assert.equal(narrations, 0);
+}
+await deliverAnnouncement('prepare', 'Mati', true);
+assert.equal(narrations, 1);
+assert.equal(vibrations, 1);
+assert.equal(notifications, 1);
+Object.defineProperty(globalThis, 'Notification', { configurable: true, value: class { static permission = 'granted'; } });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { serviceWorker: { getRegistration: async () => { throw Error('unavailable'); } } } });
 await deliverAnnouncement('leave', 'Mati', false);
 delete (globalThis as { Notification?: unknown }).Notification;
+Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { vibrate: () => { vibrations++; } } });
 await deliverAnnouncement('prepare', 'Mati', false);
+assert.equal(vibrations, 1);
+delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
+delete (globalThis as { SpeechSynthesisUtterance?: unknown }).SpeechSynthesisUtterance;
 console.log('Resident announcements: labels, stage rises, revision rules, distance/seek filtering, unchanged alert feed and unavailable browser capabilities PASS');
