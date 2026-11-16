@@ -321,7 +321,7 @@ export function CommandStrip() {
       <DirectorControls />
       <AppearanceToggle />
       <InstallAppButton />
-      <Tooltip content={disclaimer} side="bottom" className="shrink-0 max-sm:[&>[role=tooltip]]:max-w-[calc(100vw-24px)] max-sm:[&>[role=tooltip]]:whitespace-normal">
+      <Tooltip content={disclaimer} side="bottom" className="shrink-0">
         <span className="inline-flex h-7 items-center gap-1.5 border border-amber/40 px-2 font-mono text-micro uppercase text-amber">
           <span aria-hidden className="h-1 w-1 bg-amber" />
           Simulated
