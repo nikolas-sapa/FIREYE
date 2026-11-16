@@ -23,7 +23,9 @@ jobs:
         working-directory: proposal/fcc
     env:
       VITE_BASE: /FIREYE/
-      VITE_CESIUM_ION_TOKEN: ''
+      # Optional public browser keys from repo secrets; empty secret = keyless build.
+      VITE_CESIUM_ION_TOKEN: ${{ secrets.VITE_CESIUM_ION_TOKEN }}
+      VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
       VITE_GOOGLE_MAPS_KEY: ''
     steps:
       - uses: actions/checkout@v4
