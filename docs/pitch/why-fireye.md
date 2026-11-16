@@ -18,7 +18,7 @@ Open [Civilian view](https://nikolas-sapa.github.io/FIREYE/console.html?view=civ
 
 ## Why more than a map and chatbot?
 
-- **Hazard-aware routing:** weighted road paths balance distance/type with simulated hazard penalties and exclude blocked segments. The Maps link carries destination and steering waypoints; Google does not receive the simulated fire. Per-segment resident-arrival versus fire-ETA comparison and a maximum-detour guarantee are not implemented.
+- **Time-aware routing:** Fastest, Safest and a default Balanced route (lowest simulated risk within 1.4× fastest). Road segments the simulated fire reaches before the resident would pass (plus a 15-minute margin) are skipped; the trade-off is shown, e.g. “+1 min vs fastest”. The Maps link carries the chosen exit and steering waypoints; Google does not receive the simulated fire and may recalculate. Nominal speeds, not validated.
 - **Grounded demonstration:** real terrain, attributed imagery, OSM roads and historical Mati anchors. Current roads are not a 2018 snapshot; fitted reconstruction is not independently validated forecasting.
 - **Evidence and control:** simulated drone EO/thermal, fixed cameras and sensors form one exercise picture. Evidence/feed records retain sources, clocks, uncertainty fields and simulated flags. Thermal is false-color, not temperature measurement. Local Ops drone execution requires backend-enforced human approval; this separate local path is unavailable on Pages. Recon tasking remains browser simulation.
 - **Accessible entry:** a keyless web demo with installable PWA support on compatible browsers.
