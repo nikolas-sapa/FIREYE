@@ -37,17 +37,26 @@ await clickDone;
 assert.equal(closed, 1);
 assert.equal(opened, residentUrl);
 opened = '';
-for (const query of ['', '?view=civilian', '?mode=replay&appearance=light']) {
+for (const query of ['?view=civilian', '?appearance=light&view=civilian&t=16:00']) {
   context.self.clients.matchAll = async () => [
     { url: residentUrl.replace('/console.html', '/index.html'), focus: async () => { assert.fail('Do not focus unrelated pages'); } },
     { url: residentUrl.replace('https://fcc.test', 'https://other.test'), focus: async () => { assert.fail('Do not focus another origin'); } },
+    ...['', '?view=responder', '?mode=monitoring', '?mode=replay'].map(query => ({
+      url: residentUrl.split('?')[0] + query, focus: async () => { assert.fail('Do not focus non-civilian consoles'); },
+    })),
     { url: residentUrl.split('?')[0] + query, focus: async () => { focused++; } },
   ];
   events.notificationclick({ notification: { close: () => closed++ }, waitUntil: p => { clickDone = p; } });
   await clickDone;
 }
-assert.equal(focused, 3);
+assert.equal(focused, 2);
 assert.equal(opened, '');
+context.self.clients.matchAll = async () => ['', '?view=responder', '?mode=monitoring', '?mode=replay'].map(query => ({
+  url: residentUrl.split('?')[0] + query, focus: async () => { assert.fail('Open civilian view instead'); },
+}));
+events.notificationclick({ notification: { close: () => closed++ }, waitUntil: p => { clickDone = p; } });
+await clickDone;
+assert.equal(opened, residentUrl);
 console.log('Resident notification click opens or focuses civilian view PASS');
 const base = new URL(manifest.scope, 'https://fcc.test' + (process.env.VITE_BASE || '/')).pathname;
 const local = path => base + path.replace(/^\//, '');

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { ScenarioPack } from '../src/console/contracts';
 import { alertFeed, fireUpdates, type RevEntry } from '../src/console/ops/alerts';
 import { ANNOUNCE_LABEL, announcementFor, deliverAnnouncement, shouldAnnounce } from '../src/console/ops/announce';
+import { opsView } from '../src/console/ops/view';
 
 for (const stage of ['monitor', 'prepare', 'leave', 'shelter'] as const) {
   assert.ok(announcementFor(stage, 'Mati').body.endsWith(ANNOUNCE_LABEL));
@@ -56,4 +57,23 @@ await deliverAnnouncement('prepare', 'Mati', false);
 assert.equal(vibrations, 1);
 delete (globalThis as { speechSynthesis?: unknown }).speechSynthesis;
 delete (globalThis as { SpeechSynthesisUtterance?: unknown }).SpeechSynthesisUtterance;
+const location = { href: 'https://fcc.test/console.html?appearance=light#map' };
+const historyState = { exercise: true };
+Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+  location, history: { state: historyState, replaceState: (state: unknown, _title: string, url: URL) => {
+    assert.equal(state, historyState);
+    location.href = url.href;
+  } },
+} });
+for (const view of ['civilian', 'responder'] as const) {
+  opsView.set(view);
+  const url = new URL(location.href);
+  assert.equal(url.searchParams.get('view'), view);
+  assert.equal(url.searchParams.get('appearance'), 'light');
+  assert.equal(url.hash, '#map');
+}
+Object.defineProperty(globalThis, 'window', { configurable: true, value: { location, history: { replaceState: () => { throw Error('unavailable'); } } } });
+opsView.set('civilian');
+assert.equal(opsView.get(), 'civilian');
+delete (globalThis as { window?: unknown }).window;
 console.log('Resident announcements: labels, stage rises, revision rules, distance/seek filtering, unchanged alert feed and unavailable browser capabilities PASS');

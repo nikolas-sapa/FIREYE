@@ -64,7 +64,8 @@ self.addEventListener('notificationclick', event => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const resident = windows.find(client => {
       const location = new URL(client.url);
-      return location.origin === self.location.origin && location.pathname === BASE + 'console.html';
+      return location.origin === self.location.origin && location.pathname === BASE + 'console.html'
+        && location.searchParams.get('view') === 'civilian';
     });
     if (resident) return resident.focus();
     return self.clients.openWindow(url);

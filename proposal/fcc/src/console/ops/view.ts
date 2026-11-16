@@ -21,6 +21,13 @@ export const opsView = {
   set(v: OpsView) {
     view = v;
     try { localStorage.setItem(KEY, v); } catch { /* optional */ }
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', v);
+        window.history.replaceState(window.history.state, '', url);
+      } catch { /* optional */ }
+    }
     listeners.forEach((fn) => fn());
   },
 };
