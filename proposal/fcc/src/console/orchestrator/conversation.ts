@@ -50,7 +50,7 @@ function residentAnswer(info: ResidentInfo, q: string, now: number): Reply {
   const home = info.home?.name ?? 'your selected home (still loading)';
   const shelter = info.stage === 'shelter' || info.inBlocked;
   const status = shelter
-    ? `For ${home}: shelter in place in this exercise. Do not drive out through the projected danger area. Stay indoors, close windows and move away from the fire-facing side.`
+    ? `For ${home}: fire very close in this exercise. Follow 112 instructions now. Do not drive through the projected danger area.`
     : info.stage === 'leave'
       ? `For ${home}: leave now is the exercise alert. Do not wait for the estimated fire arrival; check official instructions before moving.`
       : info.stage === 'prepare'
@@ -66,7 +66,7 @@ function residentAnswer(info: ResidentInfo, q: string, now: number): Reply {
       ? `The simulated projection threatens or blocks these nearby places: ${info.threatened.join(', ')}. These are projected danger areas, not an observed fireline.`
       : 'The fire location relative to your home is still computing; no nearby threatened places are available. This does not mean there is no fire.';
   } else if (/\b(route|road|roads|way out|exit)\b/.test(q)) {
-    detail = shelter ? 'No driving route is recommended while the shelter alert is active.'
+    detail = shelter ? 'No validated driving route is shown while the fire is very close; follow 112 instructions now.'
       : info.best ? `The prototype route is toward ${route(info.best)}.${info.second ? ` Alternative: ${route(info.second)}.` : ' No second route is available.'} Routes are not validated or guaranteed open.`
         : 'The road exit route is still computing or unavailable. Do not assume an unlisted road is open.';
     detail += ' There is no road exit toward the Mati coast; do not head toward the coast as a road escape.';

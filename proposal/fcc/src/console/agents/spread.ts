@@ -395,6 +395,13 @@ export function runSpread(pack: ScenarioPack, issuedAt: Ms, wx: (t: Ms) => Sprea
   };
 }
 
+/** Earliest modelled arrival within 600 m, shared by manifest places and resident locations. */
+export function fieldEtaAt(f: SpreadField | null | undefined, p: Geo): Ms | null {
+  if (!f) return null;
+  const m = fieldMinAt(f, p, 600);
+  return m < 0 || !Number.isFinite(m) ? null : Math.round(f.issuedAt + m * 60000);
+}
+
 /** Minimum modelled minutes-after-issue within radiusM of p (Infinity if not reached, -1 outside the grid). */
 export function fieldMinAt(f: SpreadField, p: Geo, radiusM = 0): number {
   const g = f.grid;

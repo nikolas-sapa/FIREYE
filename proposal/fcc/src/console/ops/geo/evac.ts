@@ -19,6 +19,9 @@ export interface Hazard { blocked: Geo[][]; caution: Geo[][] }
 export interface EscapeRoute { exit: Exit; path: Geo[]; lengthM: number; roads: string[]; cautionM: number; roadMeters?: Record<string, number> }
 
 export type AlertStage = 'monitor' | 'prepare' | 'leave' | 'shelter';
+/** User-facing stage labels; internal id 'shelter' is shown neutrally and never advises sheltering. */
+export const STAGE_LABEL: Record<AlertStage, string> = { monitor: 'MONITOR', prepare: 'PREPARE TO LEAVE', leave: 'LEAVE NOW', shelter: 'FIRE VERY CLOSE' };
+export const VERY_CLOSE_TEXT = 'Fire very close: follow 112 instructions now';
 
 const SNAP = 1e5;
 const CAUTION_FACTOR = 6;
@@ -263,6 +266,19 @@ function crosses(a: Geo, b: Geo, polys: PreparedPoly[]): boolean {
   });
 }
 
+/** Share of segment a→b inside caution polygons, sampled every ~20 m; a crossing thinner than one sample still counts one sample. */
+function cautionShare(a: Geo, b: Geo, polys: PreparedPoly[], lengthM: number): number {
+  if (polys.length === 0) return 0;
+  const steps = Math.max(2, Math.ceil(lengthM / 20));
+  let inside = 0;
+  for (let k = 0; k < steps; k++) {
+    const f = (k + 0.5) / steps;
+    if (inAny({ lon: a.lon + (b.lon - a.lon) * f, lat: a.lat + (b.lat - a.lat) * f }, polys)) inside++;
+  }
+  if (inside === 0 && crosses(a, b, polys)) inside = 1;
+  return inside / steps;
+}
+
 export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[], options: { clearanceM?: number } = {}): EscapeRoute[] {
   const n = g.lon.length;
   if (n === 0) return [];
@@ -290,7 +306,7 @@ export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
 
   const dist = new Float64Array(n).fill(Infinity);
   const prev = new Int32Array(n).fill(-1);
-  const prevEdge: ({ lengthM: number; name: string; caution: boolean } | null)[] = new Array(n).fill(null);
+  const prevEdge: ({ lengthM: number; name: string; cautionM: number } | null)[] = new Array(n).fill(null);
   const done = new Uint8Array(n);
   const heap = new MinHeap();
   dist[start] = 0;
@@ -307,18 +323,18 @@ export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
       if (done[v] || isBlocked(v)) continue;
       const mid = { lon: (g.lon[u] + g.lon[v]) / 2, lat: (g.lat[u] + g.lat[v]) / 2 };
       if (crosses({ lon: g.lon[u], lat: g.lat[u] }, { lon: g.lon[v], lat: g.lat[v] }, blocked)) continue;
-      const slow = inAny(mid, caution) || inNoExitZone(mid);
+      const share = inNoExitZone(mid) ? 1 : cautionShare({ lon: g.lon[u], lat: g.lat[u] }, { lon: g.lon[v], lat: g.lat[v] }, caution, e.lengthM);
       const clearance = options.clearanceM ?? 0;
       let near = 0;
       if (clearance > 0) {
         const distance = Math.min(...[...blocked, ...caution].map((p) => polygonDistanceM(mid, p.poly)));
         near = 8 * Math.max(0, 1 - distance / clearance);
       }
-      const nd = d + e.lengthM * e.weight * ((slow ? CAUTION_FACTOR : 1) + near);
+      const nd = d + e.lengthM * e.weight * (1 + (CAUTION_FACTOR - 1) * share + near);
       if (nd < dist[v]) {
         dist[v] = nd;
         prev[v] = u;
-        prevEdge[v] = { lengthM: e.lengthM, name: e.name, caution: slow };
+        prevEdge[v] = { lengthM: e.lengthM, name: e.name, cautionM: e.lengthM * share };
         heap.push(nd, v);
       }
     }
@@ -337,7 +353,7 @@ export function escapeRoutes(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
       const e = prevEdge[i];
       if (e) {
         lengthM += e.lengthM;
-        if (e.caution) cautionM += e.lengthM;
+        cautionM += e.cautionM;
         names.push(e.name);
         if (e.name) roadMeters[e.name] = (roadMeters[e.name] ?? 0) + e.lengthM;
       }

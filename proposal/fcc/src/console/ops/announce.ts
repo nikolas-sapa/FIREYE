@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AlertStage } from './geo/evac';
+import { STAGE_LABEL, VERY_CLOSE_TEXT, type AlertStage } from './geo/evac';
 
 export const ANNOUNCE_LABEL = 'Simulated exercise - follow official 112 / civil protection instructions';
 const rank = { monitor: 0, prepare: 1, leave: 2, shelter: 3 };
 export function announcementFor(stage: AlertStage, placeName: string) {
-  const title = { monitor: 'MONITOR', prepare: 'PREPARE TO LEAVE', leave: 'LEAVE NOW', shelter: 'SHELTER IN PLACE' }[stage];
-  return { title: `${title} · ${placeName}`, body: `${placeName}: ${title}. ${ANNOUNCE_LABEL}` };
+  const title = STAGE_LABEL[stage];
+  const what = stage === 'shelter' ? VERY_CLOSE_TEXT : title;
+  return { title: `${title} · ${placeName}`, body: `${placeName}: ${what}. ${ANNOUNCE_LABEL}` };
 }
 
 export function shouldAnnounce(previous: { home: string | null; stage: AlertStage } | null, home: string | null, stage: AlertStage) {

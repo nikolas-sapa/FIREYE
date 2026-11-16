@@ -228,7 +228,7 @@ function Shell() {
         best: route(r.best), second: route(r.second),
         threatened: alerts.filter(p => p.stage !== 'monitor' || p.inBlocked)
           .sort((a, b) => home ? distanceM(home.pos, a.pos) - distanceM(home.pos, b.pos) : 0)
-          .slice(0, 3).map(p => `${p.name} (${p.stage})`),
+          .slice(0, 3).map(p => `${p.name} (${p.stage === 'shelter' ? 'fire very close' : p.stage})`),
       };
     });
     return () => setResidentContext(null);
