@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:full": "node scripts/dev-full.mjs",
+    "acceptance:local": "node scripts/acceptance-local.mjs",
     "build": "tsc --noEmit && vite build && node scripts/build-pwa.mjs && node scripts/check-no-dev-handoff.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/check-console.mjs",

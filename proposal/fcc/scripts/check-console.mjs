@@ -2,6 +2,7 @@
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import './check-pages-assets.mjs';
+import '../tests/acceptance-receipt.mjs';
 const nodeRequire = createRequire(import.meta.url);
 try {
   for (const test of ['provider-policy', 'ops-handoff.mjs', 'ops-bridge', 'ops-bridge-http.mjs', 'thermal', 'crew-store', 'console', 'ops', 'saferoute', 'announce', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye', 'recon', 'boot']) {
