@@ -1,3 +1,40 @@
+## STATUS-20261116, hackathon demo state for the team
+
+Owner: coordinator-assigned Devin documentation worker. Branch: `devin/1794835153-team-update-infographics`, based on `origin/main` at `d6a4b8d`. Exact claim: `README.md`, this prepended `TASKBOARD.md` section, `docs/assets/readme/resident-flow.mmd`, `docs/assets/readme/resident-flow.svg`, `docs/assets/readme/resident-flow.png`, `docs/pitch/demo-script.md`. Prior sections and all application code remain untouched. Git delivery belongs to the coordinator.
+
+Tests before implementation: TEAM01 `git diff --check` exits 0; TEAM02 all new relative document/asset links resolve, 0 missing targets; TEAM03 demo script contains fewer than 700 words; TEAM04 inspect the rendered PNG, 0 clipped/overlapping labels, accent `#006bff`, no orange or emoji. Plan: record current merged/open boundaries, write the demo, render a resident-flow diagram, check the scoped documentation diff. No code, keys, provider calls, deployment or PR/merge.
+
+### Merged on main
+
+- #67 — backend-approved local Ops → simulated drone → received Crew receipt loop.
+- #68 — phone header.
+- #69 — resident-first copy and Civilian default.
+- #70 — phone notifications, vibration and voice (browser support/permission required).
+- #71 — resident location by place/road/coordinates/GPS/map tap and Google Maps handoff.
+- #72 — resident Chief answers.
+- #73 — resident Chief question chips.
+- #74 — mobile bottom sheet.
+- #75 — phone starts after ignition, fire/home framing, 2D fallback without WebGL.
+- #76 — ETA mismatch, six-drone backend fixture, orphan/stale command and caution-metre audit fixes; neutral “Fire very close: follow 112 instructions now” wording.
+- #77 — camera research documentation, not activated feeds.
+- #78 — `npm run acceptance:local` local acceptance runner.
+- #79 — candidate registration and dormant provider queue, not live inference.
+- #81 — Why FIREYE, roadmap and pitch.
+- #82 — Fastest/Safest/Balanced routes; Balanced default within 1.4× fastest time, time-aware fire-arrival check with a 15-minute margin, selected route/waypoints to Google Maps, optional Maps Embed preview.
+- Pages workflow reads optional `VITE_GOOGLE_MAPS_API_KEY` / `VITE_CESIUM_ION_TOKEN` secrets.
+
+### Open and next handoff
+
+Draft #80 mobile decision card remains teammate-owned. Merge main into its branch; consume `Routes.options` / `choice` from `proposal/fcc/src/console/ops/alerts.ts`, rather than recomputing route choice. Fix “Leave by Leave now” duplication and Chief leave-by context. Review screenshots at 390px, 375px and 1440px; desktop must remain identical. No implementation claim here.
+
+Issue tags: #9, #13, #15 **[Partial]**; #10, #14, #16 **[Needs keys]**. #21, #22, #23 closed post-hackathon. Known bugs: rewind/seek changes drone positions and alert history; play forward for the demo. These remain unresolved.
+
+### Optional Maps / Cesium setup
+
+The keyless resident demo remains available at <https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian>. For the optional embed, an authorized maintainer enables Maps Embed API in the Google project and restricts a browser key to the required API and site referrer. In repository Settings → Secrets and variables → Actions, set `VITE_GOOGLE_MAPS_API_KEY`; optionally set a suitably scoped `VITE_CESIUM_ION_TOKEN`. Re-run the Pages workflow to rebuild, then verify the optional surface. No secrets were set or deployment triggered by this documentation task. Vite browser credentials are public in bundles: restrict them; never use server/provider secrets here. Neither is required for the Google Maps external-link handoff.
+
+Rules: no keys or `.env` files committed; never recommend shelter-in-place. Keep “Simulation · not official evacuation advice; follow 112 / civil protection.” No validated safe-route, live-provider, real camera or real emergency-alert claims. Maps may recalculate without the simulated fire. [Demo script](docs/pitch/demo-script.md).
+
 # Fire Command Center shared taskboard
 
 ## RESIDENT-COPY, resident-first copy and default

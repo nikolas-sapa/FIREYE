@@ -17,6 +17,16 @@ A map and a chatbot are easy to reproduce. FIREYE demonstrates the connection a 
 
 **The moat to build:** a maintained Greek road graph and fire replays, a rights-cleared camera catalog, validation against more historical fires, and a trusted safety/approval architecture. The [camera research in docs/data](docs/data/greece-public-cameras.md) is a starting point, **not rights-cleared or activated feeds**. Civil Protection / 112 partnerships are future goals, not existing relationships. See the [one-page pitch](docs/pitch/why-fireye.md) and [roadmap](#roadmap-and-current-gates).
 
+![Resident flow: simulated fire and location become labelled exercise alerts, route comparisons and a Google Maps handoff, with optional phone updates.](docs/assets/readme/resident-flow.png)
+
+Simulation · not official advice; follow 112 / civil protection. [SVG](docs/assets/readme/resident-flow.svg) · [Mermaid source](docs/assets/readme/resident-flow.mmd) · [Two-minute demo script](docs/pitch/demo-script.md).
+
+## Status (2026-11-16)
+
+- **Done:** local backend-approved Ops → simulated drone → Crew loop (#67); resident default, phone header/alerts/chat/location, Google Maps handoff, bottom sheet and 2D fallback (#68–#75); safety/ETA/fixture audit fixes (#76); camera documentation (#77); `npm run acceptance:local` (#78); candidate registration with dormant providers (#79); pitch/roadmap (#81); Fastest/Safest/Balanced routes and optional Maps Embed (#82). Pages accepts optional Maps/Cesium secrets; keyless demo remains available.
+- **Open:** teammate-owned draft #80 mobile decision card. Issues #9/#13/#15 are **[Partial]**, #10/#14/#16 **[Needs keys]**; #21/#22/#23 closed post-hackathon. Providers remain dormant, not verified live integrations.
+- **Known issues:** rewind/seek changes drone positions and alert history. Play forward for demos. Routes and ETAs remain simulation-derived, not validated evacuation guidance. [Team handoff](TASKBOARD.md#status-20261116-hackathon-demo-state-for-the-team).
+
 ## For judges: the short version
 
 **The problem.** Residents need to understand where a fire is, what information applies to their area and when that information changes. FIREYE brings the exercise picture and announcements together without presenting a historical reconstruction as live safety advice.
@@ -136,7 +146,7 @@ The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-d
 
 ![Role map separating human Chief authority, local scripted assistants, simulator ownership and dormant model roles.](docs/assets/readme/agent-roles.png)
 
-Solid paths denote local/fixture responsibilities; dashed model/tool paths remain dormant or pending, not LLM receipts. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
+This historical role map describes the secondary responder/backend exercise, not the resident journey above. Solid paths denote local/fixture responsibilities; dashed model/tool paths remain dormant or pending, not LLM receipts. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
 
 | Role | Intended responsibility | Allowed output / authority |
 |---|---|---|

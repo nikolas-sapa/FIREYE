@@ -1,0 +1,32 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: Geist, Arial, sans-serif
+    primaryColor: '#f5f6f8'
+    primaryTextColor: '#202632'
+    primaryBorderColor: '#bac2ce'
+    lineColor: '#006bff'
+    secondaryColor: '#f5f6f8'
+    tertiaryColor: '#ffffff'
+    background: '#ffffff'
+  flowchart:
+    curve: linear
+    htmlLabels: false
+---
+flowchart TB
+    title["RESIDENT FLOW · FIREYE<br/>Simulation · not official advice · follow 112 / civil protection"]
+    replay["01 · Understand the fire<br/>Simulated Mati 2018 replay + spread projection<br/>Honest source / age / simulation labels"]
+    location["02 · Set resident location<br/>Place · road · coordinates · GPS · map tap"]
+    stage["03 · See the exercise alert stage<br/>MONITOR / PREPARE TO LEAVE / LEAVE NOW<br/>FIRE VERY CLOSE: follow 112 instructions now<br/>Fire ETA + leave-by (ETA minus 45 minutes)"]
+    routes["04 · Compare prototype routes<br/>Fastest / Safest / Balanced (default)<br/>Balanced: within 1.4× fastest time<br/>Time-aware fire ETA check: aim for +15 min margin<br/>Warn if only a smaller margin is available"]
+    maps["05 · Open in Google Maps<br/>Selected route + steering waypoints · optional embed<br/>Maps may recalculate; simulated fire is not transferred"]
+    updates["Chief / Scout scripted updates<br/>Not live AI or official announcements"]
+    phone["Phone notification / vibration / voice<br/>Optional permission + browser support<br/>Simulated updates, not 112 messages"]
+    title ~~~ replay
+    replay --> location --> stage --> routes --> maps
+    stage --> updates --> phone
+    classDef heading fill:#006bff,color:#ffffff,stroke:#006bff;
+    classDef action fill:#edf4ff,color:#202632,stroke:#006bff;
+    class title heading;
+    class maps action;
