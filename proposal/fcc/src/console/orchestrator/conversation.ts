@@ -1,4 +1,4 @@
-import type { GradedItem } from '../contracts';
+import type { Geo, GradedItem } from '../contracts';
 import type { Sim } from '../world/sim';
 import { MIN, compass, distanceM, fmtDur } from '../world/geo';
 import { enqueue } from '../agents/swarm';
@@ -8,6 +8,65 @@ import { etaMin, etaText } from './score';
 import { reconSummary } from '../world/recon';
 
 const THINK_S = 1.2;
+
+export interface ResidentRoute {
+  exit: string;
+  lengthM: number;
+  roads: string[];
+  cautionM: number;
+}
+
+export interface ResidentInfo {
+  home: { name: string; pos: Geo } | null;
+  stage: 'monitor' | 'prepare' | 'leave' | 'shelter';
+  eta: number | null;
+  etaMin: number | null;
+  inBlocked: boolean;
+  leaveBy: string | null;
+  best: ResidentRoute | null;
+  second: ResidentRoute | null;
+  threatened: string[];
+}
+
+let residentContext: (() => ResidentInfo | null) | null = null;
+
+export function setResidentContext(fn: (() => ResidentInfo | null) | null): void {
+  residentContext = fn;
+}
+
+function residentAnswer(info: ResidentInfo, q: string): Reply {
+  const home = info.home?.name ?? 'your selected home (still loading)';
+  const shelter = info.stage === 'shelter' || info.inBlocked;
+  const status = shelter
+    ? `For ${home}: shelter in place in this exercise. Do not drive out through the projected danger area. Stay indoors, close windows and move away from the fire-facing side.`
+    : info.stage === 'leave'
+      ? `For ${home}: leave now is the exercise alert. Do not wait for the estimated fire arrival; check official instructions before moving.`
+      : info.stage === 'prepare'
+        ? `For ${home}: prepare to leave in this exercise. Gather essentials and check on anyone who needs help.`
+        : `For ${home}: monitor updates. No evacuation alert is shown yet; that is not a guarantee of safety.`;
+  const timing = info.etaMin == null
+    ? 'The fire arrival estimate is still computing; do not treat a missing estimate as safe.'
+    : `Estimated fire arrival is ${info.etaMin <= 0 ? 'now' : `in about ${info.etaMin} minutes`}, not a guaranteed deadline.`;
+  const route = (r: ResidentRoute) => `${r.exit}, about ${(r.lengthM / 1000).toFixed(1)} km${r.roads.length ? ` via ${r.roads.join(', ')}` : ' (road names unavailable)'}${r.cautionM > 0 ? `; about ${Math.round(r.cautionM)} m crosses a projected caution area` : ''}`;
+  let detail: string;
+  if (/\b(where)\b.*\bfire\b|\bfire\b.*\bwhere\b/.test(q)) {
+    detail = info.threatened.length
+      ? `The simulated projection threatens or blocks these nearby places: ${info.threatened.join(', ')}. These are projected danger areas, not an observed fireline.`
+      : 'The fire location relative to your home is still computing; no nearby threatened places are available. This does not mean there is no fire.';
+  } else if (/\b(take|pack|bring)\b/.test(q)) {
+    detail = 'Keep medicines, identification, phone and charger, water and essential documents ready. Help children, pets and people needing assistance. Do not delay for belongings.';
+  } else if (/\b(route|road|roads|way out|exit)\b/.test(q)) {
+    detail = shelter ? 'No driving route is recommended while the shelter alert is active.'
+      : info.best ? `The prototype route is toward ${route(info.best)}.${info.second ? ` Alternative: ${route(info.second)}.` : ' No second route is available.'} Routes are not validated or guaranteed open.`
+        : 'The road exit route is still computing or unavailable. Do not assume an unlisted road is open.';
+    detail += ' There is no road exit toward the Mati coast; do not head toward the coast as a road escape.';
+  } else if (/\b(when|leave|leaving|evacuate|evacuation)\b/.test(q)) {
+    detail = `${timing}${!shelter && info.leaveBy ? ` The exercise leave-by target is ${info.leaveBy}, allowing 45 minutes before estimated arrival; it is not permission to wait.` : ''}`;
+  } else {
+    detail = timing;
+  }
+  return { text: `${status}\n${detail}\nSimulated exercise - follow official 112 / civil protection instructions` };
+}
 
 /** User question: a "thinking" bubble now, a state-aware answer ~1.2 s (wall clock) later. */
 export function ask(sim: Sim, text: string): void {
@@ -48,6 +107,8 @@ const CALLSIGN = /\b(hawk|e|crew|dz|m|so|h|t)[- ]?(\d{1,3})\b/i;
 
 export function answer(sim: Sim, raw: string): Reply {
   const q = raw.toLowerCase();
+  const resident = residentContext?.();
+  if (resident) return residentAnswer(resident, q);
   if (sim.recon) {
     if (/dispatch|evac|approve|reject|crew|engine|helicopter|tanker/.test(q)) return { text: 'I only coordinate simulated drone reconnaissance. I do not dispatch ground units, aircraft or public advisories.' };
     if (/project|spread|advanc|faster/.test(q)) return projection(sim);

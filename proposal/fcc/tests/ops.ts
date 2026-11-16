@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { answer, setResidentContext, type ResidentInfo } from '../src/console/orchestrator/conversation';
+import type { Sim } from '../src/console/world/sim';
 import { readFileSync } from 'node:fs';
 import type { AgentJob, ConsoleApi, ConsoleState } from '../src/console/contracts';
 import { consoleEntry } from '../src/console/entry';
@@ -6,6 +8,64 @@ import { applyDecision } from '../src/console/fireye/data/decision';
 import { journal } from '../src/console/fireye/data/journal';
 import type { Decision } from '../src/console/fireye/shell/OrchestratorCallout';
 import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, subscribeCommRows, type CommRow } from '../src/console/ops/opsStore';
+
+{
+  const sim = { recon: {} } as Sim;
+  const refusal = 'I only coordinate simulated drone reconnaissance. I do not dispatch ground units, aircraft or public advisories.';
+  const footer = 'Simulated exercise - follow official 112 / civil protection instructions';
+  const info: ResidentInfo = {
+    home: { name: 'Mati', pos: { lon: 23.99, lat: 38.05 } },
+    stage: 'leave', eta: 3600000, etaMin: 60, inBlocked: false, leaveBy: '17:15 EEST',
+    best: { exit: 'Nea Makri', lengthM: 2500, roads: ['Marathonos'], cautionM: 120 },
+    second: { exit: 'Rafina', lengthM: 4000, roads: [], cautionM: 0 },
+    threatened: ['MATI (leave)'],
+  };
+  setResidentContext(null);
+  assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
+  try {
+    setResidentContext(() => info);
+    for (const [question, expected] of [
+      ['Am I safe?', /Mati.*leave now/s], ['Am I in danger?', /leave now/],
+      ['When should I leave?', /17:15 EEST.*45 minutes/], ['Should I evacuate?', /Estimated fire arrival/],
+      ['Which route?', /Nea Makri.*2.5 km.*Marathonos.*120 m.*Rafina/s],
+      ['Which road or way out?', /no road exit toward the Mati coast/],
+      ['Where is the fire?', /MATI \(leave\).*not an observed fireline/],
+      ['What should I take?', /medicines.*identification.*water/],
+      ['What should I pack or bring?', /Do not delay for belongings/],
+      ['Dispatch engines and approve evacuation', /For Mati:/], ['', /For Mati:/],
+    ] as const) {
+      const text = answer(sim, question).text;
+      assert.match(text, expected);
+      assert.equal(text.endsWith(footer), true);
+      assert.equal(text.split(footer).length, 2);
+      assert.doesNotMatch(text, /only coordinate simulated drone reconnaissance/);
+    }
+    info.stage = 'shelter';
+    for (const q of ['Am I safe?', 'When should I leave?', 'Which route?', 'Where is the fire?', 'What should I take?']) {
+      const text = answer(sim, q).text;
+      assert.match(text, /shelter in place.*Do not drive out/s);
+      assert.doesNotMatch(text, /prototype route is toward|Alternative:|leave now|leave-by target/);
+      assert.equal(text.endsWith(footer), true);
+    }
+    info.stage = 'prepare';
+    assert.match(answer(sim, 'Am I safe?').text, /prepare to leave/);
+    info.stage = 'monitor';
+    assert.match(answer(sim, 'Am I safe?').text, /monitor updates.*not a guarantee of safety/s);
+    info.inBlocked = true;
+    assert.match(answer(sim, 'Which route?').text, /No driving route is recommended/);
+    info.inBlocked = false;
+    info.best = null; info.second = null; info.eta = null; info.etaMin = null; info.leaveBy = null;
+    info.threatened = []; info.home = null;
+    assert.match(answer(sim, 'Which route?').text, /still computing or unavailable/);
+    assert.match(answer(sim, 'When should I leave?').text, /still computing.*missing estimate as safe/s);
+    assert.match(answer(sim, 'Where is the fire?').text, /still computing.*does not mean there is no fire/s);
+    assert.match(answer(sim, 'Hello').text, /your selected home \(still loading\)/);
+    setResidentContext(() => null);
+    assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
+  } finally { setResidentContext(null); }
+  assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
+  console.log('Resident Chief: 5 intents, 4 stages, blocked override, missing data, fallback/footer and responder restoration PASS');
+}
 
 const routes = [
   ['?mode=crew', 'crew'],
