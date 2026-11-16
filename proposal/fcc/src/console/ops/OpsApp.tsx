@@ -32,6 +32,7 @@ import { opsView, useOpsView, useOverlayOpts } from './view';
 import { useHideCallout } from './useHideCallout';
 import './ops.css';
 import './characters/characters.css';
+import { opsBackend } from './OpsBackend';
 
 enableWorld3dFeeds();
 
@@ -58,6 +59,7 @@ function useJournalReapply() {
     let last: unknown = null;
     let queued = false;
     return consoleStore.subscribe(() => {
+      if (opsBackend.get().configured) return;
       const s = consoleStore.get();
       if (s.actions === last || queued) return;
       last = s.actions;
@@ -126,8 +128,12 @@ function Shell() {
     wireComms();
     wireAlerts();
     ensureOsm();
+    const heartbeat = window.setInterval(() => {
+      const s = consoleStore.get();
+      void opsBackend.poll(s.actions, Math.floor(s.clock.t / 1000));
+    }, 2000);
     if (import.meta.env.DEV) (window as unknown as { __opsAlerts?: unknown }).__opsAlerts = { opsView, hazardNow, routesNow, counters, placeAlerts, alertFeed };
-    return () => { setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); stopPresenter(); };
+    return () => { window.clearInterval(heartbeat); setTheme('fcc', { persist: false }); setAppearance('auto', { persist: false }); stopPresenter(); };
   }, []);
 
   useEffect(() => {

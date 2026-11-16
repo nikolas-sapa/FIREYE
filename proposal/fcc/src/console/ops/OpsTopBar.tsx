@@ -4,6 +4,7 @@ import { localTime, packZone, zuluTime } from '../ui/format';
 import { useDecisions } from '../fireye/shell/OrchestratorCallout';
 import { Seg } from '../fireye/shell/TopBar';
 import { opsView, useOpsView } from './view';
+import { OpsBackendControl } from './OpsBackend';
 
 const SPEEDS = [1, 10, 60, 180, 600] as const;
 
@@ -40,7 +41,7 @@ export function OpsTopBar({ presenting, onPresent }: { presenting: boolean; onPr
   const thinking = useConsoleSelector((s) => s.messages.some((m) => m.thinking));
   const { open } = useDecisions();
   return (
-    <header className="relative z-hud flex h-10 shrink-0 items-center gap-4 border-b border-line bg-ink-900 px-3">
+    <header className="relative z-hud flex min-h-10 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-ink-900 px-3 py-1">
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-semibold uppercase tracking-[0.22em] text-bone">OPS</span>
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Mati 2018</span>
@@ -52,6 +53,7 @@ export function OpsTopBar({ presenting, onPresent }: { presenting: boolean; onPr
       <Seg label="View" value={view} onChange={(v) => opsView.set(v)}
         options={[{ value: 'responder', label: 'Responder' }, { value: 'civilian', label: 'Civilian' }]} />
       <Clock />
+      <OpsBackendControl />
       <div className="ml-auto flex items-center gap-3">
         <span className="flex items-center divide-x divide-line border border-line-strong font-mono uppercase">
           <Count label="agents" value={agents} />

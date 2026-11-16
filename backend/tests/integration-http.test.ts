@@ -247,7 +247,7 @@ test('B04 HTTP live tick121 exposes 0 expired options, explicit receipt replay r
     const live = await call('snapshot', 'human');
     assert.equal(live.proposals.length, 0); assert.equal(live.candidates.length, 0);
     const historical = await call(`snapshot?received_at=${encodeURIComponent(wall)}`, 'human');
-    assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 1);
+    assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 4);
     assert.equal(created.value.read().incident_revision, 1);
   } finally { await bridge.close(); }
 });

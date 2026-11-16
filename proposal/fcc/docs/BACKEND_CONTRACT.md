@@ -39,6 +39,31 @@ Frames older than 3 seconds of wall or replay time, future-seek frames, disconne
 surfaces and truth overlays are ineligible. This is not shared media transport,
 an operational camera, validated detection, independent evidence or a receipt.
 
+Ops can separately connect to the loopback backend using a private in-memory
+Chief/producer handoff. A human-approved single-drone action aliases a declared
+candidate for that same drone (Ops `uav-N` aliases backend exercise `dN`);
+fixture routes are not geographic route approval.
+After command discovery and producer preflight, local simulation executes. On
+completion the producer registers `frame.received` metadata for an actual local
+SVG execution-status card (exact byte length/SHA-256; synthetic, non-radiometric,
+uncalibrated registered feed; unknown acquisition/geography), then a terminal
+receipt citing its evidence ID. This is **simulated execution evidence**, not a
+camera capture or shared-media registration; bytes remain local and backend
+`media_verified` remains false. Dedicated per-command/stage streams start at 1;
+ambiguous replies retry identical events. The existing terminal evidence guard
+is unchanged.
+
+Run `cd backend && node scripts/start-local.ts --await-producer`, then
+`cd proposal/fcc && npm run dev -- --host localhost --port 5173 --strictPort`.
+Open `http://localhost:5173/console.html?tokens=0&context=0&boot=0` and paste the
+printed private `capabilities_file` contents into the backend control. Capabilities
+are never bundled, stored, or put in URLs. The backend requires the exact Origin
+`http://localhost:5173` (override with `FCC_LOCAL_ORIGIN` if using another origin).
+`--await-producer` also works with `--demo`: only the first successful producer
+heartbeat arms loss detection; the existing >5-second timeout then applies.
+Default startup remains unchanged. Candidate expiry is independent (plain local
+fixtures expire at tick 120; demo candidates have a much shorter finite scope).
+
 The REV C console (`/console.html`) runs entirely in the browser. A simulated "brain" (`src/console/store.tsx` and `src/console/orchestrator/**`) publishes typed `BusEvent`s onto an in-process bus. The real backend replaces the simulator by publishing the **same events, with the same shapes**, over a WebSocket. Nothing in the UI or the 3D stage should need to change.
 
 Contents
