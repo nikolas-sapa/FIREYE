@@ -6,6 +6,7 @@ import { readVectorTile, type TileLayer } from './vector-tile';
 import { drawTile } from './cartography-paint';
 import { ContextRasterizer } from './context-rasterizer';
 import type { Geo } from '../contracts';
+import { contextAllowed } from './provider-policy';
 
 const TILEJSON = 'https://tiles.basemaps.cartocdn.com/vector/carto.streets/v2/tiles.json';
 const CREDIT = new Cesium.Credit('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · © <a href="https://carto.com/attributions">CARTO</a>', true);
@@ -62,8 +63,7 @@ export class ContextMap {
   private disposed = false;
   private enabled = false;
   private loading?: AbortController;
-  private allowed = new URLSearchParams(location.search).get('context') !== '0'
-    && (new URLSearchParams(location.search).get('tokens') !== '0' || new URLSearchParams(location.search).get('context') === '1');
+  private allowed = contextAllowed(location.search, import.meta.env);
   private online = () => {
     this.failed = false; this.key = '';
     if (!this.template) this.enabled = false;

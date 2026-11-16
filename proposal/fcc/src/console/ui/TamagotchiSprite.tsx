@@ -42,7 +42,7 @@ function TamagotchiSprite({ character = 'chief', state = 'idle', size = 32, paus
       style={{
         display: 'inline-block',
         width: size, height: size,
-        backgroundImage: `url(/mascots/${character}.png)`,
+        backgroundImage: `url(${import.meta.env?.BASE_URL ?? '/'}mascots/${character}.png)`,
         backgroundSize: `${size * 16}px ${size * 4}px`,
         backgroundPosition: `${-frame * size}px ${-states.indexOf(state) * size}px`,
         backgroundRepeat: 'no-repeat',

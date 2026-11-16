@@ -24,12 +24,16 @@ for (const path of files) {
   bytes += data.length;
 }
 const version = hash.digest('hex').slice(0, 16);
-const urls = files.map((p) => '/' + relative(dist, p).split('\\').join('/'));
+const html = await readFile(join(dist, 'console.html'), 'utf8');
+const base = new URL(html.match(/src="([^"]*assets\/[^"/]+\.js)"/)[1], 'https://fcc.test').pathname.split('assets/')[0];
+const urls = files.map((p) => base + relative(dist, p).split('\\').join('/'));
 const worker = `
-const CACHE = ${JSON.stringify('fcc-app-' + version)};
+const BASE = ${JSON.stringify(base)};
+const CACHE_PREFIX = 'fcc-app-' + BASE + '-';
+const CACHE = CACHE_PREFIX + ${JSON.stringify(version)};
 const PRECACHE = ${JSON.stringify(urls)};
 const KNOWN = new Set(PRECACHE);
-const page = path => path === '/' ? '/index.html' : path;
+const page = path => path === BASE ? BASE + 'index.html' : path;
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -43,7 +47,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     for (const name of await caches.keys()) {
-      if (name.startsWith('fcc-app-') && name !== CACHE) await caches.delete(name);
+      if (name.startsWith(CACHE_PREFIX) && name !== CACHE) await caches.delete(name);
     }
     await self.clients.claim();
   })());
@@ -63,7 +67,7 @@ self.addEventListener('fetch', event => {
       if (shell) return shell;
       try { return await fetch(request); }
       catch {
-        return await cache.match('/offline.html');
+        return await cache.match(BASE + 'offline.html');
       }
     })());
   } else if (KNOWN.has(path)) {

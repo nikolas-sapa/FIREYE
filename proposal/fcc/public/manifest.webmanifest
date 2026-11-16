@@ -1,25 +1,25 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "FIREYE — incident console",
   "short_name": "FIREYE",
   "description": "A simulated incident command console: the Mati 2018 exercise, real-data monitoring and cached historical fire replays.",
   "lang": "en",
-  "start_url": "/console.html?source=pwa",
-  "scope": "/",
+  "start_url": "./console.html?source=pwa",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0A0A0B",
   "theme_color": "#0A0A0B",
   "categories": ["productivity", "education"],
   "icons": [
-    { "src": "/icons/fireye-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/fireye-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/fireye-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "./icons/fireye-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/fireye-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/fireye-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "FIREYE · Mati exercise", "url": "/console.html" },
-    { "name": "Real-data monitoring", "url": "/console.html?mode=monitoring" },
-    { "name": "Legacy Mati replay", "url": "/console.html?scenario=mati-2018" },
-    { "name": "Caldor replay", "url": "/console.html?scenario=caldor-2021" },
-    { "name": "System proposal", "url": "/" }
+    { "name": "FIREYE · Mati exercise", "url": "./console.html" },
+    { "name": "Real-data monitoring", "url": "./console.html?mode=monitoring" },
+    { "name": "Legacy Mati replay", "url": "./console.html?scenario=mati-2018" },
+    { "name": "Caldor replay", "url": "./console.html?scenario=caldor-2021" },
+    { "name": "System proposal", "url": "./" }
   ]
 }

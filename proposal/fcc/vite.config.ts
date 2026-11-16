@@ -2,10 +2,14 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import cesium from 'vite-plugin-cesium';
 import { fileURLToPath, URL } from 'node:url';
+import { rename, rmdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { createImageLabMiddleware } from './server/image-lab';
 import { createMonitoringMiddleware } from './server/monitoring';
 
 const p = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
+let thisBase = '/';
+let thisOutDir = 'dist';
 
 function imageLab(): Plugin {
   let key = '';
@@ -33,7 +37,20 @@ function monitoring(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), cesium(), imageLab(), monitoring()],
+  base: process.env.VITE_BASE || '/',
+  plugins: [react(), cesium(), {
+    name: 'fcc-cesium-output',
+    configResolved(config) { thisBase = config.base; thisOutDir = config.build.outDir; },
+    closeBundle: {
+      order: 'post', sequential: true,
+      async handler() {
+        const prefix = thisBase.replace(/^\/+|\/+$/g, '');
+        if (!prefix) return;
+        await rename(join(thisOutDir, prefix, 'cesium'), join(thisOutDir, 'cesium'));
+        await rmdir(join(thisOutDir, prefix));
+      },
+    },
+  }, imageLab(), monitoring()],
   resolve: {
     alias: [
       { find: /^@ds$/, replacement: p('./src/design-system/index.ts') },

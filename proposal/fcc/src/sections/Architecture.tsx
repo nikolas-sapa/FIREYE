@@ -539,7 +539,7 @@ export default function Architecture() {
               <span className="inline-block w-4 border-t border-dashed border-ink-400" /> Sandbox boundary
             </span>
             <a
-              href="/console.html"
+              href={`${import.meta.env?.BASE_URL ?? '/'}console.html`}
               className="ml-auto inline-flex items-center gap-1 font-mono text-micro uppercase text-bone-mute underline decoration-line-strong underline-offset-4 transition-colors duration-quick ease-servo hover:text-bone"
             >
               See it run in the console

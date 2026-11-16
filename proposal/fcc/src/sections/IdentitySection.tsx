@@ -120,7 +120,7 @@ export default function IdentitySection() {
                 </div>
               ))}
               <div className="flex flex-col items-center gap-3">
-                <img src="/icons/fireye-192.png" alt="FIREYE app icon" width={64} height={64} className="border border-line" />
+                <img src={`${import.meta.env?.BASE_URL ?? '/'}icons/fireye-192.png`} alt="FIREYE app icon" width={64} height={64} className="border border-line" />
                 <span className="font-mono text-micro uppercase text-bone-mute">App icon</span>
               </div>
             </div>
