@@ -48,13 +48,30 @@ export function createQueuedIrisClient(options: QueuedIrisConfig = {}): QueuedIr
       const retained = jobs.counts().retained;
       const pending = jobs.submit({ job_id, adapter: 'iris', task_version: 'queued-iris.v1', model: config.model,
         snapshot: owned.snapshot, deadline_at_ms: deadline, max_call_micro: config.max_call_micro,
-        task_input: { candidate_ids: owned.candidate_ids } }, async (_signal, reservation, bound) => {
+        task_input: { candidate_ids: owned.candidate_ids } }, async (signal, reservation, bound) => {
+          if (!validSnapshot(owned.snapshot, now()) || !config.is_current!(owned.snapshot)) return fail('STALE');
+          const remaining = deadline - now();
+          if (remaining <= 0) return fail('DEADLINE');
           let started = false;
           let settle!: () => void;
           const settled = new Promise<void>(resolve => { settle = resolve; });
-          const result = await createIrisClient({ ...config, reservation, deadline_ms: Math.max(1, deadline - now()),
-            transport: request => { started = true; return config.transport!(request); },
-            on_transport_settled: settle }).analyze(bound);
+          let detach = () => {};
+          const result = await createIrisClient({ ...config, reservation, deadline_ms: remaining,
+            transport: request => {
+              const current = config.is_current!(bound.snapshot);
+              const dispatchedAt = now();
+              if (!current || !validSnapshot(bound.snapshot, dispatchedAt)) throw new Error('Queued Iris snapshot stale');
+              if (signal.aborted || request.signal.aborted || dispatchedAt >= deadline) throw new Error('Queued Iris deadline expired');
+              const abort = new AbortController();
+              const cancel = () => abort.abort();
+              signal.addEventListener('abort', cancel, { once: true });
+              request.signal.addEventListener('abort', cancel, { once: true });
+              detach = () => { signal.removeEventListener('abort', cancel); request.signal.removeEventListener('abort', cancel); };
+              if (signal.aborted || request.signal.aborted) cancel();
+              started = true;
+              return config.transport!(Object.freeze({ ...request, signal: abort.signal }));
+            },
+            on_transport_settled: () => { detach(); settle(); } }).analyze(bound);
           // SponsorJobs races deadline independently. Keep its physical slot
           // held until actual transport/body work releases the shared budget.
           if (started) await settled;

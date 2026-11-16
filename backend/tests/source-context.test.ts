@@ -37,6 +37,29 @@ function firecrawlBody(bytes: number): string {
   return body;
 }
 
+test('Firecrawl cancels unread response bodies on header rejection', async () => {
+  for (const [status, contentType, code] of [[302, 'application/json', 'REDIRECT'],
+    [500, 'application/json', 'TRANSPORT'], [200, 'text/html', 'INVALID_REPLY']] as const) {
+    let cancelled = 0;
+    const response = new Response(new ReadableStream<Uint8Array>({ cancel() { cancelled++; } }),
+      { status, headers: { 'Content-Type': contentType } });
+    const result = await createFirecrawlClient(config({ transport: async () => response })).retrieve(packet(), retrievalContext());
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, code);
+    assert.equal(cancelled, 1, `unread ${status}/${contentType} body must be cancelled`);
+  }
+});
+
+test('Firecrawl deadline cancels a stalled response body even when transport ignores abort', async () => {
+  let cancelled = 0;
+  const response = new Response(new ReadableStream<Uint8Array>({ cancel() { cancelled++; } }),
+    { headers: { 'Content-Type': 'application/json' } });
+  const result = await createFirecrawlClient(config({ deadline_ms: 10, transport: async () => response })).retrieve(packet(), retrievalContext());
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'DEADLINE');
+  assert.equal(cancelled, 1, 'deadline must cancel the pending body read');
+});
+
 test('SO01 10 source packets preserve provenance/hash/unknown clocks, 0 confirmed claims', () => {
   for (let n = 0; n < 10; n++) {
     const input = { ...packet(), evidence_id: `evidence${n}`, published_at_ms: n % 2 ? now - 100_000 : null,
