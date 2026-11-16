@@ -139,3 +139,35 @@ Rights/capture boundary unchanged. [NOA terms](https://www.meteo.gr/terms.cfm) f
 Combined publication/capture unknown20/20, clocks compared20/20; media/API/playback/ingestion eligibility0. Source age cannot be calculated from retrieval clock. Original Kalavrita April-weather/November-HTML, Schinias2018 and Windy-document clocks remain source context, not current media. Issue #23 stays partial/open; renewed independent additive preservation/source-rights review required before coordinator delivery.
 
 Measured RGC validation **2026-11-15T08:28:20.599Z**, Node **26.11.1**: prior15 ordered records/18 receipts/3 controls byte-equivalent JSON values, prior Markdown/TASKBOARD exact prefixes;5 added records follow existing entry schema,18/18 fresh receipt fields match reviewed SW23 input,13/13 fresh page mappings/8/8 controls resolve. Combined20 IDs/15 URLs/36 receipt IDs/11 control IDs unique;20/20 unknown source clocks and inactive eligibility. Local links6/6 resolved, missing refs0, rights upgrades0, five secret-pattern matches0, raw HTML additions0, tracked paths3/3 exact, unpiped diff-check exit0. Backend/browser/provider checks skipped, no runtime or network action in this reconciliation. Frozen for renewed independent rights review.
+
+## Acceptance review and PR #44 carry-forward, ACC23
+
+Offline review on **2026-11-16T11:23:17Z** against main `0fc2e85` and held [PR #44](https://github.com/nikolas-sapa/fire-command-center/pull/44) commit `cc18052`. **0 new network requests, 0 camera media/player/API requests.** Every section above, and every existing JSON record, receipt, control, count, clock and rights value, is unchanged. JSON key `acceptance_review` is appended only.
+
+### PR #44 versus main
+
+- **Receipts 18/18** present in main with identical URL, method, retrieval mode, started/checked UTC, HTTP status, response type, HTTP Date/Last-Modified, byte count, SHA-256 and facts text.
+- **Controls 8/8** present with identical evidence ID, check UTC, observation and `proves` text. Only labels differ: PR #44 `positive_metadata_only` versus main `positive`. Both `proves` fields limit the control to catalog metadata access. Main values left unchanged.
+- **Candidate URLs 13/13** present: five as new regional NOA records, eight mapped to existing records via `additive_reconciliation.fresh_page_checks`.
+- **Not carried by PR #52**, now appended under `acceptance_review.pr44_carry_forward`: per-publisher privacy notes, Windy "active" semantics, SW23 retrieval policy (no automatic redirects, hash scope, repeat-check rule) and SW23 operation counts including `person_identification` 0.
+
+Carried-forward notes are PR #44 builder/verifier analysis of 2026-11-15 HTML reads, cited by original evidence ID and check time. **Not re-verified on 2026-11-16.**
+
+| Publisher | Evidence / original check UTC | Carried-forward note (unverified since check) |
+|---|---|---|
+| NOA / meteo.gr | `GC-R-NOA` 06:19:27.341Z, `GC-O-NOA` 06:18:48.508Z | No person/plate analysis; operator notice is not independent legal/privacy certification. |
+| Municipality of Kos | `GC-R-KOS` 06:18:48.625Z, `GC-M-KOS-CATALOG` 06:34:13.118Z | Harbor imagery may contain people/vehicles; no footage or identifying data acquired. |
+| MeteoCam / Cybex SA | `GC-M-METEOCAM-MARMARI` 06:33:30.214Z, `GC-M-METEOCAM-SCHINIAS` 06:33:30.607Z | No-intentional-personal-data wording does not authorize identification or prove footage anonymized. |
+| Kalavrita Ski Resort | `GC-M-KALAVRITA` 06:33:30.910Z | Scenic/ski labels are not proof of privacy-safe footage; no player/frame read. |
+| Windy | `GC-R-WINDY` 06:18:47.650Z, `GC-R-WINDY-FULL` 06:19:27.684Z, `GC-M-WINDY-DOCS` 06:34:13.396Z | "Active" means updated within last 24h, not continuous live video; no availability/count/image-quality guarantee; identity discovery forbidden. |
+
+### Issue #23 acceptance against main
+
+| Test | Status on main | Remaining gap |
+|---|---|---|
+| GC01 | Numeric met: 20 records, 15 official URLs, 7 publishers; 20/20 with URL, publisher, geography notes, API-or-unknown, rights status, UTC check. | Legal camera operator/rightsholder unresolved 20/20; numeric uncertainty and CRS null 20/20, recorded as unknown. |
+| GC02 | Met as negative result: 0 playable/live claims, 0 attempts, 0 proofs. | No permitted playback/API response. Playback permission-gated, not attempted; not an outage claim. |
+| GC03 | Prohibited-operation counts 0. | Skyline terms-ordering caveat: `operator_terms_conformance` remains `not_certified`. |
+| GC04 | 10 official catalog HTML controls plus 1 API-documentation control; 20/20 clocks compared, capture time known 0. | No camera API or capture-time control; Windy API key never requested. |
+
+Recorded review states `field_checks_pass_terms_review_pending` and RGC04 "independent additive rights re-review pending" stay as written; this appendix does not mark them complete. **Issue closure not recommended without owner acceptance.** Owner decisions: accept 0 eligible/0 playback as the GC02 outcome or authorize a separately claimed bounded permitted playback/API check; accept or remediate the Skyline GC03 caveat; accept metadata-only GC04 controls; confirm RGC04 review status. This catalog still activates no source.

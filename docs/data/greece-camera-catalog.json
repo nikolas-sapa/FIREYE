@@ -3053,5 +3053,149 @@
     },
     "source_activation_authorized": false,
     "issue_status": "partial_research_no_playback_permission_or_activation"
+  },
+  "acceptance_review": {
+    "claim": "ACC23",
+    "operation": "offline_acceptance_review_and_pr44_carry_forward_no_new_requests",
+    "reviewed_at_utc": "2026-11-16T11:23:17Z",
+    "main_base_sha": "0fc2e85",
+    "pr44_head_sha": "cc18052",
+    "new_network_requests": 0,
+    "camera_media_requests": 0,
+    "scope": "Additive appendix. All existing records, receipts, controls, counts, clocks, rights and additive_reconciliation values above unchanged. Nothing here is fresh source evidence, a rights upgrade, playback proof or activation.",
+    "pr44_comparison": {
+      "receipts_present_in_main": "18/18 PR #44 evidence IDs present; url, method, retrieval mode, started/checked UTC, HTTP status, response type, HTTP Date/Last-Modified, byte count and SHA-256 identical; facts text identical.",
+      "controls_present_in_main": "8/8 PR #44 control IDs present with identical evidence_id, checked_at_utc, observed and proves. Wording differs only: PR #44 kind official_catalog_html/result positive_metadata_only vs main official_public_catalog/positive. The proves field in both limits each control to catalog metadata access; main values left unchanged.",
+      "entries_present_in_main": "13/13 PR #44 candidate URLs present. 5 regional catalogs added as GR-NOA-THRACE/EPIRUS/THESSALY/PELOPONNESE/IONIAN; 8 others mapped to existing entries via additive_reconciliation.fresh_page_checks.",
+      "not_carried_by_pr52": "PR #44 publisher rights_profiles privacy/semantic notes, SW23 retrieval-policy details and SW23 operation/acceptance statements. Carried below with original evidence IDs and check times."
+    },
+    "pr44_carry_forward": {
+      "provenance": "Copied from PR #44 commit cc18052 docs/data/greece-camera-catalog.json (claim SW23). Rights/privacy analysis of 2026-11-15 HTML reads by SW23 builder plus bounded_security_verifier; not re-verified on 2026-11-16.",
+      "verification_status": "unverified_since_original_check",
+      "publisher_rights_notes": [
+        {
+          "profile_id": "NOA",
+          "publisher": "National Observatory of Athens / meteo.gr",
+          "evidence_ids": [
+            "GC-R-NOA",
+            "GC-O-NOA"
+          ],
+          "evidence_checked_at_utc": [
+            "2026-11-15T06:19:27.341Z",
+            "2026-11-15T06:18:48.508Z"
+          ],
+          "reuse_status": "unknown_individual_owner_permission_required",
+          "privacy_gate": "No person/plate analysis; operator's notice is not independent legal/privacy certification."
+        },
+        {
+          "profile_id": "KOS",
+          "publisher": "Municipality of Kos",
+          "evidence_ids": [
+            "GC-R-KOS",
+            "GC-M-KOS-CATALOG"
+          ],
+          "evidence_checked_at_utc": [
+            "2026-11-15T06:18:48.625Z",
+            "2026-11-15T06:34:13.118Z"
+          ],
+          "reuse_status": "unknown_no_substantive_media_grant",
+          "privacy_gate": "Harbor imagery may contain people/vehicles; no footage or identifying data acquired."
+        },
+        {
+          "profile_id": "METEOCAM",
+          "publisher": "MeteoCam / Cybex SA",
+          "evidence_ids": [
+            "GC-M-METEOCAM-MARMARI",
+            "GC-M-METEOCAM-SCHINIAS"
+          ],
+          "evidence_checked_at_utc": [
+            "2026-11-15T06:33:30.214Z",
+            "2026-11-15T06:33:30.607Z"
+          ],
+          "reuse_status": "unknown_informational_notice_not_media_license",
+          "privacy_gate": "No-intentional-personal-data wording does not authorize downstream identification or prove footage anonymized."
+        },
+        {
+          "profile_id": "KALAVRITA",
+          "publisher": "Kalavrita Ski Resort",
+          "evidence_ids": [
+            "GC-M-KALAVRITA"
+          ],
+          "evidence_checked_at_utc": [
+            "2026-11-15T06:33:30.910Z"
+          ],
+          "reuse_status": "all_rights_reserved_no_media_clearance_found",
+          "privacy_gate": "No player/frame read; scenic/ski-camera labels are not proof of privacy-safe footage."
+        },
+        {
+          "profile_id": "WINDY",
+          "publisher": "Windyty, SE / Windy",
+          "evidence_ids": [
+            "GC-R-WINDY",
+            "GC-R-WINDY-FULL",
+            "GC-M-WINDY-DOCS"
+          ],
+          "evidence_checked_at_utc": [
+            "2026-11-15T06:18:47.650Z",
+            "2026-11-15T06:19:27.684Z",
+            "2026-11-15T06:34:13.396Z"
+          ],
+          "reuse_status": "conditional_api_contract_not_activated",
+          "notice": "IP remains Windy/suppliers. Active means updated within last 24h, not continuous live video. Terms state no availability/count/image-quality guarantee.",
+          "automated_sampling": "Significant continuous scanning/history download and intensive automated endpoint use forbidden; numerical safe request rate not found.",
+          "privacy_gate": "Attempts to discover identities of people in recordings expressly forbidden."
+        }
+      ],
+      "sw23_retrieval_policy": {
+        "redirect_policy": "No automatic redirects",
+        "auth": "No account/key/cookie supplied",
+        "checked_urls": "Exact official URLs only, NOA regional URLs from its published navigation; no guessed hosts/streams.",
+        "receipt_hash_scope": "SHA-256 of received HTML body, not a retained media hash. Raw bodies discarded.",
+        "repeat_checks": "Some early metadata reads repeated in final consistent pass; no continuous camera polling. Only final candidate receipts counted."
+      },
+      "sw23_operation_counts": {
+        "private_or_unauthorized_endpoints": 0,
+        "auth_bypasses": 0,
+        "host_or_stream_enumeration": 0,
+        "credentials_requested_or_used": 0,
+        "media_or_recording_downloads": 0,
+        "provider_spend_usd": 0,
+        "automatic_ingest": 0,
+        "source_activation": 0,
+        "person_identification": 0,
+        "provider_inference_or_paid_retrieval": 0
+      }
+    },
+    "issue23_acceptance": {
+      "GC01": {
+        "status": "numeric_met_fields_partly_unknown",
+        "evidence": "20 retained records, 15 distinct official URLs, 7 publisher networks; 20/20 carry official URL, publisher, geography notes, access/API-or-unknown, rights status and UTC check.",
+        "gaps": "Legal camera operator/rightsholder unresolved on 20/20 (camera_operator null 19/20; Skyline names a view host, legal sensor owner unverified); numeric uncertainty_m/CRS null on 20/20 (explicitly unknown, not invented)."
+      },
+      "GC02": {
+        "status": "met_as_negative_result",
+        "evidence": "0 playable/live claims, 0 playback attempts, 0 playback proofs.",
+        "gaps": "No permitted playback/API positive response exists. Playback was permission-gated and not attempted; this is not an availability failure."
+      },
+      "GC03": {
+        "status": "counts_zero_terms_conformance_not_certified",
+        "evidence": "Prohibited-operation counts 0 in original and SW23 passes.",
+        "gaps": "Skyline initial HTML read preceded evaluation of its automation prohibition; operator_terms_conformance remains not_certified pending owner decision."
+      },
+      "GC04": {
+        "status": "met_metadata_controls_only",
+        "evidence": "10 official catalog HTML positive controls + 1 API documentation control; 20/20 publication/capture/check clocks compared, capture_time_known 0.",
+        "gaps": "No camera API response or capture-time control. Windy API needs a registered key, never requested."
+      },
+      "review": "validation.state field_checks_pass_terms_review_pending and additive_reconciliation.validation.RGC04 independent additive rights re-review pending remain as recorded; this appendix does not mark them complete.",
+      "issue_closure": "not_recommended_without_owner_acceptance",
+      "owner_decisions_needed": [
+        "Accept 0 eligible / 0 playback as the GC02 outcome, or authorize a bounded permitted playback/API check (e.g. Windy key) under separate claim.",
+        "Accept or remediate the Skyline GC03 terms-ordering caveat.",
+        "Accept metadata-only catalog controls as GC04 evidence.",
+        "Confirm independent additive rights re-review (RGC04) status."
+      ]
+    },
+    "source_activation_authorized": false
   }
 }
