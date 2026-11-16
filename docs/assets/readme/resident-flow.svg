@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" role="img" aria-labelledby="title desc">
+<title id="title">FIREYE resident flow</title>
+<desc id="desc">Simulated Mati replay, resident location, alert stage and ETA, time-aware route comparison, Google Maps handoff and optional scripted phone updates. Simulation, not official advice; follow 112.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#006bff"/></marker>
+<style>
+text{font-family:Geist,Arial,sans-serif;fill:#202632}
+.step{font-size:16px;font-weight:700;letter-spacing:1px;fill:#006bff}
+.heading{font-size:25px;font-weight:700}
+.body{font-size:20px}
+.small{font-size:18px;fill:#515d6e}
+.card{fill:#f5f6f8;stroke:#c5ccd6;stroke-width:1.5}
+.link{fill:none;stroke:#006bff;stroke-width:3;marker-end:url(#arrow);stroke-linejoin:round}
+</style>
+</defs>
+<rect width="1440" height="1000" fill="white"/>
+<rect x="32" y="32" width="6" height="64" fill="#006bff"/>
+<text x="56" y="57" class="step">FIREYE / RESIDENT FLOW</text>
+<text x="56" y="96" font-size="32" font-weight="700">From a fire picture to an informed route choice</text>
+<text x="32" y="139" class="body">Simulation · not official advice · follow 112 / civil protection</text>
+<rect x="32" y="184" width="420" height="260" rx="12" class="card"/>
+<text x="56" y="218" class="step">01 / UNDERSTAND</text>
+<text x="56" y="259" class="heading">Where is the fire?</text>
+<text x="56" y="302" class="body"><tspan x="56">Simulated Mati 2018 replay</tspan><tspan x="56" dy="30">+ spread projection</tspan></text>
+<text x="56" y="387" class="small"><tspan x="56">Source, age and simulation labels</tspan><tspan x="56" dy="27">Drones / cameras / sensors: simulated</tspan></text>
+<rect x="510" y="184" width="388" height="260" rx="12" class="card"/>
+<text x="534" y="218" class="step">02 / LOCATE</text>
+<text x="534" y="259" class="heading">Set your location</text>
+<text x="534" y="302" class="body"><tspan x="534">Place or road name</tspan><tspan x="534" dy="32">Coordinates or browser GPS</tspan><tspan x="534" dy="32">Tap the map</tspan></text>
+<text x="534" y="414" class="small">Within the exercise area</text>
+<rect x="956" y="184" width="452" height="260" rx="12" class="card"/>
+<text x="980" y="218" class="step">03 / READ THE EXERCISE STAGE</text>
+<text x="980" y="258" font-size="20" font-weight="700"><tspan x="980">MONITOR / PREPARE TO LEAVE</tspan><tspan x="980" dy="30">LEAVE NOW</tspan><tspan x="980" dy="30">FIRE VERY CLOSE:</tspan><tspan x="980" dy="27" font-weight="400">follow 112 instructions now</tspan></text>
+<text x="980" y="387" class="body">Fire ETA + leave-by</text>
+<text x="980" y="417" class="small">Leave-by = ETA minus 45 minutes</text>
+<path d="M452 314H504" class="link"/>
+<path d="M898 314H950" class="link"/>
+<path d="M1182 444V478H356V512" class="link"/>
+<rect x="32" y="518" width="648" height="230" rx="12" class="card"/>
+<text x="56" y="554" class="step">04 / COMPARE PROTOTYPE ROUTES</text>
+<text x="56" y="595" class="heading">Fastest / Safest / Balanced</text>
+<text x="56" y="635" class="body"><tspan x="56">Balanced default: within 1.4× the fastest drive time</tspan><tspan x="56" dy="30">Time-aware fire ETA check: aim for +15 min margin</tspan><tspan x="56" dy="30">Warn when only a smaller margin is available</tspan></text>
+<text x="56" y="728" class="small">Simulation-derived comparisons, not validated safe routes</text>
+<rect x="758" y="518" width="650" height="230" rx="12" fill="#edf4ff" stroke="#006bff" stroke-width="2"/>
+<text x="782" y="554" class="step">05 / HAND OFF</text>
+<text x="782" y="595" class="heading">Open in Google Maps</text>
+<text x="782" y="635" class="body"><tspan x="782">Chosen route + steering waypoints</tspan><tspan x="782" dy="30">Optional Maps Embed preview with configured key</tspan></text>
+<text x="782" y="703" class="small"><tspan x="782">Maps may recalculate the route.</tspan><tspan x="782" dy="26">The simulated fire is not transferred to Google Maps.</tspan></text>
+<path d="M680 633H752" class="link"/>
+<path d="M1408 314H1424V856H1384" class="link"/>
+<rect x="32" y="808" width="1346" height="144" rx="12" class="card"/>
+<text x="56" y="844" class="step">OPTIONAL UPDATES / SIDE BRANCH FROM THE EXERCISE STAGE</text>
+<text x="56" y="884" class="heading">Chief / Scout scripted updates</text>
+<text x="56" y="922" class="small">Not live AI or official announcements</text>
+<path d="M510 883H574" class="link"/>
+<text x="604" y="884" class="heading">Phone notification / vibration / voice</text>
+<text x="604" y="922" class="small">Permission + browser support · simulated updates, not 112 messages</text>
+<text x="32" y="982" class="small">Exercise prototype · historical reconstruction and nominal travel speeds · not operational evacuation guidance</text>
+</svg>
