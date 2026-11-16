@@ -49,9 +49,11 @@ export function ensureOsm() {
 
 /* ------------------------------------------------------------------ projection revision log */
 
-interface RevEntry {
+export interface RevEntry {
   t: Ms;
   rev: number;
+  issuedAt: Ms;
+  rosMpm: number;
   bands: { horizonMin: number; polygon: Geo[] }[];
   etaToPlaces: Record<string, Ms>;
 }
@@ -74,7 +76,7 @@ function ingest() {
   while (revLog.length && revLog[revLog.length - 1]!.t > t) revLog.pop();
   if (p.rev === lastRev) return;
   lastRev = p.rev;
-  revLog.push({ t, rev: p.rev, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces } });
+  revLog.push({ t, rev: p.rev, issuedAt: p.issuedAt, rosMpm: p.rosMpm, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces } });
   if (revLog.length > 120) revLog.shift();
 }
 
@@ -138,6 +140,36 @@ export function transitions(pack: ScenarioPack | null, t: Ms): { placeId: string
 }
 
 export interface AlertFeedRow { t: Ms; stage: AlertStage; place: string; text: string }
+export const HOME_PLACE_RADIUS_M = 3000;
+export const HOME_FIRE_RADIUS_M = 10000;
+
+/** Revision-only resident updates; the optional log keeps replay tests independent of the store. */
+export function fireUpdates(pack: ScenarioPack | null, t: Ms, home: Geo | null, entries: readonly RevEntry[] = revLog): AlertFeedRow[] {
+  if (!home) return [];
+  const rows: AlertFeedRow[] = [];
+  let previous: RevEntry | undefined;
+  for (const e of entries) {
+    if (e.t > t) break;
+    const polygon = e.bands.find(b => b.horizonMin === 180)?.polygon ?? [];
+    const distance = pointInPolygon(home, polygon) ? 0 : Math.min(...polygon.map(p => distanceM(home, p)));
+    const add = (stage: AlertStage, place: string, text: string) => rows.push({ t: e.t, stage, place, text: `${text} · SIMULATED` });
+    if (distance <= HOME_FIRE_RADIUS_M) {
+      if (!previous) add('monitor', '', `NEW FIRE · A fire has been reported. Its projected area is ~${(distance / 1000).toFixed(1)} km from your home. Stay alert.`);
+      else if (e.rosMpm >= Math.max(previous.rosMpm * 1.2, previous.rosMpm + 3)) add('prepare', '', 'FIRE SPREADING FASTER · The projected fire advance has increased. Be ready for updated instructions.');
+    }
+    if (previous) for (const [id, arrival] of Object.entries(e.etaToPlaces)) {
+      const place = placesOf(pack).find(p => p.id === id);
+      if (!place || distanceM(home, place.pos) > HOME_PLACE_RADIUS_M || arrival <= e.issuedAt) continue;
+      const old = previous.etaToPlaces[id];
+      const name = place.name.toUpperCase();
+      if (old !== undefined && old - arrival >= 5 * 60000) add('prepare', name, `FIRE ARRIVING EARLIER · ${name} · now expected ~${Math.round((old - arrival) / 60000)} min earlier. Stay alert.`);
+      if (old === undefined && arrival - e.issuedAt <= 60 * 60000) add('leave', name, `FIRE MAY REACH ${name} WITHIN 1 HOUR · Follow official civil protection instructions.`);
+    }
+    previous = e;
+  }
+  return rows;
+}
+
 export function alertFeed(pack: ScenarioPack | null, t: Ms): AlertFeedRow[] {
   const residents = new Map(placeAlerts(pack, t).map((p) => [p.id, p.residents]));
   return transitions(pack, t).map((x) => {
