@@ -171,15 +171,20 @@
     min-height: 44px;
     padding: 6px 12px;
   }
-  .ops-root[data-view='civilian'] .chief-launcher > :not(:last-child),
+  .ops-root[data-view='civilian'] .chief-launcher > :not(:last-child) { display: none !important; }
   .ops-root[data-view='civilian'] .chief-launcher > span > :last-child { display: none; }
+  .ops-root[data-view='civilian'] [aria-label='Official alerts'] > div:first-child { flex-wrap: wrap; }
+  .ops-root[data-view='civilian'] [aria-label='Official alerts'] > div:first-child > div { flex-wrap: wrap; }
   .ops-root[data-view='civilian'] .chief-chat {
     position: fixed;
     top: calc(60px + env(safe-area-inset-top));
     bottom: auto;
     left: 12px;
-    max-height: 30dvh;
+    max-height: 32dvh;
   }
+  .ops-root[data-view='civilian'] .chief-chat > header { min-height: 44px; }
+  .ops-root[data-view='civilian'] .fireye-boot-hud:has(.chief-chat) { z-index: 4; }
+  .ops-root[data-view='civilian'] .chief-chat > .overflow-x-auto { min-height: 56px; }
   .ops-root[data-view='civilian'] > .fireye-enter { height: 48px; overflow: hidden; }
   .ops-root[data-view='civilian'] > .fireye-enter > :first-child { width: 144px; padding: 0 8px; }
   .ops-root[data-view='civilian'] > .fireye-enter [aria-label='Replay speed'],

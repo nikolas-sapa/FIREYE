@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { skipCivilianBoot } from '../src/console/ops/mobile-boot';
+import { mapFraming } from '../src/console/fireye/shell/map-framing';
+import { advanceGlobe, BOOT_MOTION as M, BOOT_RANGE_FACTOR, BOOT_STEPS, bootEnabled, bootReady, globePose, handoffTransform, sourceFrames, sourceLayout, type BootProbe } from '../src/console/fireye/boot/sequence';
 
 assert.ok(skipCivilianBoot('', 390, 'civilian'));
 assert.ok(skipCivilianBoot('', 767, 'civilian'));
@@ -9,8 +11,6 @@ assert.ok(!skipCivilianBoot('?boot=1', 375, 'civilian'));
 assert.ok(skipCivilianBoot('?boot=0', 1440, 'responder'));
 assert.ok(!skipCivilianBoot('', 375, 'responder'));
 assert.ok(skipCivilianBoot('?boot=invalid', 375, 'civilian'));
-import { mapFraming } from '../src/console/fireye/shell/map-framing';
-import { advanceGlobe, BOOT_MOTION as M, BOOT_RANGE_FACTOR, BOOT_STEPS, bootEnabled, bootReady, globePose, handoffTransform, sourceFrames, sourceLayout, type BootProbe } from '../src/console/fireye/boot/sequence';
 
 const pack = {
   elevation: new Float32Array([1]), fuel: new Uint8Array([1]), arrival: new Float64Array([0]),

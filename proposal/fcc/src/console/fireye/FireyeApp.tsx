@@ -279,10 +279,10 @@ function Shell() {
           </aside>
           {layout.leftOpen && <Resizer axis="x" label="Fleet width" value={layout.left} min={LAYOUT_LIMITS.left[0]} max={LAYOUT_LIMITS.left[1]} onChange={v => set({ left: v })} onToggle={() => set({ leftOpen: false })} />}
         <div ref={mapWindow} data-fireye-map-window aria-hidden className="relative min-w-0 flex-1" />
-        {layout.rightOpen ? (
+        {layout.rightOpen || mobilePanel === 'right' ? (
           <>
             <Resizer axis="x" invert label="Log width" value={layout.right} min={LAYOUT_LIMITS.right[0]} max={LAYOUT_LIMITS.right[1]} onChange={(v) => set({ right: v })} onToggle={() => set({ rightOpen: false })} />
-            <aside data-boot-panel="right" className="fireye-boot-panel fireye-dim pointer-events-auto relative z-raised shrink-0 border-l border-line" data-dim={dim} style={{ width: layout.right }}>
+            <aside data-boot-panel="right" className={cn('fireye-boot-panel fireye-dim pointer-events-auto relative z-raised shrink-0 border-l border-line', !layout.rightOpen && 'md:hidden')} data-dim={dim} style={{ width: layout.right }}>
               <LogColumn onFocus={(g) => focus(g)} onSeek={seek} />
             </aside>
           </>
