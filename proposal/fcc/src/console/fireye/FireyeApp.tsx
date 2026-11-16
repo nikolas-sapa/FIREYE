@@ -150,6 +150,9 @@ function Shell() {
   const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null);
   const layout = useFireye((s) => s.layout);
   const phase = useFireye((s) => s.dive.phase);
+  useEffect(() => {
+    if (phase !== 'idle') setMobilePanel(null);
+  }, [phase]);
   const [engine, setEngine] = useState<StageEngine | null>(null);
   const [reveal, setReveal] = useState<'loading' | 'globe' | 'panels'>('loading');
   const globeFlight = useRef<ReturnType<typeof prepareBootGlobe> | null>(null);
