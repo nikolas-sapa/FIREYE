@@ -177,7 +177,7 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
     model: config.sponsors?.gemini?.model, transport: config.sponsors?.gemini?.transport,
     transport_mode: config.sponsors?.gemini?.transport_mode }, sponsorJobs);
   const jobs = new Map<string, { assessment: ExerciseAssessment; promise: Promise<Result<ExerciseAssessment>>; versions: string; snapshot: MissionPlanningSnapshot }>();
-  const analyses = new Map<string, { promise: Promise<SponsorResult<EvidenceAnalysis>>; snapshot: Snapshot }>();
+  const analyses = new Map<string, { promise: Promise<SponsorResult<EvidenceAnalysis>>; snapshot: Snapshot; deadline_at_ms: number }>();
   let inFlight = 0;
 
   function rememberSponsor(snapshot: Snapshot, state: IncidentState): boolean {
@@ -206,7 +206,8 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
         if (!frame || frame.kind !== 'frame.received') return fail('INVALID_INPUT');
         const bytes = readEvidence(input.evidence_id, frame.payload.media_ref);
         if (!plainJson(bytes) || !closed(bytes, ['png_base64'])) return fail('INVALID_INPUT');
-        job = { promise: gemini.analyze({ snapshot: sponsor, evidence_id: input.evidence_id, png_base64: bytes.png_base64 }), snapshot: sponsor };
+        const deadline_at_ms = Date.parse(authority.now().received_at) + (sponsorConfig.deadline_ms ?? 0);
+        job = { promise: gemini.analyze({ snapshot: sponsor, evidence_id: input.evidence_id, png_base64: bytes.png_base64 }), snapshot: sponsor, deadline_at_ms };
         analyses.set(identity, job);
       }
       const sponsor = job.snapshot;
@@ -215,6 +216,10 @@ export function createExerciseCoordinator(authority: BridgeAuthority, config: Ex
       if (versions(authority.read()) !== expected || !sponsorConfig.is_current!(sponsor)
         || !validSnapshot(sponsor, Date.parse(authority.now().received_at))
         || !createPlanningSnapshot(authority, input.objective, layout).ok) return fail('STALE');
+      if (result.ok && Date.parse(authority.now().received_at) >= job.deadline_at_ms) {
+        if (analyses.get(identity) === job) analyses.delete(identity);
+        return fail('DEADLINE');
+      }
       return result;
     } catch { return fail('STALE'); }
   }

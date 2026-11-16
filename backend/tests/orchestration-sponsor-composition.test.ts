@@ -77,7 +77,7 @@ function setup(options: { enabled?: boolean; transport?: Transport; frames?: num
   const coordinator = createExerciseCoordinator(projectedAuthority, config);
   return { authority, coordinator, budget, config, calls: () => calls, reads: () => reads,
     changeView: (next: typeof view) => { view = next; },
-    advanceWall: () => { milliseconds++; },
+    advanceWall: (elapsed = 1) => { milliseconds += elapsed; },
     advance: () => { tick++; milliseconds++; return tick; } };
 }
 
@@ -234,6 +234,24 @@ test('OR03-S07 queue-full analysis can be retried after the shared queue drains'
   const result = await retry;
   assert.ok(result.ok, result.ok ? '' : result.code);
   assert.equal(f.calls(), 11); assert.deepEqual(f.budget.usage(), { calls: 11, reserved_micro: 1100 });
+  noEffects(f.authority);
+});
+
+test('OR03-S08 cached analysis expires at its original job deadline before snapshot expiry', async () => {
+  const f = setup({ enabled: true });
+  const initial = await f.coordinator.analyzeEvidence(analysis()); assert.ok(initial.ok);
+  f.advanceWall(999);
+  const before = await f.coordinator.analyzeEvidence(analysis()); assert.ok(before.ok);
+  assert.equal(before.receipt?.receipt_id, initial.receipt?.receipt_id);
+  f.advanceWall();
+  const expired = await f.coordinator.analyzeEvidence(analysis());
+  assert.equal(expired.ok, false);
+  if (!expired.ok) assert.equal(expired.code, 'DEADLINE');
+  assert.equal(f.calls(), 1); assert.equal(f.reads(), 1);
+  assert.deepEqual(f.budget.usage(), { calls: 1, reserved_micro: 100 });
+  const renewed = await f.coordinator.analyzeEvidence(analysis()); assert.ok(renewed.ok);
+  assert.notEqual(renewed.receipt?.receipt_id, initial.receipt?.receipt_id);
+  assert.equal(f.calls(), 2); assert.equal(f.reads(), 2);
   noEffects(f.authority);
 });
 
