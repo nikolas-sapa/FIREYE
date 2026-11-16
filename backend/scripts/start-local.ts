@@ -7,7 +7,7 @@ import type { LocalDemoConfig } from '../config/local-demo.ts';
 import { startLocalBridge } from '../integration/local-http.ts';
 import type { FixtureSession } from '../integration/local-http.ts';
 import { createBridgeAuthority } from '../integration/session.ts';
-import type { BridgeAuthority, TrustedClock } from '../integration/session.ts';
+import type { BridgeAuthority, BridgeAuthorityOptions, TrustedClock } from '../integration/session.ts';
 import type { ActorContext, IncidentSeed } from '../protocol/types.ts';
 
 export type LocalRole = 'reader' | 'chief' | 'analyst' | 'producer';
@@ -34,17 +34,18 @@ export interface LocalBackend {
 
 /** Importing this module never opens a listener, writes files or starts work. */
 export async function startLocalBackend(config: LocalDemoConfig = readLocalDemoConfig(),
-  clock?: () => TrustedClock, seed: IncidentSeed = createLocalDemoSeed()): Promise<LocalBackend> {
+  clock?: () => TrustedClock, seed: IncidentSeed = createLocalDemoSeed(config.task_ttl_s), options: BridgeAuthorityOptions = {}): Promise<LocalBackend> {
   // Revalidate programmatic configuration before any listener or capability creation.
   const valid = readLocalDemoConfig({ FCC_LOCAL_MODE: config.mode, FCC_LOCAL_PROVIDERS: config.providers,
     FCC_LOCAL_PORT: String(config.port), FCC_LOCAL_ORIGIN: config.allowed_origin,
-    FCC_LOCAL_CAPABILITY_TTL_MS: String(config.capability_ttl_ms) });
+    FCC_LOCAL_CAPABILITY_TTL_MS: String(config.capability_ttl_ms),
+    ...(config.task_ttl_s === undefined ? {} : { FCC_LOCAL_TASK_TTL_S: String(config.task_ttl_s) }) });
   const epoch = Date.now(); const started = performance.now();
   const trustedClock = clock ?? (() => {
     const elapsed = Math.floor(performance.now() - started);
     return { received_at: new Date(epoch + elapsed).toISOString(), sim_tick: Math.floor(elapsed / 1000) };
   });
-  const created = createBridgeAuthority(seed, trustedClock);
+  const created = createBridgeAuthority(seed, trustedClock, options);
   if (!created.ok) throw new Error('Local exercise authority could not initialize');
   const authority = created.value;
   const expires_at = new Date(Date.parse(authority.now().received_at) + valid.capability_ttl_ms).toISOString();
@@ -85,15 +86,17 @@ async function runCli(): Promise<void> {
   };
   const signal = () => { void stop().catch(() => { process.exitCode = 1; }); };
   try {
-    const demo = process.argv.length === 3 && process.argv[2] === '--demo';
-    if (process.argv.length !== 2 && !demo) throw new TypeError('Unexpected launcher arguments');
+    const args = process.argv.slice(2);
+    if (new Set(args).size !== args.length || args.some(arg => !['--demo', '--await-producer'].includes(arg))) throw new TypeError('Unexpected launcher arguments');
+    const demo = args.includes('--demo');
+    const await_producer = args.includes('--await-producer');
     if (demo) {
       const config = readLocalDemoConfig();
       const { startDemoService } = await import('../demo/service.ts');
       const service = await startDemoService({ port: config.port, allowed_origin: config.allowed_origin,
-        capability_ttl_ms: config.capability_ttl_ms });
+        capability_ttl_ms: config.capability_ttl_ms, await_producer });
       backend = service; demoObjective = service.scenario.objective;
-    } else backend = await startLocalBackend();
+    } else backend = await startLocalBackend(undefined, undefined, undefined, { await_producer });
     const scratch = join(dirname(fileURLToPath(import.meta.url)), '..', '.scratch');
     await mkdir(scratch, { recursive: true, mode: 0o700 });
     privateDirectory = await mkdtemp(join(scratch, 'local-demo-'));

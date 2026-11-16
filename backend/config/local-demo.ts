@@ -7,6 +7,7 @@ export interface LocalDemoConfig {
   readonly port: number;
   readonly allowed_origin: string;
   readonly capability_ttl_ms: number;
+  readonly task_ttl_s?: number;
 }
 
 /** Only these local variables are read. Provider keys never enter this configuration. */
@@ -34,11 +35,13 @@ export function readLocalDemoConfig(environment: Readonly<Record<string, string 
     || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) throw new TypeError('Expected an exact loopback HTTP origin');
   return Object.freeze({ mode: 'EXERCISE', providers: 'disabled',
     port: integer('FCC_LOCAL_PORT', 8787, 0, 65535), allowed_origin: origin,
+    ...(environment.FCC_LOCAL_TASK_TTL_S === undefined ? {} : { task_ttl_s: integer('FCC_LOCAL_TASK_TTL_S', 120, 1, 7200) }),
     capability_ttl_ms: integer('FCC_LOCAL_CAPABILITY_TTL_MS', 600_000, 1, 1_800_000) });
 }
 
 /** New disposable run, declared metadata only. No observations, movement or live model answers. */
-export function createLocalDemoSeed(): IncidentSeed {
+export function createLocalDemoSeed(taskTtlS = 120): IncidentSeed {
+  if (!Number.isSafeInteger(taskTtlS) || taskTtlS < 1 || taskTtlS > 7200) throw new TypeError('Invalid local task TTL');
   const run = randomUUID();
   const producer = `exercise-producer:${run}`;
   return {
@@ -52,6 +55,6 @@ export function createLocalDemoSeed(): IncidentSeed {
       capture_epoch: 1, status: 'available' })),
     candidates: [1, 2, 3].map(n => ({ candidate_id: `c${n}`, action_id: 'inspect', asset_id: `d${n}`,
       mission_id: `m${n}`, mission_version: 1, route_id: `declared-route${n}`, plan_revision: 0,
-      feasibility_snapshot_id: `exercise-fixture${n}`, feasible: true, expires_at_sim_tick: 120 })),
+      feasibility_snapshot_id: `exercise-fixture${n}`, feasible: true, expires_at_sim_tick: taskTtlS })),
   };
 }

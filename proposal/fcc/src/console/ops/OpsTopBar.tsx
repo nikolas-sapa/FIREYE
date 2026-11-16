@@ -40,7 +40,7 @@ export function OpsTopBar({ presenting, onPresent }: { presenting: boolean; onPr
   const thinking = useConsoleSelector((s) => s.messages.some((m) => m.thinking));
   const { open } = useDecisions();
   return (
-    <header className="relative z-hud flex h-10 shrink-0 items-center gap-4 border-b border-line bg-ink-900 px-3">
+    <header aria-label="Operations controls" className="relative z-hud flex h-10 shrink-0 items-center gap-4 border-b border-line bg-ink-900 px-3 max-sm:overflow-x-auto max-sm:overflow-y-hidden max-sm:[scrollbar-width:none] max-sm:[&>*]:shrink-0">
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-semibold uppercase tracking-[0.22em] text-bone">OPS</span>
         <span className="font-mono text-micro uppercase tracking-[0.16em] text-bone-mute">Mati 2018</span>

@@ -4,9 +4,9 @@ import { createRequire } from 'node:module';
 import './check-pages-assets.mjs';
 const nodeRequire = createRequire(import.meta.url);
 try {
-  for (const test of ['provider-policy', 'thermal', 'crew-store', 'console', 'ops', 'saferoute', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye', 'recon', 'boot']) {
+  for (const test of ['provider-policy', 'ops-handoff.mjs', 'ops-bridge', 'ops-bridge-http.mjs', 'thermal', 'crew-store', 'console', 'ops', 'saferoute', 'tamagotchi', 'appearance', 'appearance-sync', 'cartography', 'motion', 'fireye', 'recon', 'boot']) {
     const result = await build({
-      entryPoints: [new URL(`../tests/${test}.ts`, import.meta.url).pathname],
+      entryPoints: [new URL(`../tests/${test.endsWith('.mjs') ? test : `${test}.ts`}`, import.meta.url).pathname],
       bundle: true, platform: 'node', format: test === 'tamagotchi' ? 'cjs' : 'esm', write: false,
     });
     if (test === 'tamagotchi') {

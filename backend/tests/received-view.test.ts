@@ -57,11 +57,11 @@ test('B06 2 cutoffs exclude future proposals and stale proposals yield 0 review 
   const later = { ...context(), received_at: '2026-11-14T00:00:02Z', recorded_at: '2026-11-14T00:00:02Z' };
   state = unwrap(commitEvent(state, telemetry(), later));
   const before = unwrap(createReceivedView(state, '2026-11-14T00:00:00Z'));
-  assert.equal(before.proposals.length, 0); assert.equal(before.candidates.length, 0);
+  assert.equal(before.proposals.length, 0); assert.equal(before.candidates.length, 4);
   const atProposal = unwrap(createReceivedView(state, context().received_at));
-  assert.equal(atProposal.proposals.length, 1); assert.equal(atProposal.candidates.length, 1);
+  assert.equal(atProposal.proposals.length, 1); assert.equal(atProposal.candidates.length, 4);
   const current = unwrap(createReceivedView(state, later.received_at));
-  assert.equal(current.proposals.length, 0); assert.equal(current.candidates.length, 0);
+  assert.equal(current.proposals.length, 0); assert.equal(current.candidates.length, 4);
   assert.equal(current.incident_revision, 2);
 });
 
@@ -77,9 +77,21 @@ test('B04 current tick121 exposes 0 expired options, historical tick1 retains 1'
   const live = unwrap(createReceivedView(state, context().received_at, 121));
   assert.equal(live.proposals.length, 0); assert.equal(live.candidates.length, 0);
   const historical = unwrap(createReceivedView(state, context().received_at));
-  assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 1);
+  assert.equal(historical.proposals.length, 1); assert.equal(historical.candidates.length, 4);
   for (const tick of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
     assert.equal(createReceivedView(state, context().received_at, tick).ok, false);
   }
   assert.equal(createReceivedView(state, context().received_at, 0).ok, false);
+});
+
+test('Ops discovery exposes only eligible seed candidates without requiring a prior proposal', () => {
+  const original = seed();
+  const declared = { ...original, candidates: original.candidates.map((c, n) => n === 1 || n === 2 ? { ...c, feasible: false }
+    : n === 3 ? { ...c, expires_at_sim_tick: 1 } : c) };
+  const state = createIncidentState(declared);
+  const view = unwrap(createReceivedView(state, context().received_at, 1));
+  assert.equal(view.proposals.length, 0);
+  assert.deepEqual(view.candidates.map(c => c.candidate_id), ['c1']);
+  assert.equal(unwrap(createReceivedView(state, context().received_at, 120)).candidates.length, 0);
+  assert.equal(unwrap(createReceivedView({ ...state, seed: { ...declared, authority_active: false }, authority_active: false }, context().received_at, 1)).candidates.length, 0);
 });
