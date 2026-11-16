@@ -13,16 +13,25 @@ let thisOutDir = 'dist';
 
 function imageLab(): Plugin {
   let key = '';
+  let base = '/';
+  const middleware = createImageLabMiddleware(() => key);
   return {
     name: 'fcc-local-image-lab',
-    configResolved(config) { key = process.env.FAL_KEY || loadEnv(config.mode, config.envDir, '').FAL_KEY || ''; },
-    configureServer(server) { server.middlewares.use(createImageLabMiddleware(() => key)); },
-    configurePreviewServer(server) { server.middlewares.use(createImageLabMiddleware(() => key)); },
+    configResolved(config) { base = config.base; key = process.env.FAL_KEY || loadEnv(config.mode, config.envDir, '').FAL_KEY || ''; },
+    configureServer(server) {
+      if (base !== '/') server.middlewares.use(base, middleware);
+      server.middlewares.use(middleware);
+    },
+    configurePreviewServer(server) {
+      if (base !== '/') server.middlewares.use(base, middleware);
+      server.middlewares.use(middleware);
+    },
   };
 }
 
 function monitoring(): Plugin {
   let env: Record<string, string> = {};
+  let base = '/';
   const middleware = createMonitoringMiddleware(() => ({
     firmsKey: process.env.FIRMS_MAP_KEY || env.FIRMS_MAP_KEY,
     windyKey: process.env.WINDY_API_KEY || env.WINDY_API_KEY,
@@ -30,9 +39,15 @@ function monitoring(): Plugin {
   }));
   return {
     name: 'fcc-local-monitoring',
-    configResolved(config) { env = loadEnv(config.mode, config.envDir, ''); },
-    configureServer(server) { server.middlewares.use(middleware); },
-    configurePreviewServer(server) { server.middlewares.use(middleware); },
+    configResolved(config) { base = config.base; env = loadEnv(config.mode, config.envDir, ''); },
+    configureServer(server) {
+      if (base !== '/') server.middlewares.use(base, middleware);
+      server.middlewares.use(middleware);
+    },
+    configurePreviewServer(server) {
+      if (base !== '/') server.middlewares.use(base, middleware);
+      server.middlewares.use(middleware);
+    },
   };
 }
 
