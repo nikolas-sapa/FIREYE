@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/build-pwa.mjs",
+    "dev:full": "node scripts/dev-full.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/build-pwa.mjs && node scripts/check-no-dev-handoff.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/check-console.mjs",
     "test:spread-precision": "node scripts/check-spread-precision.mjs",

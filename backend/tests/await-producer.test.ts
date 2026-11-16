@@ -1,0 +1,32 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createBridgeAuthority } from '../integration/session.ts';
+import { seed, context } from './fixtures.ts';
+
+test('producer loss defaults to armed; opt-in waits only until the first authorized heartbeat', () => {
+  let elapsed = 0;
+  const clock = () => ({ received_at: new Date(Date.parse(context().received_at) + elapsed).toISOString(), sim_tick: Math.floor(elapsed / 1000) });
+  const normal = createBridgeAuthority(seed(), clock);
+  const waiting = createBridgeAuthority(seed(), clock, { await_producer: true });
+  assert.equal(normal.ok, true); assert.equal(waiting.ok, true);
+  if (!normal.ok || !waiting.ok) throw new Error('authority');
+  elapsed = 6000;
+  normal.value.expireProducer();
+  assert.equal(normal.value.read().authority_active, false);
+  elapsed = 60000;
+  waiting.value.expireProducer();
+  assert.equal(waiting.value.read().authority_active, true);
+  assert.equal(waiting.value.heartbeat(context('human').actor).ok, false);
+  elapsed = 120000;
+  waiting.value.expireProducer();
+  assert.equal(waiting.value.read().authority_active, true, 'unauthorized heartbeat does not arm');
+  assert.equal(waiting.value.heartbeat(context().actor).ok, true);
+  elapsed += 5000;
+  waiting.value.expireProducer();
+  assert.equal(waiting.value.read().authority_active, true);
+  assert.equal(waiting.value.heartbeat(context().actor).ok, true, 'successful heartbeat renews the armed lease');
+  elapsed += 5001;
+  waiting.value.expireProducer();
+  assert.equal(waiting.value.read().authority_active, false);
+  assert.equal(waiting.value.heartbeat(context().actor).ok, false, 'freeze never revives');
+});
