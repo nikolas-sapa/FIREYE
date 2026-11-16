@@ -147,8 +147,12 @@ function Shell() {
   const feeds = useStageWorld((s) => s.feeds.length);
   const ch = useChronicle();
   const booted = useFireye((s) => s.booted);
+  const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null);
   const layout = useFireye((s) => s.layout);
   const phase = useFireye((s) => s.dive.phase);
+  useEffect(() => {
+    if (phase !== 'idle') setMobilePanel(null);
+  }, [phase]);
   const [engine, setEngine] = useState<StageEngine | null>(null);
   const [reveal, setReveal] = useState<'loading' | 'globe' | 'panels'>('loading');
   const globeFlight = useRef<ReturnType<typeof prepareBootGlobe> | null>(null);
@@ -262,9 +266,13 @@ function Shell() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-ink-950 text-bone">
-      <div ref={dashboard} data-fireye-dashboard data-boot-state={booted ? 'ready' : reveal}
+      <div ref={dashboard} data-fireye-dashboard data-mobile-panel={mobilePanel ?? 'none'} data-boot-state={booted ? 'ready' : reveal}
         aria-hidden={!booted} className="relative flex h-full w-full flex-col">
       <TopBar onOrch={() => fireyeUi.set({ chat: true, tab: 'ops' })} />
+      <div className="mobile-recon-toggles absolute left-3 top-16 z-hud hidden gap-2">
+        {(['left', 'right'] as const).map(side => <button key={side} type="button" aria-expanded={mobilePanel === side}
+          onClick={() => setMobilePanel(mobilePanel === side ? null : side)} className="min-h-11 min-w-11 border border-line bg-ink-950 px-3 text-xs text-bone">{side === 'left' ? 'Fleet' : 'Log'} {mobilePanel === side ? '−' : '+'}</button>)}
+      </div>
       <main ref={mapArea} data-fireye-map aria-label="Incident map" className="absolute inset-x-0 bottom-0 top-12">
         <StageShell insets={insets} onFocus={focus} onEngine={setEngine} />
       </main>
@@ -274,10 +282,10 @@ function Shell() {
           </aside>
           {layout.leftOpen && <Resizer axis="x" label="Fleet width" value={layout.left} min={LAYOUT_LIMITS.left[0]} max={LAYOUT_LIMITS.left[1]} onChange={v => set({ left: v })} onToggle={() => set({ leftOpen: false })} />}
         <div ref={mapWindow} data-fireye-map-window aria-hidden className="relative min-w-0 flex-1" />
-        {layout.rightOpen ? (
+        {layout.rightOpen || mobilePanel === 'right' ? (
           <>
             <Resizer axis="x" invert label="Log width" value={layout.right} min={LAYOUT_LIMITS.right[0]} max={LAYOUT_LIMITS.right[1]} onChange={(v) => set({ right: v })} onToggle={() => set({ rightOpen: false })} />
-            <aside data-boot-panel="right" className="fireye-boot-panel fireye-dim pointer-events-auto relative z-raised shrink-0 border-l border-line" data-dim={dim} style={{ width: layout.right }}>
+            <aside data-boot-panel="right" className={cn('fireye-boot-panel fireye-dim pointer-events-auto relative z-raised shrink-0 border-l border-line', !layout.rightOpen && 'md:hidden')} data-dim={dim} style={{ width: layout.right }}>
               <LogColumn onFocus={(g) => focus(g)} onSeek={seek} />
             </aside>
           </>

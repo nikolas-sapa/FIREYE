@@ -124,7 +124,7 @@ export function OrchestratorChat() {
   if (!open) {
     return (
       <button type="button" aria-label="Chat with Chief" aria-expanded={false} onClick={() => fireyeUi.set({ chat: true })}
-        className="pointer-events-auto flex items-center gap-3 border border-line-strong bg-ink-950/90 px-3 py-2 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim hover:text-bone max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
+        className="chief-launcher pointer-events-auto flex items-center gap-3 border border-line-strong bg-ink-950/90 px-3 py-2 font-mono text-micro uppercase tracking-[0.14em] text-bone-dim hover:text-bone max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
         <TamagotchiSprite size={64} state={mascotState} paused={paused} />
         <TamagotchiSprite character="scout" size={32} state={mascotState} paused={paused} />
         <span className="flex flex-col items-start gap-1">
@@ -135,7 +135,7 @@ export function OrchestratorChat() {
     );
   }
   return (
-    <section aria-label="Orchestrator chat" className="fireye-pop pointer-events-auto flex h-[340px] max-h-[28vh] w-[360px] max-w-[calc(100vw-24px)] flex-col border border-line-strong bg-ink-950/95 shadow-panel max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
+    <section aria-label="Orchestrator chat" className="chief-chat fireye-pop pointer-events-auto flex h-[340px] max-h-[28vh] w-[360px] max-w-[calc(100vw-24px)] flex-col border border-line-strong bg-ink-950/95 shadow-panel max-[639px]:fixed max-[639px]:bottom-12 max-[639px]:left-3">
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3">
         <TamagotchiSprite size={32} state={mascotState} paused={paused} />
         <TamagotchiSprite character="scout" size={16} state={mascotState} paused={paused} />

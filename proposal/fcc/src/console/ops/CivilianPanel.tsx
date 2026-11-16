@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { cn } from '@ds';
 import type { Geo } from '../contracts';
 import { useConsoleSelector } from '../store';
@@ -11,6 +11,7 @@ import { Character } from './characters/Character';
 import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
 import { ResidentDirections, ResidentDisclaimer, ResidentLocationControls, type ResidentLocationProps } from './ResidentRoute';
+import { useFireye } from '../fireye/shell/ui';
 
 export const HOME_OPTIONS = ['neos-voutzas', 'mati', 'kokkino-limanaki', 'argyra-akti', 'nea-makri'] as const;
 const STAGE_COPY: Record<AlertStage, { title: string; body: string; cls: string }> = {
@@ -49,6 +50,11 @@ function BigCounter({ k, v }: { k: string; v: number }) {
 }
 
 export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps & { home: { id: string; name: string; pos: Geo } | null }) {
+  const [expanded, setExpanded] = useState(false);
+  const chat = useFireye((s) => s.chat);
+  useEffect(() => {
+    if (chat && window.matchMedia('(max-width: 767px)').matches) setExpanded(false);
+  }, [chat]);
   const pack = useConsoleSelector((s) => s.pack);
   const t = useConsoleSelector((s) => s.clock.t);
   const proj = useConsoleSelector((s) => s.projection);
@@ -71,7 +77,17 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
   const best = routes.best;
 
   return (
-    <aside className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l border-line bg-ink-950 sm:w-[400px] sm:flex-none sm:overflow-visible" aria-label="Civilian panel">
+    <aside className="civilian-sheet flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l border-line bg-ink-950 sm:w-[400px] sm:flex-none sm:overflow-visible" aria-label="Civilian panel">
+      <button type="button" aria-expanded={expanded} aria-controls="resident-details" onClick={() => setExpanded(!expanded)}
+        className="resident-summary hidden shrink-0 border-b border-line px-4 py-2 text-left">
+        <span className="flex items-center justify-between gap-2"><span className={cn('font-semibold', copy.cls)}>{copy.title}</span><span className="text-xs text-bone-dim">{expanded ? 'Less' : 'Details'} {expanded ? '−' : '+'}</span></span>
+        <span className="mt-1 flex flex-wrap gap-x-6 text-xs text-bone-dim">
+          <span>Fire ETA <span className="fcc-num text-bone">{homeAlert?.eta != null ? `${localTime(homeAlert.eta, tz)} ${tz}` : '—'}</span></span>
+          <span>Leave by <span className="fcc-num text-ember">{leaveAt != null ? `${localTime(leaveAt, tz)} ${tz}` : '—'}</span></span>
+        </span>
+        <span className="mt-1 block text-micro text-bone-mute">Simulation · follow 112 / civil protection</span>
+      </button>
+      <div id="resident-details" className="resident-details contents" data-expanded={expanded}>
       <div className="shrink-0 border-b border-line px-4 py-3">
         <label className="font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">Your location · simulated resident</label>
         <select value={home?.id ?? ''} onChange={(e) => setHome(e.target.value)} aria-label="Your location"
@@ -152,6 +168,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
         <BigCounter k="Moved out" v={counts.moved} />
       </div>
       <p className="shrink-0 border-t border-line-faint px-4 py-1.5 font-mono text-micro uppercase text-bone-mute">Prototype spread model · not a validated forecast · simulated</p>
+      </div>
     </aside>
   );
 }
