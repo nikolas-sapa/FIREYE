@@ -454,10 +454,15 @@ export function routeOptions(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exi
   const minFire = (c: Candidate): number | null => {
     if (!fire.length) return null;
     let best = Infinity;
-    for (const i of c.nodes) {
-      if (fireDist[i] < 0) { const p = { lon: g.lon[i], lat: g.lat[i] }; fireDist[i] = Math.min(...fire.map((q) => polygonDistanceM(p, q.poly))); }
+    const dist = (p: Geo) => Math.min(...fire.map((q) => polygonDistanceM(p, q.poly)));
+    c.nodes.forEach((i, j) => {
+      if (fireDist[i] < 0) fireDist[i] = dist({ lon: g.lon[i], lat: g.lat[i] });
       best = Math.min(best, fireDist[i]);
-    }
+      if (j === 0) return;
+      const h = c.nodes[j - 1];
+      const k = Math.ceil(distanceM({ lon: g.lon[h], lat: g.lat[h] }, { lon: g.lon[i], lat: g.lat[i] }) / ETA_SAMPLE_M);
+      for (let s = 1; s < k; s++) best = Math.min(best, dist({ lon: g.lon[h] + (g.lon[i] - g.lon[h]) * s / k, lat: g.lat[h] + (g.lat[i] - g.lat[h]) * s / k }));
+    });
     return best;
   };
   const byTime = (a: Candidate, b: Candidate) => a.timeMin - b.timeMin || a.riskM - b.riskM;

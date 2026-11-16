@@ -158,6 +158,10 @@ for (const id of ['neos-voutzas', 'nea-makri', 'kokkino-limanaki', 'mati']) {
   const mid = routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: interior })!;
   for (const kind of ROUTE_KINDS) assert.ok(!mid[kind].path.some((p, i) => i > 0 && p.lat < 38.0005 && mid[kind].path[i - 1].lat < 38.0005 && Math.min(p.lon, mid[kind].path[i - 1].lon) < 23.91 && Math.max(p.lon, mid[kind].path[i - 1].lon) > 23.91), `${kind} avoids an edge whose interior the fire reaches first`);
   assert.equal(mid.marginMin, ETA_SAFETY_MARGIN_MIN);
+  // Minimum fire distance is measured along road segments, not only at nodes.
+  const nearEdge = square({ lon: 23.91, lat: 37.9985 }, 0.0005);
+  const fd = routeOptions(g, A, { blocked: [], caution: [], fire: [nearEdge] }, exit)!;
+  assert.ok(fd.fastest.minFireM! < 150, `min fire distance on straight road ${fd.fastest.minFireM?.toFixed(0)} m`);
   // Fire arrives after the resident would pass but inside the 15-min margin: still excluded.
   const inMargin = routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: (p) => (etaMinAt(p) === null ? null : 10) })!;
   for (const kind of ROUTE_KINDS) assert.ok(inMargin[kind].path.every((p) => etaMinAt(p) === null), `${kind} keeps ${ETA_SAFETY_MARGIN_MIN} min ahead of modeled fire`);
