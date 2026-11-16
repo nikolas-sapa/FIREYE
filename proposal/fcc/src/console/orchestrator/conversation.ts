@@ -30,6 +30,18 @@ export interface ResidentInfo {
 
 let residentContext: (() => ResidentInfo | null) | null = null;
 
+export const RESIDENT_SUGGESTIONS = [
+  'Am I safe?',
+  'When should I leave?',
+  'Which route should I take?',
+  'Where is the fire?',
+  'What should I take?',
+] as const;
+
+export function isResidentMode(): boolean {
+  return residentContext?.() != null;
+}
+
 export function setResidentContext(fn: (() => ResidentInfo | null) | null): void {
   residentContext = fn;
 }

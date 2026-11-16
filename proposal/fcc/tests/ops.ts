@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { answer, setResidentContext, type ResidentInfo } from '../src/console/orchestrator/conversation';
+import { answer, RESIDENT_SUGGESTIONS, setResidentContext, type ResidentInfo } from '../src/console/orchestrator/conversation';
+import { updateSuggestions } from '../src/console/orchestrator/brief';
+import { stepSim } from '../src/console/world/engine';
+import { Runtime } from '../src/console/world/runtime';
+import { createBus } from '../src/console/bus';
+import { loadScenario } from '../src/console/scenario';
 import type { Sim } from '../src/console/world/sim';
 import { readFileSync } from 'node:fs';
 import type { Action, AgentJob, ConsoleApi, ConsoleState } from '../src/console/contracts';
@@ -10,7 +15,7 @@ import type { Decision } from '../src/console/fireye/shell/OrchestratorCallout';
 import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, subscribeCommRows, type CommRow } from '../src/console/ops/opsStore';
 
 {
-  const sim = { recon: {} } as Sim;
+  const sim = { recon: {}, suggestions: [] } as unknown as Sim;
   const refusal = 'I only coordinate simulated drone reconnaissance. I do not dispatch ground units, aircraft or public advisories.';
   const footer = 'Simulated exercise - follow official 112 / civil protection instructions';
   const info: ResidentInfo = {
@@ -24,6 +29,11 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
   assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
   try {
     setResidentContext(() => info);
+    assert.deepEqual(RESIDENT_SUGGESTIONS, ['Am I safe?', 'When should I leave?', 'Which route should I take?', 'Where is the fire?', 'What should I take?']);
+    updateSuggestions(sim);
+    assert.deepEqual(sim.suggestions, RESIDENT_SUGGESTIONS);
+    const chipReplies = [/leave now/, /17:15 EEST/, /Nea Makri.*Marathonos/s, /MATI \(leave\)/, /medicines/];
+    RESIDENT_SUGGESTIONS.forEach((q, i) => assert.match(answer(sim, q).text, chipReplies[i]));
     for (const [question, expected] of [
       ['Am I safe?', /Mati.*leave now/s], ['Am I in danger?', /leave now/],
       ['When should I leave?', /17:15 EEST.*45 minutes/], ['Should I evacuate?', /Estimated fire arrival/],
@@ -62,10 +72,36 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
     assert.match(answer(sim, 'Where is the fire?').text, /still computing.*does not mean there is no fire/s);
     assert.match(answer(sim, 'Hello').text, /your selected home \(still loading\)/);
     setResidentContext(() => null);
+    updateSuggestions(sim);
+    assert.deepEqual(sim.suggestions, ['Which blind spots are being checked?', 'What changed in the fire projection?', 'What are the drones doing?']);
     assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
   } finally { setResidentContext(null); }
   assert.equal(answer(sim, 'Dispatch engines and approve evacuation').text, refusal);
   console.log('Resident Chief: 5 intents, 4 stages, blocked override, missing data, fallback/footer and responder restoration PASS');
+}
+
+{
+  const pack = await loadScenario('mati-2018');
+  for (const profile of ['legacy', 'recon'] as const) {
+    const sim = new Runtime(pack, createBus(), { profile }).sim;
+    sim.paused = true;
+    const t = sim.t;
+    updateSuggestions(sim);
+    const responder = [...sim.suggestions];
+    try {
+      setResidentContext(() => ({ home: null, stage: 'monitor', eta: null, etaMin: null, inBlocked: false, leaveBy: null, best: null, second: null, threatened: [] }));
+      stepSim(sim, 1.01);
+      assert.deepEqual(sim.suggestions, RESIDENT_SUGGESTIONS);
+      const stable = sim.suggestions;
+      stepSim(sim, 1.01);
+      assert.equal(sim.suggestions, stable);
+      setResidentContext(null);
+      stepSim(sim, 1.01);
+      assert.deepEqual(sim.suggestions, responder);
+      assert.equal(sim.t, t);
+    } finally { setResidentContext(null); }
+  }
+  console.log('Resident chips: 5 ordered prompts and matching intents; paused legacy/recon switch and responder restoration within 1.01 s PASS');
 }
 
 const routes = [

@@ -2,6 +2,7 @@ import type { Action, Brief, Ms } from '../contracts';
 import type { Sim } from '../world/sim';
 import { MIN, compass } from '../world/geo';
 import { reconSummary } from '../world/recon';
+import { isResidentMode, RESIDENT_SUGGESTIONS } from './conversation';
 
 /** Facts captured with each published brief; the next brief lists what differs ("changed"). */
 export interface BriefFacts {
@@ -143,8 +144,12 @@ export function updateBrief(sim: Sim, force = false): void {
   sim.bus.publish({ type: 'brief.updated', at: sim.t, brief });
 }
 
-/** 3-4 contextual questions for the prompt chips. */
+/** Contextual questions for the prompt chips. */
 export function updateSuggestions(sim: Sim): void {
+  if (isResidentMode()) {
+    if (sim.suggestions.join('|') !== RESIDENT_SUGGESTIONS.join('|')) sim.suggestions = [...RESIDENT_SUGGESTIONS];
+    return;
+  }
   if (sim.recon) {
     const next = ['Which blind spots are being checked?', 'What changed in the fire projection?', 'What are the drones doing?'];
     if (sim.suggestions.join('|') !== next.join('|')) sim.suggestions = next;
