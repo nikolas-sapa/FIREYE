@@ -222,11 +222,15 @@ export function setRouteChoice(kind: RouteKind) {
   bump();
 }
 
+/** Route options are recomputed per sim-time window; fire ETAs are checked against the window end (conservative). */
+const ROUTE_WINDOW_MS = 2 * 60000;
+const routeWindow = (t: Ms) => Math.floor(t / ROUTE_WINDOW_MS);
 let optionsCache: { key: string; value: RouteOptions | null } | null = null;
 function optionsFor(home: Geo, t: Ms, pack: ScenarioPack | null, entry: RevEntry): RouteOptions | null {
   const perimeterT = pack?.perimeters.reduce((latest, p) => p.t <= t ? Math.max(latest, p.t) : latest, -Infinity);
-  const key = `${home.lat},${home.lon}|${entry.rev}|${entry.t}|${perimeterT}|${graph?.edgeCount}`;
-  if (optionsCache?.key !== key) optionsCache = { key, value: residentRouteOptions(graph!, home, t, revLog, pack?.perimeters ?? [], MATI_EXITS, pack?.manifest.places ?? []) };
+  const w = routeWindow(t);
+  const key = `${home.lat},${home.lon}|${entry.rev}|${entry.t}|${perimeterT}|${graph?.edgeCount}|${w}`;
+  if (optionsCache?.key !== key) optionsCache = { key, value: residentRouteOptions(graph!, home, t, revLog, pack?.perimeters ?? [], MATI_EXITS, pack?.manifest.places ?? [], (w + 1) * ROUTE_WINDOW_MS) };
   return optionsCache.value;
 }
 
@@ -245,7 +249,8 @@ export function useRoutes(home: Geo | null, rev: number): Routes {
   const pack = useConsoleSelector((s) => s.pack);
   const entry = entryAt(t);
   const perimeterT = pack?.perimeters.reduce((latest, p) => p.t <= t ? Math.max(latest, p.t) : latest, -Infinity);
-  return useMemo(() => routesFor(home), [home, rev, v, entry, pack, perimeterT]);
+  const w = routeWindow(t);
+  return useMemo(() => routesFor(home), [home, rev, v, entry, pack, perimeterT, w]);
 }
 
 /** Current hazard + routes for verification/debug. */

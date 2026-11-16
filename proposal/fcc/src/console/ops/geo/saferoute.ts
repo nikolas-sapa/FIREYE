@@ -14,13 +14,14 @@ export function routingHazardAt(t: number, entries: HazardEntry[], perimeters: K
 }
 
 /** Fastest / balanced / safest routes at sim time t using only the latest issued projection, its spread field and the known perimeter. */
-export function residentRouteOptions(g: RoadGraph, from: Geo, t: number, entries: HazardEntry[], perimeters: KnownPerimeter[], exits: Exit[], places: { name: string; pos: Geo }[] = []): RouteOptions | null {
+/** `departAt` (>= t) is the departure time used against fire ETAs; callers caching across sim time pass the end of their cache window. */
+export function residentRouteOptions(g: RoadGraph, from: Geo, t: number, entries: HazardEntry[], perimeters: KnownPerimeter[], exits: Exit[], places: { name: string; pos: Geo }[] = [], departAt = t): RouteOptions | null {
   const hazard = routingHazardAt(t, entries, perimeters);
   if (!hazard) return null;
   const field = entries.filter((e) => e.t <= t).sort((a, b) => b.t - a.t)[0]?.field;
   const etaMinAt = field && field.issuedAt <= t ? (p: Geo) => {
     const m = fieldMinAt(field, p, 0);
-    return m < 0 || !Number.isFinite(m) ? null : (field.issuedAt + m * 60000 - t) / 60000;
+    return m < 0 || !Number.isFinite(m) ? null : (field.issuedAt + m * 60000 - Math.max(t, departAt)) / 60000;
   } : undefined;
   return routeOptions(g, from, hazard, exits, { etaMinAt, places });
 }

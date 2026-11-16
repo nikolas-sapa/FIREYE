@@ -259,6 +259,14 @@ try {
     const blocked = residentEstimateAt(mati.pos, t, [current], [{ t: 0, polygon: [square(mati.pos, 0.001)] }]);
     assert.equal(blocked.stage, 'shelter', 'blocked origin still shelters regardless of model ETA');
   }
+  {
+    consoleStore.api.seek(at1723);
+    consoleStore.api.setPaused(true);
+    const pr = consoleStore.runtime.sim.projection!;
+    const entry: Parameters<typeof residentRouteOptions>[3][number] = { t: pr.issuedAt, bands: pr.bands, field: consoleStore.runtime.sim.projField! };
+    const late = residentRouteOptions(graph, place('kokkino-limanaki'), at1723, [entry], pack.perimeters, MATI_EXITS, pack.manifest.places, at1723 + 6 * 3600000);
+    assert.equal(late, null, 'departing after modeled fire arrival at the origin: no route');
+  }
   for (const t of [at1723, at1723 + 37 * 60000]) {
     consoleStore.api.seek(t);
     consoleStore.api.setPaused(true);
