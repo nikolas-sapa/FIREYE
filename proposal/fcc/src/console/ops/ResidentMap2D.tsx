@@ -40,9 +40,12 @@ export function ResidentMap2D({ home, route }: { home: Geo | null; route: Escape
         {route && <polyline points={pts(route.path)} style={{ fill: 'none', stroke: 'rgb(var(--signal))', strokeWidth: unit * 2, strokeLinejoin: 'round', strokeLinecap: 'round' }} />}
         {home && <circle cx={x(home)} cy={y(home)} r={unit * 3} style={{ fill: 'rgb(var(--signal))', stroke: 'rgb(var(--ink-950))', strokeWidth: unit }} />}
       </svg>
-      <span className="pointer-events-none absolute bottom-[104px] left-3 border border-line bg-ink-950 px-2 py-1 font-mono text-micro uppercase tracking-[0.12em] text-bone-mute sm:bottom-3">
-        2D map · WebGL unavailable · simulation
-      </span>
+      <div className="pointer-events-none absolute bottom-[104px] left-3 right-3 flex flex-col items-start gap-1 sm:bottom-3">
+        <span className="border border-line bg-ink-950 px-2 py-1 font-mono text-micro uppercase tracking-[0.12em] text-bone-mute">
+          2D map · WebGL unavailable · simulation
+        </span>
+        {im?.source && <span className="max-w-full bg-ink-950 px-1 font-mono text-nano text-bone-mute">Imagery: {im.source}</span>}
+      </div>
     </div>
   );
 }
