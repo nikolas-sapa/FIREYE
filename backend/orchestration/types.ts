@@ -1,7 +1,19 @@
 import type { ActorContext } from '../protocol/types.ts';
 import type { MissionCapability, MissionPlan, MissionPlanningSnapshot, ToyMissionPolicy, ToyRectangle } from '../planning/mission-types.ts';
 import type { IrisClient } from '../integrations/iris/types.ts';
-import type { Receipt } from '../integrations/receipts.ts';
+import type { ClientConfig, Receipt } from '../integrations/receipts.ts';
+
+/** Trusted keyless fixture/local-HTTP composition, never wire or model configuration. */
+export interface ExerciseSponsorConfig {
+  readonly enabled?: boolean;
+  readonly authorization_id?: string;
+  readonly budget?: ClientConfig['budget'];
+  readonly max_call_micro?: number;
+  readonly deadline_ms?: number;
+  readonly iris?: Pick<ClientConfig, 'model' | 'transport' | 'transport_mode'>;
+  readonly gemini?: Pick<ClientConfig, 'model' | 'transport' | 'transport_mode'>;
+  readonly read_evidence?: (evidence_id: string, media_ref: string) => unknown;
+}
 
 export interface ExerciseObjective {
   readonly objective_id: string;
@@ -37,6 +49,7 @@ export interface ExerciseCoordinatorConfig {
   readonly layout: ExerciseLayout;
   readonly reviewed_courses: readonly ReviewedExerciseCourse[];
   readonly iris?: IrisClient;
+  readonly sponsors?: ExerciseSponsorConfig;
 }
 
 export interface ExerciseAssessment {
