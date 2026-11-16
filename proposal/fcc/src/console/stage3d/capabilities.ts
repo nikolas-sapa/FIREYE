@@ -4,7 +4,7 @@ import type { StageCapabilities } from './types';
  * URL override for the basemap path: `?tokens=0` (or `?basemap=offline`) forces the offline pack
  * basemap even when tokens are configured; `?tokens=ion` skips Google 3D tiles.
  */
-function tokenOverride(): 'all' | 'none' | 'ion' {
+export function tokenOverride(): 'all' | 'none' | 'ion' {
   if (typeof window === 'undefined') return 'all';
   try {
     const q = new URLSearchParams(window.location.search);

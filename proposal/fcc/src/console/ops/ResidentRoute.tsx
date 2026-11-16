@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Geo, ScenarioPack } from '../contracts';
+import { tokenOverride } from '../stage3d/capabilities';
 import { getOsm, type EscapeRoute } from './alerts';
 import { googleMapsDirectionsUrl, googleMapsEmbedUrl, steeringWaypoints } from './geo/evac';
 import { inScenario, parseLocation } from './geo/saferoute';
@@ -50,7 +51,7 @@ export function ResidentDirections({ origin, route }: { origin: Geo; route: Esca
   const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   return <>
     <a className={`${buttonClass} mt-2 inline-block`} href={googleMapsDirectionsUrl(directions)} target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
-    {mapsKey && <iframe title="Exercise route in Google Maps" className="mt-2 h-44 w-full border border-line" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={googleMapsEmbedUrl(directions, mapsKey)} />}
+    {mapsKey && tokenOverride() === 'all' && <iframe title="Exercise route in Google Maps" className="mt-2 h-44 w-full border border-line" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={googleMapsEmbedUrl(directions, mapsKey)} />}
     <p className="mt-1 font-mono text-micro text-bone-mute">Google may recalculate this prototype route and does not know the simulated fire.</p>
   </>;
 }
