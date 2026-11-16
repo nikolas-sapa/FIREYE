@@ -59,12 +59,15 @@ function useJournalReapply() {
     let last: unknown = null;
     let queued = false;
     return consoleStore.subscribe(() => {
-      if (opsBackend.get().configured) return;
       const s = consoleStore.get();
       if (s.actions === last || queued) return;
       last = s.actions;
       queued = true;
-      queueMicrotask(() => { queued = false; journal.reapply(consoleStore.get().actions, consoleStore.get().clock.t, api); });
+      queueMicrotask(() => {
+        queued = false;
+        journal.reapply(consoleStore.get().actions, consoleStore.get().clock.t, api,
+          opsBackend.get().configured ? ['retask-drone'] : []);
+      });
     });
   }, [api]);
 }
