@@ -2,7 +2,8 @@ import { useMemo, useSyncExternalStore } from 'react';
 import * as Cesium from 'cesium';
 import { color, role } from '@ds';
 import type { Geo, Ms, ScenarioPack } from '../contracts';
-import { consoleStore } from '../store';
+import { consoleStore, useConsoleSelector } from '../store';
+import { residentEstimateAt, routingHazardAt } from './geo/saferoute';
 import {
   MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM, escapeRoutes,
   leaveBy, pointInPolygon, residentsNear, summarizeRoads,
@@ -58,7 +59,6 @@ export interface RevEntry {
   etaToPlaces: Record<string, Ms>;
 }
 const revLog: RevEntry[] = [];
-let lastRev = -1;
 let wired = false;
 
 function hazardOf(e: RevEntry | null): Hazard {
@@ -67,23 +67,30 @@ function hazardOf(e: RevEntry | null): Hazard {
   return { blocked: wrap(band(60)), caution: wrap(band(180)) };
 }
 
+export function hazardAt(pack: ScenarioPack | null, t: Ms): Hazard {
+  return routingHazardAt(t, revLog, pack?.perimeters ?? []) ?? { blocked: [], caution: [] };
+}
+
+export const residentAlertAt = (pack: ScenarioPack | null, t: Ms, pos: Geo) => residentEstimateAt(pos, t, revLog, pack?.perimeters ?? []);
+
 function ingest() {
   const s = consoleStore.get();
   const p = s.projection;
-  if (!p) return;
   const t = s.clock.t;
+  let changed = false;
   // On backward scrub, drop entries that are now "future" so everything stays a pure function of t.
-  while (revLog.length && revLog[revLog.length - 1]!.t > t) revLog.pop();
-  if (p.rev === lastRev) return;
-  lastRev = p.rev;
-  revLog.push({ t, rev: p.rev, issuedAt: p.issuedAt, rosMpm: p.rosMpm, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces } });
+  while (revLog.length && revLog[revLog.length - 1]!.t > t) { revLog.pop(); changed = true; }
+  if (!p || p.issuedAt > t || revLog[revLog.length - 1]?.rev === p.rev) return changed;
+  revLog.push({ t: p.issuedAt, rev: p.rev, issuedAt: p.issuedAt, rosMpm: p.rosMpm, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces } });
+  revLog.sort((a, b) => a.t - b.t);
   if (revLog.length > 120) revLog.shift();
+  return true;
 }
 
 export function wireAlerts() {
   if (wired) return;
   wired = true;
-  consoleStore.subscribe(() => { const n = revLog.length; ingest(); if (revLog.length !== n) bump(); });
+  consoleStore.subscribe(() => { if (ingest()) bump(); });
 }
 
 const entryAt = (t: Ms): RevEntry | null => {
@@ -200,21 +207,25 @@ export function counters(pack: ScenarioPack | null, t: Ms): Counters {
 
 /* ------------------------------------------------------------------ escape routes */
 
-export interface Routes { best: EscapeRoute | null; second: EscapeRoute | null }
+export interface Routes { best: EscapeRoute | null; second: EscapeRoute | null; status: 'loading' | 'unavailable' | 'ready' }
 const routesFor = (home: Geo | null): Routes => {
-  if (!graph || !home || !revLog.length) return { best: null, second: null };
-  const e = revLog[revLog.length - 1]!;
-  const routes = escapeRoutes(graph, home, hazardOf(e), MATI_EXITS);
-  return { best: routes[0] ?? null, second: routes[1] ?? null };
+  const s = consoleStore.get();
+  if (!graph || !home || !entryAt(s.clock.t)) return { best: null, second: null, status: 'loading' };
+  const routes = escapeRoutes(graph, home, hazardAt(s.pack, s.clock.t), MATI_EXITS, { clearanceM: 500 });
+  return { best: routes[0] ?? null, second: routes[1] ?? null, status: routes.length ? 'ready' : 'unavailable' };
 };
 
 export function useRoutes(home: Geo | null, rev: number): Routes {
   const v = useAlertVersion();
-  return useMemo(() => routesFor(home), [home, rev, v]);
+  const t = useConsoleSelector((s) => s.clock.t);
+  const pack = useConsoleSelector((s) => s.pack);
+  const entry = entryAt(t);
+  const perimeterT = pack?.perimeters.reduce((latest, p) => p.t <= t ? Math.max(latest, p.t) : latest, -Infinity);
+  return useMemo(() => routesFor(home), [home, rev, v, entry, pack, perimeterT]);
 }
 
 /** Current hazard + routes for verification/debug. */
-export const hazardNow = (): Hazard => hazardOf(revLog[revLog.length - 1] ?? null);
+export const hazardNow = (): Hazard => { const s = consoleStore.get(); return hazardAt(s.pack, s.clock.t); };
 export const routesNow = (home: Geo | null): Routes => routesFor(home);
 
 export { NO_EXIT_ZONES, MATI_EXITS, leaveBy, distanceM, pointInPolygon, hazardOf };

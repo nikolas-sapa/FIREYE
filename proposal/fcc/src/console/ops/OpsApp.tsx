@@ -27,8 +27,9 @@ import { OpsInspect } from './OpsInspect';
 import { OpsComms } from './OpsComms';
 import { OpsPalette } from './OpsPalette';
 import { postSystem, wireComms } from './opsStore';
-import { alertFeed, counters, ensureOsm, hazardNow, leaveBy, placeAlerts, routeRoads, routesNow, useAlertVersion, useRoutes, wireAlerts, type EscapeRoute } from './alerts';
-import { CivilianPanel, useHome } from './CivilianPanel';
+import { alertFeed, counters, ensureOsm, hazardNow, leaveBy, placeAlerts, residentAlertAt, routeRoads, routesNow, useAlertVersion, useRoutes, wireAlerts, type EscapeRoute } from './alerts';
+import { CivilianPanel, setHome, useHome } from './CivilianPanel';
+import { inScenario } from './geo/saferoute';
 import { OpsOverlay } from './OpsOverlay';
 import { PresenterCaption, PresenterHud, noteRoute, presenter, startPresenter, stopPresenter, usePresenter } from './Presenter';
 import { opsView, useOpsView, useOverlayOpts } from './view';
@@ -177,12 +178,26 @@ function Shell() {
   }, []);
 
   const home = useHome();
+  const [picking, setPicking] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
+  useEffect(() => {
+    if (!picking || view !== 'civilian' || !engine || !pack) return;
+    engine.onMapPick = (pos) => {
+      engine.onMapPick = null;
+      setPicking(false);
+      if (!pos) { setLocationMessage('No ground selected. Try again.'); return; }
+      if (!inScenario(pos, pack.raster.bbox)) { setLocationMessage('Outside the exercise area. Current location kept.'); return; }
+      setHome(`custom:${pos.lat},${pos.lon}`);
+      setLocationMessage('Map location set · simulated resident');
+    };
+    return () => { engine.onMapPick = null; };
+  }, [picking, view, engine, pack]);
   useEffect(() => {
     if (view !== 'civilian') return;
     setResidentContext(() => {
       const s = consoleStore.get();
       const alerts = placeAlerts(s.pack, s.clock.t);
-      const alert = alerts.find(p => p.id === home?.id);
+      const alert = home?.id.startsWith('custom:') ? residentAlertAt(s.pack, s.clock.t, home.pos) : alerts.find(p => p.id === home?.id);
       const r = routesNow(home?.pos ?? null);
       const route = (v: EscapeRoute | null): ResidentRoute | null => v && ({ exit: v.exit.label, lengthM: v.lengthM, roads: routeRoads(v), cautionM: v.cautionM });
       return {
@@ -267,9 +282,9 @@ function Shell() {
   return (
     <div className="ops-root flex h-full w-full flex-col overflow-hidden bg-ink-950 text-bone" data-view={view}>
       {booted ? <OpsTopBar presenting={presenting} onPresent={togglePresent} /> : <div className="h-10 shrink-0 border-b border-line bg-ink-950" />}
-      <div className="flex min-h-0 flex-1">
+      <div className={cn('flex min-h-0 flex-1', civilian && 'flex-col sm:flex-row')}>
         {booted && !civilian && <OpsRail engine={engine} onOpenThread={openThread} thread={thread} />}
-        <main className="relative min-w-0 flex-1">
+        <main className={cn('relative min-w-0 flex-1', civilian && 'h-[40vh] min-h-[240px] flex-none overflow-hidden sm:h-auto sm:min-h-0 sm:flex-1')}>
           <StageShell onFocus={focus} onEngine={setEngine} />
           {booted && <div className="absolute left-3 top-16 z-hud border border-line bg-ink-950 px-2 py-1"><OpsBackendControl /></div>}
           {booted && (
@@ -279,7 +294,7 @@ function Shell() {
           {booted && presenting && <PresenterCaption />}
           {booted && <PresenterHud pack={pack} t={t} selected={selected} />}
         </main>
-        {booted && (civilian ? <CivilianPanel home={home} /> : (
+        {booted && (civilian ? <CivilianPanel home={home} picking={picking} onPick={() => setPicking((p) => !p)} locationMessage={locationMessage} onLocationMessage={setLocationMessage} /> : (
           <aside className="flex w-[380px] shrink-0 flex-col border-l border-line bg-ink-950">
             <div role="tablist" aria-label="Panel" className="flex shrink-0 border-b border-line">
               {(['inspect', 'comms'] as RightTab[]).map((id) => (
