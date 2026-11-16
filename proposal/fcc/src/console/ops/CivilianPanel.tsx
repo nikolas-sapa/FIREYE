@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { cn } from '@ds';
 import type { Geo } from '../contracts';
 import { useConsoleSelector } from '../store';
@@ -11,6 +11,7 @@ import { Character } from './characters/Character';
 import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
 import { ResidentDirections, ResidentDisclaimer, ResidentLocationControls, type ResidentLocationProps } from './ResidentRoute';
+import { useFireye } from '../fireye/shell/ui';
 
 export const HOME_OPTIONS = ['neos-voutzas', 'mati', 'kokkino-limanaki', 'argyra-akti', 'nea-makri'] as const;
 const STAGE_COPY: Record<AlertStage, { title: string; body: string; cls: string }> = {
@@ -50,6 +51,10 @@ function BigCounter({ k, v }: { k: string; v: number }) {
 
 export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps & { home: { id: string; name: string; pos: Geo } | null }) {
   const [expanded, setExpanded] = useState(false);
+  const chat = useFireye((s) => s.chat);
+  useEffect(() => {
+    if (chat && window.matchMedia('(max-width: 767px)').matches) setExpanded(false);
+  }, [chat]);
   const pack = useConsoleSelector((s) => s.pack);
   const t = useConsoleSelector((s) => s.clock.t);
   const proj = useConsoleSelector((s) => s.projection);
