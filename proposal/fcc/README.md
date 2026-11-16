@@ -1,12 +1,16 @@
-# FCC — Fire Command Center
+# FIREYE — fire information for residents
 
 **FCC-01 / REV D · Proposal + console · 2026-11-14**
 
-FCC is an incident watch officer made of AI agents. A swarm of analysis agents reads every feed: news (Firecrawl), social video, satellite passes (NASA FIRMS, GIBS, GOES), drone and dash cams (fal video understanding), weather (Open-Meteo, NWS) and radio (Whisper-style transcription). A projection agent keeps re-forecasting the fire. The **Orchestrator** decides what the human sees, when, and where, and drafts the actual work: drone retasks, crew moves, evacuation notices, ICS-209 sitreps, resource orders and rescue tasks. An Agent Work Ledger shows the useful work done and the analyst minutes saved.
+FIREYE helps local residents see where a fire is and get informed. The primary **Civilian** view shows a simulated location, fire information, MONITOR / PREPARE TO LEAVE / LEAVE NOW / SHELTER IN PLACE, Fire ETA, Leave by and a prototype “Your route out”. It simulates the 2018 Mati fire, not current conditions or official evacuation advice. Follow **112 / civil protection**; routes and projections are not validated forecasts or proven safe evacuation routes.
 
-**Open the console: [`/console.html`](http://localhost:5173/console.html)** (run `npm run dev` first).
+Chief / Scout and the orchestrator serve the resident information picture, alongside announcements labelled “Official alerts · simulated”. Replies are scripted/deterministic; SMS and voice-call counters do not mean real notifications were sent. Responder/ops views are secondary **for authorities**. The earlier proposal envisioned feed-analysis agents (Firecrawl news, social video, NASA FIRMS/GIBS/GOES satellites, fal drone/dash-camera analysis, Open-Meteo/NWS weather and Whisper-style radio transcription), a projection agent, an Agent Work Ledger and orchestrator drafts for drone retasks, crew moves, evacuation notices, ICS-209 sitreps, resource orders and rescue tasks. These are proposal roles, not evidence of connected live agents, measured analyst time savings or field execution.
 
-**New default: FIREYE.** A simulated incident-console exercise on the Mati 2018 reconstruction, scrubbable 14:00–22:00 local, with a fleet column, INTAKE/OPS log, IoT sensors, Normal/Thermal globe, drone-feed dive and an Orchestrator callout that always waits for a human click. [FIREYE guide](docs/FIREYE.md).
+**Open the resident experience: [`/console.html?view=civilian`](http://localhost:5173/console.html?view=civilian)** (run `npm run dev` first). [Public demo](https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian) is a static frontend on GitHub Pages, not a hosted backend.
+
+**Default: Civilian.** Plain `/console.html` selects Civilian unless a valid `ops.view` preference is saved. Explicit `?view=civilian` or `?view=responder` overrides it. Location choices are scenario presets; own-location input and Google Maps least-risk-route hand-off, on-device notifications, resident Chief chat and PR #67 backend-approved drone execution are **in progress**, not completed features.
+
+**Reconnaissance exercise: `?mode=fireye`.** A separate simulated Mati 2018 reconstruction, scrubbable 14:00–22:00 local, with a fleet column, INTAKE/OPS log, IoT sensors, Normal/Thermal globe, drone-feed dive and scripted Orchestrator callout. Recon tasking is local simulation; consequential Ops and legacy replay actions require human approval. [FIREYE guide](docs/FIREYE.md).
 
 **Real-data Attica monitoring** (`/console.html?mode=monitoring`). Current observations/forecasts, historical Mati 2018 and Copernicus EMSR746 Attica 2024, source/time labels, camera-provider links and saved real-data fallback. Six separately labeled 3D drone/ground-camera views are simulated over local terrain and dated imagery, with an isolated smooth renderer; they are not live webcams. No fictional incident runtime or AI analysis runs in monitoring. It is not an emergency warning service. [Presentation setup, keys, source limits and camera recording safety](docs/MONITORING.md).
 

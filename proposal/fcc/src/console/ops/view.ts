@@ -6,11 +6,11 @@ const KEY = 'ops.view';
 const valid = (v: unknown): v is OpsView => v === 'responder' || v === 'civilian';
 
 let view: OpsView = (() => {
-  if (typeof window === 'undefined') return 'responder';
+  if (typeof window === 'undefined') return 'civilian';
   const q = new URLSearchParams(window.location.search).get('view');
   if (valid(q)) return q;
   try { const s = localStorage.getItem(KEY); if (valid(s)) return s; } catch { /* optional */ }
-  return 'responder';
+  return 'civilian';
 })();
 
 const listeners = new Set<() => void>();

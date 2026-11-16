@@ -1,5 +1,13 @@
 # Fire Command Center shared taskboard
 
+## RESIDENT-COPY, resident-first copy and default
+
+Owner coordinator-authorized Devin, branch `devin/1794820800-resident-copy`. Exact claim: `README.md`, `TASKBOARD.md`, `proposal/fcc/public/manifest.webmanifest` (name/description), `proposal/fcc/console.html` (title only), `proposal/fcc/README.md`, `proposal/fcc/AGENTS.md` (intro only), `proposal/fcc/docs/MONITORING.md`, `proposal/fcc/src/console/ops/view.ts`. Owner explicitly authorizes this bounded frontend exception; no appearance, layout, CSS, dependencies or other source changes.
+
+Tests before implementation: RC01 default-selection matrix requires 100% passing cases for no window, empty/invalid query, both explicit views, both saved views, query precedence and unavailable storage. RC02 frontend typecheck/test/build each exit 0. RC03 zero diff-check errors and tracked delta limited to the eight claimed paths. No existing view.ts default test file was found; use an isolated in-memory module check without adding unclaimed tests.
+
+Plan: update resident-first copy while preserving historical engineering/provenance/safety facts; change only the fallback view; run the selection matrix and package checks. Coordinator-authorized delivery: exact-path commit and branch push, no PR. Civilian is the primary experience; responder/ops is secondary for authorities. Google Maps own-location hand-off, device notifications, resident Chief chat and PR #67 backend-approved drone execution remain in progress, not delivered by this copy change.
+
 ## MASCOT-02, firefighter Chief and helping-drone identity
 
 2026-11-15. Explicit owner feedback: mascots must match firefighters, helping drones and a fire chief, with stronger design. Same isolated `task/pixel-mascot-lab`, base `e0f708e7daaf45c27b13f4057ef680d3c81d2b89`. Replace generic character art with one coherent rescue crew; standalone gallery only. All previous frozen worker claims released for this exact follow-up.
@@ -475,7 +483,7 @@ Evidence: static PR2 audit at 6bdb5884 + independent isolated build/typecheck PA
 
 - [ ] P1-01 · P1 · deferred · Voice input, owner unassigned. Candidate teammate-only proposal/fcc/** push-to-talk file, exact path teammate claims after opt-in/P0-11. Test: 10 ambiguous commands → 0 unconfirmed dispatches, 1 push-to-talk control, 0 always-listening/bypass. Optional output belongs P0-09.
 - [ ] P1-02 · P1 · deferred · Generated fal exercise media, owner unassigned. Candidate docs/provenance/generated-media.md after opt-in/O08/authorized spend. Test: ≥1 synthetic asset/100% provenance/license/0 imagery presented real. Actual sample analysis core P0-07, not optional generation.
-- [ ] P2-01 · P2 · deferred · Resident read-only view, owner unassigned. Candidate teammate-only proposal/fcc/** resident view, exact path teammate claims after opt-in/P0-11. Test: 10 attempted mutations rejected, 0 fleet commands/public alarms; reports moderated/unconfirmed.
+- [ ] P2-01 · P2 · primary experience · Resident read-only view is now the product direction and existing Civilian experience (`/console.html?view=civilian`), default without a saved preference. Responder/ops views are secondary for authorities. Broader delivery remains in progress: own-location input and Google Maps least-risk-route hand-off, on-device notifications and resident Chief chat. Future implementation requires exact claims; the historical read-only acceptance target remains unverified: 10 attempted mutations rejected, 0 fleet commands/public alarms; reports moderated/unconfirmed.
 
 ## Status/receipt rules
 

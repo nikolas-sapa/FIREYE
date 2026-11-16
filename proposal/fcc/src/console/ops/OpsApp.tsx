@@ -8,6 +8,9 @@ import { useStageWorld } from '../stage3d/world';
 import { DaylightSync } from '../ui/DaylightSync';
 import { packZone, registerZone } from '../ui/format';
 import { contextFor } from '../world/engine';
+import { setResidentContext, type ResidentRoute } from '../orchestrator/conversation';
+import { distanceM } from '../world/geo';
+import { localTime } from '../ui/format';
 import { Boot, type BootProbe } from '../fireye/boot/Boot';
 import { sensorModel } from '../fireye/data/sensors';
 import { journal } from '../fireye/data/journal';
@@ -24,7 +27,7 @@ import { OpsInspect } from './OpsInspect';
 import { OpsComms } from './OpsComms';
 import { OpsPalette } from './OpsPalette';
 import { postSystem, wireComms } from './opsStore';
-import { alertFeed, counters, ensureOsm, hazardNow, placeAlerts, routesNow, useAlertVersion, useRoutes, wireAlerts } from './alerts';
+import { alertFeed, counters, ensureOsm, hazardNow, leaveBy, placeAlerts, residentAlertAt, routeRoads, routesNow, useAlertVersion, useRoutes, wireAlerts, type EscapeRoute } from './alerts';
 import { CivilianPanel, setHome, useHome } from './CivilianPanel';
 import { inScenario } from './geo/saferoute';
 import { OpsOverlay } from './OpsOverlay';
@@ -189,6 +192,26 @@ function Shell() {
     };
     return () => { engine.onMapPick = null; };
   }, [picking, view, engine, pack]);
+  useEffect(() => {
+    if (view !== 'civilian') return;
+    setResidentContext(() => {
+      const s = consoleStore.get();
+      const alerts = placeAlerts(s.pack, s.clock.t);
+      const alert = home?.id.startsWith('custom:') ? residentAlertAt(s.pack, s.clock.t, home.pos) : alerts.find(p => p.id === home?.id);
+      const r = routesNow(home?.pos ?? null);
+      const route = (v: EscapeRoute | null): ResidentRoute | null => v && ({ exit: v.exit.label, lengthM: v.lengthM, roads: routeRoads(v), cautionM: v.cautionM });
+      return {
+        home, stage: alert?.stage ?? 'monitor', eta: alert?.eta ?? null,
+        etaMin: alert?.etaMin ?? null, inBlocked: alert?.inBlocked ?? false,
+        leaveBy: alert?.eta != null ? `${localTime(leaveBy(alert.eta, 45), packZone(s.pack).label)} ${packZone(s.pack).label}` : null,
+        best: route(r.best), second: route(r.second),
+        threatened: alerts.filter(p => p.stage !== 'monitor' || p.inBlocked)
+          .sort((a, b) => home ? distanceM(home.pos, a.pos) - distanceM(home.pos, b.pos) : 0)
+          .slice(0, 3).map(p => `${p.name} (${p.stage})`),
+      };
+    });
+    return () => setResidentContext(null);
+  }, [view, home]);
   const overlayOpts = useOverlayOpts();
   const proj = useConsoleSelector((s) => s.projection);
   const routes = useRoutes(home?.pos ?? null, proj?.rev ?? -1);

@@ -13,7 +13,7 @@ npm run preview -- --host localhost
 
 Use the local Vite dev or preview server, not a static file server, for current data. The provider middleware rejects non-loopback clients, foreign origins and non-GET methods. No public deployment/authentication system is included.
 
-Plain `/console.html` now opens FIREYE (see `FIREYE.md`). Add `mode=monitoring` to every monitoring link.
+Plain `/console.html` opens the Civilian view for residents when no view preference is saved. Use `?view=civilian` explicitly for the primary experience, `?view=responder` for authorities, or `?mode=fireye` for the reconnaissance exercise (see `FIREYE.md`). Add `mode=monitoring` to every monitoring link.
 
 | URL suffix on `/console.html` | View |
 |---|---|
