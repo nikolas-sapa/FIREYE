@@ -233,7 +233,7 @@ function TopMatch({ engine }: { engine: StageEngine | null }) {
   );
 }
 
-const STAGE_TXT: Record<string, string> = { leave: 'LEAVE NOW', shelter: 'SHELTER', prepare: 'PREPARE', monitor: 'MONITOR' };
+const STAGE_TXT: Record<string, string> = { leave: 'LEAVE NOW', shelter: 'FIRE VERY CLOSE', prepare: 'PREPARE', monitor: 'MONITOR' };
 
 function AlertZones() {
   const pack = useConsoleSelector((s) => s.pack);

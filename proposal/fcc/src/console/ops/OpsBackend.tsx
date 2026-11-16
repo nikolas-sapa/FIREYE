@@ -35,7 +35,7 @@ export const opsBackend = {
       const mode = await approveWithBridge(bridge, action, execute, simTick);
       set({ connected: mode === 'backend', pending: bridge?.pending ?? 0 });
     } catch (error) { set({ error: safeError(error) }); }
-    finally { set({ busy: false }); }
+    finally { set({ busy: false, pending: bridge?.pending ?? 0 }); }
   },
   async poll(actions: readonly Action[], simTick: number) {
     if (!bridge || polling || state.busy) return;
@@ -46,7 +46,7 @@ export const opsBackend = {
       await bridge.snapshot();
       set({ connected: true, pending: bridge.pending });
     } catch (error) { set({ connected: false, error: safeError(error) }); }
-    finally { polling = false; }
+    finally { polling = false; set({ pending: bridge?.pending ?? 0 }); }
   },
 };
 

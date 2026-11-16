@@ -54,7 +54,8 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
     info.stage = 'shelter';
     for (const q of ['Am I safe?', 'When should I leave?', 'Which route?', 'Where is the fire?', 'What should I take?']) {
       const text = answer(sim, q).text;
-      assert.match(text, /shelter in place.*Do not drive out/s);
+      assert.match(text, /fire very close.*Follow 112 instructions now/s);
+      assert.doesNotMatch(text, /shelter|indoors|stay inside|close windows/i);
       assert.doesNotMatch(text, /prototype route is toward|Alternative:|leave now|leave-by target/);
       assert.equal(text.endsWith(footer), true);
     }
@@ -63,7 +64,7 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
     info.stage = 'monitor';
     assert.match(answer(sim, 'Am I safe?').text, /monitor updates.*not a guarantee of safety/s);
     info.inBlocked = true;
-    assert.match(answer(sim, 'Which route?').text, /No driving route is recommended/);
+    assert.match(answer(sim, 'Which route?').text, /No validated driving route is shown while the fire is very close/);
     info.inBlocked = false;
     info.best = null; info.second = null; info.eta = null; info.etaMin = null; info.leaveBy = null;
     info.threatened = []; info.home = null;

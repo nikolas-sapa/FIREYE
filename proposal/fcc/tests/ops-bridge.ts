@@ -3,6 +3,7 @@ import type { Action } from '../src/console/contracts';
 import { approveWithBridge, approvalForProposal, BridgeOffline, candidateForAction, localActionId,
   OpsBridge, parseOpsSetup, proposalForAction, receiptForCommand, simulatedExecutionFrame } from '../src/console/bus/ops-bridge';
 import type { Candidate, Command } from '../../../backend/protocol/types';
+import { createLocalDemoSeed } from '../../../backend/config/local-demo';
 
 const setup = { mode: 'EXERCISE', url: 'http://127.0.0.1:8787', incident_id: 'i1', run_id: 'r1',
   roles: { chief: { capability: 'chief-fixture' }, producer: { capability: 'producer-fixture', principal_id: 'p1' } } };
@@ -32,9 +33,25 @@ for (const url of ['https://example.com', 'http://127.0.0.1:8787/?token=x', 'htt
 assert.throws(() => parseOpsSetup('invalid'));
 assert.throws(() => parseOpsSetup(JSON.stringify({ ...setup, roles: {} })));
 assert.equal(candidateForAction(action, [candidate]), candidate);
-assert.throws(() => candidateForAction(action, []), /No eligible/);
-assert.throws(() => candidateForAction({ ...action, unitIds: ['d2'] }, [candidate]), /No eligible/);
+assert.throws(() => candidateForAction(action, []), /Unsupported backend asset/);
+assert.throws(() => candidateForAction({ ...action, unitIds: ['d2'] }, [candidate]), /Unsupported backend asset/);
+assert.throws(() => candidateForAction(action, [], view.feeds), /No eligible.*scope expired/);
+assert.throws(() => candidateForAction(action, [{ ...candidate, feasible: false }]), /No eligible.*scope expired/);
 assert.throws(() => candidateForAction({ ...action, kind: 'rescue' }, [candidate]), /Only single/);
+const defaultSeed = createLocalDemoSeed();
+for (let n = 1; n <= 6; n++) {
+  const resolved = candidateForAction({ ...action, unitIds: [`uav-${n}`] }, defaultSeed.candidates, defaultSeed.assets);
+  assert.equal(resolved.asset_id, `d${n}`);
+  assert.equal(resolved.candidate_id, `c${n}`);
+}
+for (const unitId of ['uav-7', 'raf-11']) {
+  assert.throws(() => candidateForAction({ ...action, unitIds: [unitId] }, defaultSeed.candidates, defaultSeed.assets), error => {
+    assert.match((error as Error).message, /Unsupported backend asset/);
+    assert.doesNotMatch((error as Error).message, /restart/);
+    return true;
+  });
+}
+console.log('F03 candidate mapping: default seed resolves uav-1..6 to d1..6 (6/6); unsupported assets and unavailable scope distinguished PASS');
 const mapped = proposalForAction(action, view, candidate, 'mapping');
 assert.equal(mapped.kind, 'proposal.created');
 if (mapped.kind !== 'proposal.created') throw new Error('proposal');
@@ -55,6 +72,9 @@ const denied = new OpsBridge(parsedSetup, (async () => Response.json({ error: { 
 await assert.rejects(approveWithBridge(denied, action, () => executions++, 0), /Chief denied/);
 assert.equal(executions, 2);
 console.log('OPS-BRIDGE-02: unconfigured/unreachable execute locally; authorization rejection executes 0 actions PASS');
+const malformed = new OpsBridge(parsedSetup, (async () => new Response('{', { status: 200 })) as typeof fetch);
+await assert.rejects(approveWithBridge(malformed, action, () => executions++, 0), /Invalid backend response/);
+assert.equal(executions, 2, 'malformed initial snapshot never authorizes local fallback');
 
 const paths: string[] = [];
 let command: Command;

@@ -56,12 +56,12 @@ function data<T>(response: { status: number; data?: T }): T {
   assert.equal(response.status, 200); assert.notEqual(response.data, undefined); return response.data!;
 }
 
-test('PL01 3 fixture assets, 8 wall seconds, 20 HTTP reader checkpoints, <=6s freeze and 10 no-revivals', { timeout: 25_000 }, async t => {
+test('PL01 6 fixture assets, 8 wall seconds, 20 HTTP reader checkpoints, <=6s freeze and 10 no-revivals', { timeout: 25_000 }, async t => {
   const f = await fixture();
   const heartbeatTimes: number[] = []; const sequences = new Map<string, number>();
   const started = performance.now();
   try {
-    assert.equal(f.initial.assets.length, 3); assert.equal(f.initial.feeds.length, 3);
+    assert.equal(f.initial.assets.length, 6); assert.equal(f.initial.feeds.length, 6);
     const beat = async () => {
       assert.equal((await f.call('simulator', 'producer-heartbeats', '')).status, 200);
       heartbeatTimes.push(performance.now());
@@ -70,7 +70,7 @@ test('PL01 3 fixture assets, 8 wall seconds, 20 HTTP reader checkpoints, <=6s fr
     for (let n = 0; n < 20; n++) {
       await delay(Math.max(0, started + (n + 1) * 400 - performance.now()));
       await beat();
-      const asset_id = f.initial.assets[n % 3].asset_id;
+      const asset_id = f.initial.assets[n % f.initial.assets.length].asset_id;
       const sequence = (sequences.get(asset_id) ?? 0) + 1; sequences.set(asset_id, sequence);
       const event: EventInput = { contract_version: f.initial.contract_version, incident_id: f.initial.incident_id,
         run_id: f.initial.run_id, authority_epoch: f.initial.authority_epoch, event_id: `fixture:${asset_id}:${sequence}`,
@@ -88,7 +88,7 @@ test('PL01 3 fixture assets, 8 wall seconds, 20 HTTP reader checkpoints, <=6s fr
     const maxGapMs = Math.max(...heartbeatTimes.slice(1).map((at, n) => at - heartbeatTimes[n]));
     assert.ok(maxGapMs <= 1000, `Heartbeat gap ${maxGapMs}ms`);
     assert.equal(f.authority.read().incident_revision, 20); assert.ok(f.authority.read().incident_revision <= 50);
-    assert.equal(Object.keys(f.authority.read().telemetry).length, 3);
+    assert.equal(Object.keys(f.authority.read().telemetry).length, 6);
     for (const row of Object.values(f.authority.read().telemetry)) {
       assert.equal(row.payload.position, null); assert.equal(row.payload.captured_at, null);
     }

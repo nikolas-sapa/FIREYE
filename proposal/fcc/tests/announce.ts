@@ -6,6 +6,12 @@ import { ANNOUNCE_LABEL, announcementFor, deliverAnnouncement, shouldAnnounce } 
 for (const stage of ['monitor', 'prepare', 'leave', 'shelter'] as const) {
   assert.ok(announcementFor(stage, 'Mati').body.endsWith(ANNOUNCE_LABEL));
 }
+{
+  const veryClose = announcementFor('shelter', 'Mati');
+  assert.equal(veryClose.title, 'FIRE VERY CLOSE · Mati');
+  assert.match(veryClose.body, /^Mati: Fire very close: follow 112 instructions now\. /);
+  assert.doesNotMatch(`${veryClose.title} ${veryClose.body}`, /shelter|indoors|stay inside/i);
+}
 assert.equal(shouldAnnounce(null, 'mati', 'leave'), false);
 assert.equal(shouldAnnounce({ home: 'mati', stage: 'monitor' }, 'other', 'leave'), false);
 assert.equal(shouldAnnounce({ home: 'mati', stage: 'leave' }, 'mati', 'prepare'), false);

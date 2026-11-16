@@ -2,11 +2,12 @@ import { useMemo, useSyncExternalStore } from 'react';
 import * as Cesium from 'cesium';
 import { color, role } from '@ds';
 import type { Geo, Ms, ScenarioPack } from '../contracts';
+import type { SpreadField } from '../agents/spread';
 import { consoleStore, useConsoleSelector } from '../store';
 import { residentEstimateAt, routingHazardAt } from './geo/saferoute';
 import {
   MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM, escapeRoutes,
-  leaveBy, pointInPolygon, residentsNear, summarizeRoads,
+  STAGE_LABEL, leaveBy, pointInPolygon, residentsNear, summarizeRoads,
   type AlertStage, type EscapeRoute, type Hazard,
 } from './geo/evac';
 
@@ -57,6 +58,7 @@ export interface RevEntry {
   rosMpm: number;
   bands: { horizonMin: number; polygon: Geo[] }[];
   etaToPlaces: Record<string, Ms>;
+  field?: SpreadField | null;
 }
 const revLog: RevEntry[] = [];
 let wired = false;
@@ -81,7 +83,9 @@ function ingest() {
   // On backward scrub, drop entries that are now "future" so everything stays a pure function of t.
   while (revLog.length && revLog[revLog.length - 1]!.t > t) { revLog.pop(); changed = true; }
   if (!p || p.issuedAt > t || revLog[revLog.length - 1]?.rev === p.rev) return changed;
-  revLog.push({ t: p.issuedAt, rev: p.rev, issuedAt: p.issuedAt, rosMpm: p.rosMpm, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces } });
+  const sim = consoleStore.runtime?.sim;
+  const field = sim?.projection === p ? sim.projField : null;
+  revLog.push({ t: p.issuedAt, rev: p.rev, issuedAt: p.issuedAt, rosMpm: p.rosMpm, bands: p.bands.map((b) => ({ horizonMin: b.horizonMin, polygon: b.polygon })), etaToPlaces: { ...p.etaToPlaces }, field });
   revLog.sort((a, b) => a.t - b.t);
   if (revLog.length > 120) revLog.shift();
   return true;
@@ -183,8 +187,8 @@ export function alertFeed(pack: ScenarioPack | null, t: Ms): AlertFeedRow[] {
     const n = residents.get(x.placeId) ?? 0;
     const m = Math.round(n * 0.18);
     const name = (placesOf(pack).find((p) => p.id === x.placeId)?.name ?? x.placeId).toUpperCase();
-    const detail = x.stage === 'leave' ? 'fire expected within ~1h' : x.stage === 'shelter' ? 'fire imminent, stay inside' : 'fire expected within 3h';
-    return { t: x.t, stage: x.stage, place: name, text: `${x.stage.toUpperCase()} · ${name} · ${detail} · SMS sent to ~${n} residents · voice calls to ~${m} (elderly list) · SIMULATED` };
+    const detail = x.stage === 'leave' ? 'fire expected within ~1h' : x.stage === 'shelter' ? 'follow 112 instructions now' : 'fire expected within 3h';
+    return { t: x.t, stage: x.stage, place: name, text: `${STAGE_LABEL[x.stage]} · ${name} · ${detail} · SMS sent to ~${n} residents · voice calls to ~${m} (elderly list) · SIMULATED` };
   }).sort((a, b) => a.t - b.t);
 }
 

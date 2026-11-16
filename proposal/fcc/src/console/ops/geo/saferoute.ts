@@ -1,7 +1,8 @@
 import type { Geo } from '../../contracts';
+import { fieldEtaAt, type SpreadField } from '../../agents/spread';
 import { alertStage, pointInPolygon, type Hazard, type Road } from './evac';
 
-interface HazardEntry { t: number; bands: { horizonMin: number; polygon: Geo[] }[] }
+interface HazardEntry { t: number; bands: { horizonMin: number; polygon: Geo[] }[]; field?: SpreadField | null }
 interface KnownPerimeter { t: number; polygon: Geo[][] }
 
 export function routingHazardAt(t: number, entries: HazardEntry[], perimeters: KnownPerimeter[]): Hazard | null {
@@ -14,10 +15,9 @@ export function routingHazardAt(t: number, entries: HazardEntry[], perimeters: K
 
 export function residentEstimateAt(pos: Geo, t: number, entries: HazardEntry[], perimeters: KnownPerimeter[]) {
   const entry = entries.filter((e) => e.t <= t).sort((a, b) => b.t - a.t)[0];
-  const band = entry?.bands.filter((b) => pointInPolygon(pos, b.polygon)).sort((a, b) => a.horizonMin - b.horizonMin)[0];
   const hazard = routingHazardAt(t, entries, perimeters);
   const inBlocked = hazard?.blocked.some((p) => pointInPolygon(pos, p)) ?? false;
-  const eta = entry && band ? entry.t + band.horizonMin * 60000 : null;
+  const eta = fieldEtaAt(entry?.field, pos);
   const etaMin = eta === null ? null : Math.max(0, Math.round((eta - t) / 60000));
   return { eta, etaMin, inBlocked, stage: alertStage(etaMin, inBlocked) };
 }

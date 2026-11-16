@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import type { Geo } from '../src/console/contracts';
+import { resolve } from 'node:path';
+import type { Geo, Projection } from '../src/console/contracts';
+import { createBus } from '../src/console/bus';
+import { fieldEtaAt, type SpreadField } from '../src/console/agents/spread';
+import { loadScenario } from '../src/console/scenario';
+import { consoleStore } from '../src/console/store';
+import { Runtime } from '../src/console/world/runtime';
+import { leaveBy, placeAlerts, residentAlertAt, wireAlerts } from '../src/console/ops/alerts';
 import { buildRoadGraph, escapeRoutes, googleMapsDirectionsUrl, googleMapsEmbedUrl, MATI_EXITS, pointInPolygon, polygonDistanceM, steeringWaypoints, type Road } from '../src/console/ops/geo/evac';
 import { parseLocation, residentEstimateAt, routingHazardAt } from '../src/console/ops/geo/saferoute';
 
@@ -55,10 +62,10 @@ assert.deepEqual(routingHazardAt(20, entries.slice().reverse(), perimeters.slice
 console.log('SAFEROUTE clock: latest issued projection and known perimeter only; future entries excluded');
 assert.equal(residentEstimateAt(place('ignition'), 20, entries, perimeters).stage, 'shelter');
 assert.equal(residentEstimateAt(predicted[0], 20, [], []).stage, 'monitor');
-assert.equal(residentEstimateAt({ lon: 23.962, lat: 38.035 }, 20, entries, perimeters).eta, 10 + 60 * 60000);
-assert.equal(residentEstimateAt({ lon: 23.957, lat: 38.043 }, 20, entries, perimeters).stage, 'prepare');
+assert.equal(residentEstimateAt({ lon: 23.962, lat: 38.035 }, 20, entries, perimeters).eta, null);
+assert.equal(residentEstimateAt({ lon: 23.957, lat: 38.043 }, 20, entries, perimeters).stage, 'monitor');
 assert.equal(residentEstimateAt(place('nea-makri'), 20, entries, perimeters).eta, null);
-console.log('SAFEROUTE custom resident: band-based ETA, prepare/shelter/monitor stages, unknown ETA without bands');
+console.log('SAFEROUTE custom resident: shelter policy unchanged; band-only/empty estimates remain unavailable');
 
 const origin = { lat: 38.123456, lon: 23.987654 };
 const destination = { lat: 38.234567, lon: 24.123456 };
@@ -77,6 +84,28 @@ assert.deepEqual(steeringWaypoints([origin]), []);
 assert.deepEqual(steeringWaypoints([origin, ...waypoints, destination], 0), []);
 assert.deepEqual(steeringWaypoints([origin, origin, origin]), []);
 console.log('SAFEROUTE Maps: exact five-decimal encoded fields, empty waypoints omitted, embed key encoded, <=3 on-path points');
+{
+  // F08: a thin caution strip crossed by a long edge whose midpoint lies far outside it.
+  const a = { lon: 23.92, lat: 38.02 }, b = { lon: 23.94, lat: 38.02 };
+  const g = buildRoadGraph([{ id: 'w', name: 'Test Rd', kind: 'primary', coords: [a, b] }]);
+  const exit = [{ id: 'east', label: 'East', pos: b }];
+  const strip = (w: number, e: number): Geo[] => [{ lon: w, lat: 38.019 }, { lon: e, lat: 38.019 }, { lon: e, lat: 38.021 }, { lon: w, lat: 38.021 }];
+  const run = (caution: Geo[][], opts = {}) => escapeRoutes(g, a, { blocked: [], caution }, exit, opts)[0]!;
+  const clear = run([]);
+  assert.equal(clear.cautionM, 0);
+  for (const [w, e] of [[23.921, 23.922], [23.9215, 23.92152], [23.938, 23.94]] as const) {
+    const r = run([strip(w, e)]);
+    const widthM = (e - w) * 111320 * Math.cos(38.02 * Math.PI / 180);
+    assert.ok(r.cautionM > 0, `thin caution ${w}-${e} counted`);
+    assert.ok(r.cautionM <= Math.max(widthM, clear.lengthM / Math.ceil(clear.lengthM / 20)) + 25, `caution ${r.cautionM.toFixed(0)} m bounded by strip width ${widthM.toFixed(0)} m`);
+    assert.ok(run([strip(w, e)], { clearanceM: 500 }).cautionM > 0);
+  }
+  // A strip near but not touching the road is not counted.
+  assert.equal(run([[{ lon: 23.925, lat: 38.03 }, { lon: 23.926, lat: 38.03 }, { lon: 23.926, lat: 38.031 }, { lon: 23.925, lat: 38.031 }]]).cautionM, 0);
+  const full = run([strip(23.91, 23.95)]);
+  assert.ok(Math.abs(full.cautionM - full.lengthM) < 1, 'fully covered edge counts whole length');
+  console.log(`SAFEROUTE caution: thin/long-edge crossings counted (${run([strip(23.921, 23.922)]).cautionM.toFixed(0)} m of ${clear.lengthM.toFixed(0)} m), disjoint 0, full edge = length`);
+}
 
 assert.deepEqual(parseLocation('38.04, 23.98', [], [], bbox), { name: 'Custom location', pos: { lat: 38.04, lon: 23.98 } });
 for (const p of manifest.places) {
@@ -95,3 +124,58 @@ assert.ok('error' in parseLocation('unknown nonexistent road', manifest.places, 
 assert.ok('error' in parseLocation('', manifest.places, osm.roads, bbox));
 assert.ok('error' in parseLocation('NaN, Infinity', manifest.places, osm.roads, bbox));
 console.log('SAFEROUTE location: coordinates, manifest places, Greek/Latin accent-insensitive roads; empty/unknown/outside rejected');
+
+const originalFetch = globalThis.fetch;
+const root = resolve('public');
+globalThis.fetch = (async (url: string | URL | Request) => {
+  const path = resolve(root, `.${String(url)}`);
+  assert.ok(path.startsWith(`${root}/`));
+  return new Response(readFileSync(path));
+}) as typeof fetch;
+try {
+  const pack = await loadScenario('mati-2018');
+  consoleStore.runtime = new Runtime(pack, createBus());
+  wireAlerts();
+  const at1723 = Date.parse('2018-07-23T17:23:00+03:00');
+  for (const t of [at1723, at1723 + 37 * 60000, at1723]) {
+    consoleStore.api.seek(t);
+    consoleStore.api.setPaused(true);
+    const presetAlerts = placeAlerts(pack, t);
+    for (const id of ['mati', 'neos-voutzas', 'kokkino-limanaki', 'argyra-akti', 'nea-makri']) {
+      const preset = presetAlerts.find((p) => p.id === id)!;
+      const result = parseLocation(`${preset.pos.lat},${preset.pos.lon}`, pack.manifest.places, [], bbox);
+      assert.ok('pos' in result);
+      const custom = residentAlertAt(pack, t, result.pos);
+      assert.equal(custom.eta, preset.eta, `${id}: coordinate-entry ETA equals preset`);
+      assert.equal(custom.etaMin, preset.etaMin, `${id}: countdown equals preset`);
+      if (preset.eta !== null) assert.equal(leaveBy(custom.eta!, 45), leaveBy(preset.eta, 45));
+      // Map and GPS selections use this same custom lat,lon storage representation.
+      const stored = `custom:${preset.pos.lat},${preset.pos.lon}`;
+      const restored = parseLocation(stored.slice(7), [], [], bbox);
+      assert.ok('pos' in restored);
+      assert.equal(residentAlertAt(pack, t, restored.pos).eta, preset.eta, `${id}: map/GPS custom ETA equals preset`);
+    }
+    const mati = presetAlerts.find((p) => p.id === 'mati')!;
+    assert.notEqual(mati.eta, null, 'Mati has a finite ETA at the regression times');
+    assert.equal(residentAlertAt(pack, t, { lat: 0, lon: 0 }).eta, null, 'outside field has no ETA');
+    const field: SpreadField = consoleStore.runtime.sim.projField!;
+    const projection: Projection = consoleStore.runtime.sim.projection!;
+    assert.equal(field.issuedAt, projection.issuedAt);
+    const current = { t: projection.issuedAt, bands: projection.bands, field };
+    assert.equal(residentEstimateAt(mati.pos, projection.issuedAt - 1, [current], []).eta, null, 'future field excluded');
+    const unreachable = { ...field, t: new Float32Array(field.t.length).fill(Infinity) };
+    assert.equal(fieldEtaAt(unreachable, mati.pos), null, 'outside model horizon has no ETA');
+    const burned = { ...field, t: new Float32Array(field.t.length) };
+    const observed = residentEstimateAt(mati.pos, t, [{ ...current, field: burned }], []);
+    assert.equal(observed.eta, field.issuedAt, 'observed burn retains zero-minute model arrival');
+    assert.equal(observed.etaMin, 0, 'past arrival countdown clamps to zero');
+    const clear = residentEstimateAt(mati.pos, t, [{ ...current, bands: [] }], []);
+    assert.equal(clear.stage, clear.etaMin! <= 60 ? 'leave' : clear.etaMin! <= 180 ? 'prepare' : 'monitor');
+    const blocked = residentEstimateAt(mati.pos, t, [current], [{ t: 0, polygon: [square(mati.pos, 0.001)] }]);
+    assert.equal(blocked.stage, 'shelter', 'blocked origin still shelters regardless of model ETA');
+  }
+  console.log('F01 resident ETA: 5 presets x 3 paused/seek states; coordinate and map/GPS storage paths match ETA/leave-by exactly (0 ms); missing/future/outside/horizon/burned cases PASS');
+} finally {
+  globalThis.fetch = originalFetch;
+  consoleStore.runtime = null;
+}

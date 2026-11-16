@@ -5,7 +5,7 @@ import { MIN, compass, destination, round } from '../world/geo';
 import { rebuildCoverage } from '../world/coverage';
 import { retargetAircraft } from '../world/units';
 import { enqueue } from './swarm';
-import { fieldMinAt, gridGeo, runSpread, type SpreadField, type SpreadWeather } from './spread';
+import { fieldEtaAt, fieldMinAt, gridGeo, runSpread, type SpreadField, type SpreadWeather } from './spread';
 import { issueChecks } from './predictions';
 
 const BINS = 96;
@@ -163,9 +163,8 @@ export function applyProjection(sim: Sim, reason: string, extra: string[] = []):
   const prev = sim.projection;
   const etaToPlaces: Record<string, number> = {};
   for (const p of sim.ctx.places) {
-    const m = fieldMinAt(field, p.pos, 600);
-    if (m < 0 || !Number.isFinite(m)) continue;
-    etaToPlaces[p.id] = Math.round(t + m * MIN);
+    const eta = fieldEtaAt(field, p.pos);
+    if (eta !== null) etaToPlaces[p.id] = eta;
   }
   const drivers = [
     `Wind ${Math.round(w.windDirDeg)}° ${compass(w.windDirDeg)} ${Math.round(w.windKph)} kph · gusts ${Math.round(w.gustKph)}`,

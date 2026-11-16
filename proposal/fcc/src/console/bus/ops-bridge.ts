@@ -31,9 +31,11 @@ export function backendAssetId(localUnitId: string): string {
 }
 
 /** Explicit exercise alias: only the same declared drone, never another asset or a field route. */
-export function candidateForAction(action: Action, candidates: readonly Candidate[]): Candidate {
+export function candidateForAction(action: Action, candidates: readonly Candidate[], assets: readonly { asset_id: string }[] = candidates): Candidate {
   if (action.kind !== 'retask-drone' || action.unitIds.length !== 1 || !action.target) throw new BridgeRejected('Only single-drone retasking is bridged');
-  const candidate = candidates.find(c => c.asset_id === backendAssetId(action.unitIds[0]) && c.feasible);
+  const assetId = backendAssetId(action.unitIds[0]);
+  if (!assets.some(a => a.asset_id === assetId)) throw new BridgeRejected(`Unsupported backend asset: ${action.unitIds[0]}`);
+  const candidate = candidates.find(c => c.asset_id === assetId && c.feasible);
   if (!candidate) throw new BridgeRejected('No eligible backend candidate for this drone; restart the exercise if its scope expired');
   return candidate;
 }
@@ -76,7 +78,9 @@ export function receiptForCommand(command: Command, producer: string, captureEpo
       receipt_id: id, command_id: command.command_id, command_version: command.command_version,
       transmission_id: command.transmission_id, mission_id: command.mission_id, mission_version: command.mission_version,
       stage, sim_tick: simTick, producer_id: producer, capture_epoch: captureEpoch, captured_at: null,
-      capture_time_status: 'unknown', reason: 'Simulated execution evidence only; no camera/media registration, field execution or measured route validation', evidence_ids: evidenceIds,
+      capture_time_status: 'unknown', reason: stage === 'cancelled'
+        ? 'Local simulated task cancelled or did not start; no field execution or measured route validation'
+        : 'Simulated execution evidence only; no camera/media registration, field execution or measured route validation', evidence_ids: evidenceIds,
     } };
 }
 
@@ -104,7 +108,9 @@ export async function simulatedExecutionFrame(command: Command, feed: Feed, prod
 }
 
 export class OpsBridge {
-  private commands = new Map<string, { command: Command; feed: Feed; cancelPending: boolean }>();
+  private approving = new Set<string>();
+  private commands = new Map<string, { command: Command; feed: Feed; cancelPending: boolean; actionKey: string }>();
+  private attempts = new Map<string, { approval: ApprovalRequest; candidate: Candidate; actionKey: string }>();
   private completions = new Map<string, { receipt: EventInput; frame: EventInput; image: string }>();
   constructor(private readonly setup: OpsSetup, private readonly fetchImpl: typeof fetch = fetch.bind(globalThis)) {}
 
@@ -119,7 +125,11 @@ export class OpsBridge {
       });
     } catch { throw new BridgeOffline('Backend unavailable; no execution authorized by this request'); }
     let result: { data: T; error?: { code?: string; reason?: string } };
-    try { result = await response.json(); } catch { throw new BridgeRejected('Invalid backend response'); }
+    try { result = await response.json(); } catch {
+      if (path === 'approvals') throw new BridgeOffline('Invalid backend approval response; request outcome is unknown');
+      throw new BridgeRejected('Invalid backend response');
+    }
+    if (path === 'approvals' && response.status >= 500) throw new BridgeOffline('Backend approval failed; request outcome is unknown');
     if (!response.ok) throw new BridgeRejected(`${result.error?.code ?? response.status}: ${result.error?.reason ?? 'Backend rejected request'}`);
     return result.data;
   }
@@ -136,65 +146,121 @@ export class OpsBridge {
   }
   async heartbeat(): Promise<void> { await this.request('producer-heartbeats', 'producer'); }
 
-  async approve(action: Action, execute: () => void, simTick: number): Promise<void> {
+  private actionKey(action: Action): string {
+    return JSON.stringify([action.proposedAt, action.unitIds, action.target]);
+  }
+
+  private async reconcileApproval(id: string): Promise<void> {
+    const attempt = this.attempts.get(id);
+    if (!attempt) return;
+    let rejected = false;
+    try { await this.request('approvals', 'chief', attempt.approval); }
+    catch (error) {
+      if (!(error instanceof BridgeRejected)) throw error;
+      rejected = true;
+    }
+    const view = await this.snapshot();
+    const row = view.commands.find(c => c.approval_id === attempt.approval.approval_id);
+    if ((row && ['completed', 'failed', 'cancelled', 'rejected'].includes(row.status)) || (!row && rejected)) {
+      this.attempts.delete(id);
+      return;
+    }
+    const commands = await this.request<Command[]>('commands', 'producer');
+    const command = commands.find(c => c.approval_id === attempt.approval.approval_id);
+    if (!command) throw new BridgeRejected('Approval outcome retained; command is not currently available for reconciliation');
+    localActionId(command, { actionId: id, approvalId: attempt.approval.approval_id, candidate: attempt.candidate });
+    const feed = view.feeds.find(f => f.asset_id === command.asset_id);
+    if (!feed) throw new BridgeRejected('Producer capture scope unavailable; approval outcome retained');
+    this.commands.set(id, { command, feed, cancelPending: true, actionKey: attempt.actionKey });
+    this.attempts.delete(id);
+  }
+
+  async approve(action: Action, execute: () => unknown, simTick: number): Promise<void> {
+    if (this.approving.has(action.id)) throw new BridgeRejected('Command approval already pending');
+    this.approving.add(action.id);
+    try { await this.approveAction(action, execute, simTick); }
+    finally { this.approving.delete(action.id); }
+  }
+
+  private async approveAction(action: Action, execute: () => unknown, simTick: number): Promise<void> {
+    if (this.attempts.has(action.id)) {
+      await this.reconcileApproval(action.id);
+      await this.finish(action.id, 'cancelled', simTick);
+    }
     if (this.commands.has(action.id)) throw new BridgeRejected('Command already pending; await its terminal receipt');
     await this.heartbeat();
     const view = await this.snapshot();
-    const candidate = candidateForAction(action, view.candidates);
+    const candidate = candidateForAction(action, view.candidates, view.feeds);
     const id = `ops-${crypto.randomUUID()}`;
     const proposal = proposalForAction(action, view, candidate, id);
     await this.request('events', 'chief', proposal);
     const proposed = await this.snapshot();
     const approval = approvalForProposal(proposed, candidate, id);
-    await this.request('approvals', 'chief', approval);
+    const actionKey = this.actionKey(action);
+    this.attempts.set(action.id, { approval, candidate, actionKey });
+    try { await this.request('approvals', 'chief', approval); }
+    catch (error) {
+      if (error instanceof BridgeRejected) this.attempts.delete(action.id);
+      throw error;
+    }
     const commands = await this.request<Command[]>('commands', 'producer');
     const command = commands.find(c => c.approval_id === approval.approval_id);
     if (!command) throw new BridgeRejected('Accepted approval has no executable command');
     localActionId(command, { actionId: action.id, approvalId: approval.approval_id, candidate });
+    const feed = view.feeds.find(f => f.asset_id === command.asset_id);
+    if (!feed) throw new BridgeRejected('Producer capture scope unavailable');
+    const binding = { command, feed, cancelPending: true, actionKey };
+    this.commands.set(action.id, binding);
+    this.attempts.delete(action.id);
     const current = await this.snapshot();
     const checked = await this.request<Command>('command-checks', 'producer', {
       command_id: command.command_id, expected_incident_revision: current.incident_revision,
     });
     if (JSON.stringify(checked) !== JSON.stringify(command)) throw new BridgeRejected('Command changed before execution');
-    const feed = current.feeds.find(f => f.asset_id === command.asset_id);
-    if (!feed) throw new BridgeRejected('Producer capture scope unavailable');
-    const binding = { command, feed, cancelPending: false };
-    this.commands.set(action.id, binding);
-    try {
-      await this.request('events', 'producer', receiptForCommand(command, this.setup.roles.producer.principal_id, feed.capture_epoch, 'running', simTick));
-    } catch (error) {
+    await this.request('events', 'producer', receiptForCommand(command, this.setup.roles.producer.principal_id, feed.capture_epoch, 'running', simTick));
+    try { await execute(); }
+    catch (error) {
       binding.cancelPending = true;
+      try { await this.finish(action.id, 'cancelled', simTick); } catch { /* Retain the terminal outcome for observe() to retry. */ }
       throw error;
     }
-    execute();
+    binding.cancelPending = false;
   }
 
   async observe(actions: readonly Action[], simTick: number): Promise<void> {
+    for (const id of this.attempts.keys()) await this.reconcileApproval(id);
     for (const [id, binding] of this.commands) {
       const action = actions.find(a => a.id === id);
-      const stage = binding.cancelPending ? 'cancelled' : action?.status === 'done' ? 'completed' : !action || action.status === 'undone' ? 'cancelled' : null;
+      const stale = !action || this.actionKey(action) !== binding.actionKey;
+      const stage = binding.cancelPending || stale ? 'cancelled' : action.status === 'done' ? 'completed' : action.status !== 'executing' ? 'cancelled' : null;
       if (!stage) continue;
-      let completion = this.completions.get(id);
-      if (!completion) {
-        const frame = await simulatedExecutionFrame(binding.command, binding.feed, this.setup.roles.producer.principal_id, stage, simTick);
-        if (frame.event.kind !== 'frame.received') throw new BridgeRejected('Invalid execution frame');
-        completion = { frame: frame.event, image: frame.image, receipt: receiptForCommand(binding.command,
-          this.setup.roles.producer.principal_id, binding.feed.capture_epoch, stage, simTick, [frame.event.payload.evidence_id]) };
-        this.completions.set(id, completion);
-      }
-      await this.request('events', 'producer', completion.frame);
-      await this.request('events', 'producer', completion.receipt);
-      this.commands.delete(id); this.completions.delete(id);
+      await this.finish(id, stage, simTick);
     }
   }
-  get pending(): number { return this.commands.size; }
+
+  private async finish(id: string, stage: 'completed' | 'cancelled', simTick: number): Promise<void> {
+    const binding = this.commands.get(id);
+    if (!binding) return;
+    let completion = this.completions.get(id);
+    if (!completion) {
+      const frame = await simulatedExecutionFrame(binding.command, binding.feed, this.setup.roles.producer.principal_id, stage, simTick);
+      if (frame.event.kind !== 'frame.received') throw new BridgeRejected('Invalid execution frame');
+      completion = { frame: frame.event, image: frame.image, receipt: receiptForCommand(binding.command,
+        this.setup.roles.producer.principal_id, binding.feed.capture_epoch, stage, simTick, [frame.event.payload.evidence_id]) };
+      this.completions.set(id, completion);
+    }
+    await this.request('events', 'producer', completion.frame);
+    await this.request('events', 'producer', completion.receipt);
+    this.commands.delete(id); this.completions.delete(id);
+  }
+  get pending(): number { return this.commands.size + this.attempts.size; }
 }
 
 /** Only an initial read may fall back. Ambiguous mutation failures never authorize execution. */
-export async function approveWithBridge(bridge: OpsBridge | null, action: Action, execute: () => void, simTick: number): Promise<'local' | 'backend'> {
-  if (!bridge) { execute(); return 'local'; }
+export async function approveWithBridge(bridge: OpsBridge | null, action: Action, execute: () => unknown, simTick: number): Promise<'local' | 'backend'> {
+  if (!bridge) { await execute(); return 'local'; }
   try { await bridge.snapshot(); }
-  catch (error) { if (error instanceof BridgeOffline && bridge.pending === 0) { execute(); return 'local'; } throw error; }
+  catch (error) { if (error instanceof BridgeOffline && bridge.pending === 0) { await execute(); return 'local'; } throw error; }
   await bridge.approve(action, execute, simTick);
   return 'backend';
 }

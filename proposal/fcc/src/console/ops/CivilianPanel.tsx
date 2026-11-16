@@ -6,7 +6,7 @@ import { localTime, packZone } from '../ui/format';
 import {
   STAGE_RANK, alertFeed, fireUpdates, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
-import type { AlertStage } from './geo/evac';
+import { STAGE_LABEL, VERY_CLOSE_TEXT, type AlertStage } from './geo/evac';
 import { Character } from './characters/Character';
 import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
@@ -18,7 +18,7 @@ const STAGE_COPY: Record<AlertStage, { title: string; body: string; cls: string 
   monitor: { title: 'MONITOR', body: 'No evacuation alert for your area yet. Stay aware.', cls: 'text-bone' },
   prepare: { title: 'PREPARE TO LEAVE', body: 'Fire is expected in your area within hours. Pack essentials, check on neighbours.', cls: 'text-amber' },
   leave: { title: 'LEAVE NOW', body: 'Fire is approaching your area. Leave immediately on the route shown.', cls: 'text-ember' },
-  shelter: { title: 'SHELTER IN PLACE', body: 'Leaving is no longer safe. Stay indoors, close windows, move to the side away from the fire.', cls: 'text-ember' },
+  shelter: { title: STAGE_LABEL.shelter, body: `${VERY_CLOSE_TEXT}.`, cls: 'text-ember' },
 };
 
 const homeListeners = new Set<() => void>();
@@ -103,7 +103,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
           <div className="relative mt-1 border border-line bg-ink-900 px-3 py-2">
             <span aria-hidden className="absolute -left-1.5 top-3 h-3 w-3 rotate-45 border-b border-l border-line bg-ink-900" />
             <p className="text-sm leading-5 text-bone">
-              {STAGE_RANK[stage] >= 2 && best ? `Leave now. Take the route to ${best.exit.label}.` : copy.body}
+              {STAGE_RANK[stage] >= 2 && stage !== 'shelter' && best ? `Leave now. Take the route to ${best.exit.label}.` : copy.body}
             </p>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
         <p className="mt-2 text-sm leading-5 text-bone-dim">{copy.body}</p>
         <div className="mt-3 flex gap-6 font-mono">
           <div>
-            <div className="text-micro uppercase text-bone-mute">Fire ETA{home?.id.startsWith('custom:') ? ' · band estimate' : ''}</div>
+            <div className="text-micro uppercase text-bone-mute">Fire ETA</div>
             <div className="fcc-num mt-0.5 text-lg text-bone">{homeAlert?.eta != null ? `${localTime(homeAlert.eta, tz)} ${tz}` : '—'}</div>
           </div>
           {leaveAt != null && (
@@ -140,7 +140,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
             </p>
           </div>
         ) : (
-          <p className="mt-2 text-xs text-bone-mute">{routes.status === 'loading' ? 'Loading road graph / current projection…' : blocked ? 'No safe road route: your location is in the fire / predicted area. See the shelter guidance above.' : 'No safe road route available. Follow civil protection / 112 instructions.'}</p>
+          <p className="mt-2 text-xs text-bone-mute">{routes.status === 'loading' ? 'Loading road graph / current projection…' : blocked ? 'No safe road route: your location is in the fire / predicted area. Fire very close: follow 112 instructions now.' : 'No safe road route available. Follow civil protection / 112 instructions.'}</p>
         )}
       </div>
       <ResidentDisclaimer />

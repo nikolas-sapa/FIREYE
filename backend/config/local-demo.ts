@@ -44,16 +44,17 @@ export function createLocalDemoSeed(taskTtlS = 120): IncidentSeed {
   if (!Number.isSafeInteger(taskTtlS) || taskTtlS < 1 || taskTtlS > 7200) throw new TypeError('Invalid local task TTL');
   const run = randomUUID();
   const producer = `exercise-producer:${run}`;
+  const drones = [1, 2, 3, 4, 5, 6];
   return {
     contract_version: 'backend-protocol.v1', incident_id: 'exercise-local', run_id: `run:${run}`,
     authority_epoch: 1, incident_revision: 0, input_revision: 0, plan_revision: 0, reservation_revision: 0,
     chief_id: `exercise-chief:${run}`, chief_epoch: 1, producer_id: producer, capture_epoch: 1, authority_active: true,
-    assets: [1, 2, 3].map(n => ({ asset_id: `d${n}`, capabilities: ['thermal'], thermal_feed_id: `t${n}` })),
-    feeds: [1, 2, 3].map(n => ({ feed_id: `t${n}`, asset_id: `d${n}`, modality: 'thermal',
+    assets: drones.map(n => ({ asset_id: `d${n}`, capabilities: ['thermal'], thermal_feed_id: `t${n}` })),
+    feeds: drones.map(n => ({ feed_id: `t${n}`, asset_id: `d${n}`, modality: 'thermal',
       source_kind: 'simulated', synthetic: true, radiometric: false, calibration: null,
       source_id: `exercise-source:d${n}`, source_revision: 0, capture_owner_id: producer,
       capture_epoch: 1, status: 'available' })),
-    candidates: [1, 2, 3].map(n => ({ candidate_id: `c${n}`, action_id: 'inspect', asset_id: `d${n}`,
+    candidates: drones.map(n => ({ candidate_id: `c${n}`, action_id: 'inspect', asset_id: `d${n}`,
       mission_id: `m${n}`, mission_version: 1, route_id: `declared-route${n}`, plan_revision: 0,
       feasibility_snapshot_id: `exercise-fixture${n}`, feasible: true, expires_at_sim_tick: taskTtlS })),
   };
