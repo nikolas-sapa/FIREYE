@@ -4,11 +4,11 @@ import { color, role } from '@ds';
 import type { Geo, Ms, ScenarioPack } from '../contracts';
 import type { SpreadField } from '../agents/spread';
 import { consoleStore, useConsoleSelector } from '../store';
-import { residentEstimateAt, routingHazardAt } from './geo/saferoute';
+import { residentEstimateAt, residentRouteOptions, routingHazardAt } from './geo/saferoute';
 import {
-  MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM, escapeRoutes,
+  MATI_EXITS, NO_EXIT_ZONES, alertStage, buildRoadGraph, distanceM,
   STAGE_LABEL, leaveBy, pointInPolygon, residentsNear, summarizeRoads,
-  type AlertStage, type EscapeRoute, type Hazard,
+  type AlertStage, type EscapeRoute, type Hazard, type RouteKind, type RouteOption, type RouteOptions,
 } from './geo/evac';
 
 /* ------------------------------------------------------------------ osm + road graph (lazy) */
@@ -211,12 +211,32 @@ export function counters(pack: ScenarioPack | null, t: Ms): Counters {
 
 /* ------------------------------------------------------------------ escape routes */
 
-export interface Routes { best: EscapeRoute | null; second: EscapeRoute | null; status: 'loading' | 'unavailable' | 'ready' }
+export interface Routes { best: EscapeRoute | null; second: EscapeRoute | null; status: 'loading' | 'unavailable' | 'ready'; options?: RouteOptions | null; choice?: RouteKind }
+
+let routeChoice: RouteKind = 'balanced';
+export const getRouteChoice = (): RouteKind => routeChoice;
+/** Resident route selection (Balanced default). Only the chosen route is returned as `best` and drawn. */
+export function setRouteChoice(kind: RouteKind) {
+  if (kind === routeChoice) return;
+  routeChoice = kind;
+  bump();
+}
+
+let optionsCache: { key: string; value: RouteOptions | null } | null = null;
+function optionsFor(home: Geo, t: Ms, pack: ScenarioPack | null, entry: RevEntry): RouteOptions | null {
+  const perimeterT = pack?.perimeters.reduce((latest, p) => p.t <= t ? Math.max(latest, p.t) : latest, -Infinity);
+  const key = `${home.lat},${home.lon}|${entry.rev}|${entry.t}|${perimeterT}|${graph?.edgeCount}`;
+  if (optionsCache?.key !== key) optionsCache = { key, value: residentRouteOptions(graph!, home, t, revLog, pack?.perimeters ?? [], MATI_EXITS, pack?.manifest.places ?? []) };
+  return optionsCache.value;
+}
+
 const routesFor = (home: Geo | null): Routes => {
   const s = consoleStore.get();
-  if (!graph || !home || !entryAt(s.clock.t)) return { best: null, second: null, status: 'loading' };
-  const routes = escapeRoutes(graph, home, hazardAt(s.pack, s.clock.t), MATI_EXITS, { clearanceM: 500 });
-  return { best: routes[0] ?? null, second: routes[1] ?? null, status: routes.length ? 'ready' : 'unavailable' };
+  const entry = entryAt(s.clock.t);
+  if (!graph || !home || !entry) return { best: null, second: null, status: 'loading' };
+  const options = optionsFor(home, s.clock.t, s.pack, entry);
+  const best: RouteOption | null = options?.[routeChoice] ?? null;
+  return { best, second: null, status: best ? 'ready' : 'unavailable', options, choice: routeChoice };
 };
 
 export function useRoutes(home: Geo | null, rev: number): Routes {
@@ -233,7 +253,7 @@ export const hazardNow = (): Hazard => { const s = consoleStore.get(); return ha
 export const routesNow = (home: Geo | null): Routes => routesFor(home);
 
 export { NO_EXIT_ZONES, MATI_EXITS, leaveBy, distanceM, pointInPolygon, hazardOf };
-export type { AlertStage, EscapeRoute };
+export type { AlertStage, EscapeRoute, RouteKind, RouteOption, RouteOptions };
 
 /** Ordered road names for display. */
 export const routeRoads = (r: EscapeRoute): string[] => summarizeRoads(r, 4);

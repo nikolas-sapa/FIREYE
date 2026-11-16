@@ -14,7 +14,8 @@ export interface RoadGraph {
 
 export interface Exit { id: string; label: string; pos: Geo }
 
-export interface Hazard { blocked: Geo[][]; caution: Geo[][] }
+/** `fire` (optional) is the current known perimeter, used for the displayed minimum distance to fire. */
+export interface Hazard { blocked: Geo[][]; caution: Geo[][]; fire?: Geo[][] }
 
 export interface EscapeRoute { exit: Exit; path: Geo[]; lengthM: number; roads: string[]; cautionM: number; roadMeters?: Record<string, number> }
 
@@ -394,3 +395,236 @@ export function residentsNear(buildings: { pos: Geo; kind: string }[], center: G
   for (const b of buildings) if (distanceM(b.pos, center) <= radiusM) count++;
   return Math.round(count * perBuilding);
 }
+
+/* ------------------------------------------------------------------ route options (fastest / balanced / safest) */
+
+export type RouteKind = 'balanced' | 'fastest' | 'safest';
+export const ROUTE_KINDS: readonly RouteKind[] = ['balanced', 'fastest', 'safest'];
+export const ROUTE_LABEL: Record<RouteKind, string> = { balanced: 'Balanced', fastest: 'Fastest', safest: 'Safest' };
+/** Balanced may take at most this multiple of the fastest drive time. */
+export const BALANCED_TIME_CAP = 1.4;
+/** Balanced weighted cost: minutes of extra driving accepted per km of risk-weighted exposure. */
+export const BALANCED_MIN_PER_RISK_KM = 6;
+/** The modelled fire must reach a road this many minutes after the resident would pass it. */
+export const ETA_SAFETY_MARGIN_MIN = 15;
+/** Slack below this (minutes, beyond the margin) still adds exposure. */
+const ETA_SLACK_MIN = 60;
+/** Closer than this to the blocked area (perimeter + 60-min projection) adds exposure. */
+const PROXIMITY_M = 1000;
+const RISK_LAMBDAS = [0, 0.5, 1, 2, 4, 8, 16, 64, 256];
+/** Nominal free-flow speeds by OSM road class weight; not live traffic. */
+const speedKph = (weight: number) => (weight <= 0.5 ? 60 : weight <= 1 ? 35 : 15);
+
+export interface RouteOption extends EscapeRoute {
+  kind: RouteKind;
+  /** Nominal free-flow drive time, minutes. */
+  timeMin: number;
+  /** Risk-weighted exposure metres: caution/predicted spread + proximity + low ETA slack. */
+  riskM: number;
+  /** Minimum distance from the route to the current perimeter (or blocked area), metres; null if no fire known. */
+  minFireM: number | null;
+  /** Extra minutes vs the fastest option (rounded, >= 0). */
+  extraMin: number;
+  /** Kinds this exact path also satisfies, e.g. balanced == fastest. */
+  sameAs: RouteKind[];
+  /** One-line explanation. */
+  why: string;
+}
+export interface RouteOptions { balanced: RouteOption; fastest: RouteOption; safest: RouteOption; capRatio: number; marginMin: number }
+export interface RouteOptionInput {
+  /** Modelled fire arrival at p in minutes from now; null when not reached within the model horizon. */
+  etaMinAt?: (p: Geo) => number | null;
+  places?: { name: string; pos: Geo }[];
+  capRatio?: number;
+  marginMin?: number;
+}
+
+interface Candidate { exit: Exit; nodes: number[]; lengthM: number; timeMin: number; riskM: number; cautionM: number; roads: string[]; roadMeters: Record<string, number>; edgeRisk: number[] }
+
+/** Fastest, safest and balanced (default) driving routes on the road graph. Prototype, simulation-derived. */
+export function routeOptions(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[], input: RouteOptionInput = {}): RouteOptions | null {
+  const capRatio = input.capRatio ?? BALANCED_TIME_CAP;
+  const withMargin = routeCandidates(g, from, hazard, exits, input, input.marginMin ?? ETA_SAFETY_MARGIN_MIN);
+  const marginMin = withMargin.length ? input.marginMin ?? ETA_SAFETY_MARGIN_MIN : 0;
+  const all = withMargin.length ? withMargin : routeCandidates(g, from, hazard, exits, input, 0);
+  if (!all.length) return null;
+  const fire = prepare(hazard.fire?.length ? hazard.fire : hazard.blocked);
+  const fireDist = new Float64Array(g.lon.length).fill(-1);
+  const minFire = (c: Candidate): number | null => {
+    if (!fire.length) return null;
+    let best = Infinity;
+    for (const i of c.nodes) {
+      if (fireDist[i] < 0) { const p = { lon: g.lon[i], lat: g.lat[i] }; fireDist[i] = Math.min(...fire.map((q) => polygonDistanceM(p, q.poly))); }
+      best = Math.min(best, fireDist[i]);
+    }
+    return best;
+  };
+  const byTime = (a: Candidate, b: Candidate) => a.timeMin - b.timeMin || a.riskM - b.riskM;
+  const fastest = [...all].sort(byTime)[0];
+  const cap = fastest.timeMin * capRatio;
+  const score = (c: Candidate) => c.timeMin + BALANCED_MIN_PER_RISK_KM * c.riskM / 1000;
+  const balanced = all.filter((c) => c.timeMin <= cap + 1e-9).sort((a, b) => score(a) - score(b) || byTime(a, b))[0];
+  const safest = [...all].sort((a, b) => a.riskM - b.riskM || a.timeMin - b.timeMin)[0];
+  const picked: Record<RouteKind, Candidate> = { balanced, fastest, safest };
+  const placeNear = (p: Geo) => {
+    let name = '', best = Infinity;
+    for (const pl of input.places ?? []) { const d = distanceM(p, pl.pos); if (d < best) { best = d; name = pl.name; } }
+    return name && best <= 3000 ? ` near ${name}` : '';
+  };
+  const hotspot = (c: Candidate) => {
+    let k = 0;
+    for (let i = 1; i < c.edgeRisk.length; i++) if (c.edgeRisk[i] > c.edgeRisk[k]) k = i;
+    return { lon: g.lon[c.nodes[k + 1] ?? c.nodes[0]], lat: g.lat[c.nodes[k + 1] ?? c.nodes[0]] };
+  };
+  const km = (m: number | null) => (m === null ? '' : `${(m / 1000).toFixed(1)} km`);
+  const plus = (c: Candidate) => { const x = Math.max(0, Math.round(c.timeMin - fastest.timeMin)); return x ? `+${x} min vs fastest` : 'no extra time vs fastest'; };
+  const out = {} as Record<RouteKind, RouteOption>;
+  for (const kind of ROUTE_KINDS) {
+    const c = picked[kind];
+    const minFireM = minFire(c);
+    const avoid = fastest.cautionM > c.cautionM + 1 ? `Avoids the predicted spread${placeNear(hotspot(fastest))}` : `Keeps farther from the fire${placeNear(hotspot(fastest))}`;
+    let why: string;
+    if (kind === 'fastest') why = fastest.riskM < 1 ? `Shortest drive time; clear of the projected spread${minFireM !== null ? `, ${km(minFireM)} from the fire` : ''}.` : fastest.cautionM > 0 ? `Shortest drive time, but crosses ${Math.round(fastest.cautionM)} m of predicted spread${placeNear(hotspot(fastest))}.` : `Shortest drive time; passes ${km(minFireM)} from the fire${placeNear(hotspot(fastest))}.`;
+    else if (c === fastest) why = fastest.riskM < 1 ? `Fastest route is also clear of the projected spread; ${km(minFireM)} from the fire.` : safest === fastest ? 'Fastest route is also the lowest-exposure option.' : `Fastest route; the lower-exposure option adds ${Math.max(1, Math.round(safest.timeMin - fastest.timeMin))} min for little risk reduction.`;
+    else why = `${avoid}; ${plus(c)}${kind === 'safest' ? ', lowest fire exposure' : ''}.`;
+    const path = c.nodes.map((i) => ({ lon: g.lon[i], lat: g.lat[i] }));
+    out[kind] = {
+      kind, exit: c.exit, path, lengthM: c.lengthM, roads: c.roads, cautionM: c.cautionM, roadMeters: c.roadMeters,
+      timeMin: c.timeMin, riskM: c.riskM, minFireM, extraMin: Math.max(0, Math.round(c.timeMin - fastest.timeMin)),
+      sameAs: ROUTE_KINDS.filter((k) => k !== kind && picked[k] === c), why,
+    };
+  }
+  return { ...out, capRatio, marginMin };
+}
+
+function routeCandidates(g: RoadGraph, from: Geo, hazard: Hazard, exits: Exit[], input: RouteOptionInput, marginMin: number): Candidate[] {
+  const n = g.lon.length;
+  if (n === 0) return [];
+  const blocked = prepare(hazard.blocked);
+  const caution = prepare(hazard.caution);
+  const nodeBlocked = new Int8Array(n);
+  const isBlocked = (i: number): boolean => {
+    if (nodeBlocked[i] === 0) nodeBlocked[i] = inAny({ lon: g.lon[i], lat: g.lat[i] }, blocked) ? 2 : 1;
+    return nodeBlocked[i] === 2;
+  };
+  const near = new Float64Array(n).fill(-1);
+  const pad = PROXIMITY_M / 111320;
+  const nearAt = (i: number): number => {
+    if (near[i] < 0) {
+      const p = { lon: g.lon[i], lat: g.lat[i] };
+      let d = PROXIMITY_M;
+      for (const q of blocked) {
+        const k = pad / Math.cos(p.lat * RAD);
+        if (p.lon < q.minLon - k || p.lon > q.maxLon + k || p.lat < q.minLat - pad || p.lat > q.maxLat + pad) continue;
+        d = Math.min(d, polygonDistanceM(p, q.poly));
+      }
+      near[i] = Math.max(0, 1 - d / PROXIMITY_M);
+    }
+    return near[i];
+  };
+  const eta = new Float64Array(n).fill(NaN);
+  const etaAt = (i: number): number => {
+    if (Number.isNaN(eta[i])) eta[i] = input.etaMinAt?.({ lon: g.lon[i], lat: g.lat[i] }) ?? Infinity;
+    return eta[i];
+  };
+  const shareCache = new Map<number, number>();
+  const shareOf = (u: number, v: number, lengthM: number): number => {
+    const key = u < v ? u * n + v : v * n + u;
+    let s = shareCache.get(key);
+    if (s === undefined) {
+      const a = { lon: g.lon[u], lat: g.lat[u] }, b = { lon: g.lon[v], lat: g.lat[v] };
+      s = inNoExitZone({ lon: (a.lon + b.lon) / 2, lat: (a.lat + b.lat) / 2 }) ? 1 : cautionShare(a, b, caution, lengthM);
+      shareCache.set(key, s);
+    }
+    return s;
+  };
+  const crossCache = new Map<number, boolean>();
+  const crossesBlocked = (u: number, v: number): boolean => {
+    const key = u < v ? u * n + v : v * n + u;
+    let c = crossCache.get(key);
+    if (c === undefined) { c = crosses({ lon: g.lon[u], lat: g.lat[u] }, { lon: g.lon[v], lat: g.lat[v] }, blocked); crossCache.set(key, c); }
+    return c;
+  };
+
+  const start = nearestIndex(g, from);
+  const snapped = { lon: g.lon[start], lat: g.lat[start] };
+  if (inAny(from, blocked) || crosses(from, snapped, blocked) || isBlocked(start)) return [];
+  const targets = new Map<number, Exit[]>();
+  for (const exit of exits) {
+    if (inNoExitZone(exit.pos)) continue;
+    const t = nearestIndex(g, exit.pos);
+    if (inNoExitZone({ lon: g.lon[t], lat: g.lat[t] })) continue;
+    const list = targets.get(t);
+    if (list) list.push(exit); else targets.set(t, [exit]);
+  }
+  if (targets.size === 0) return [];
+  const startTime = distanceM(from, snapped) / (speedKph(1) / 3.6) / 60;
+
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+  const cost = new Float64Array(n);
+  const time = new Float64Array(n);
+  const prev = new Int32Array(n);
+  const prevEdge: ({ lengthM: number; name: string; cautionM: number; risk: number; timeMin: number } | null)[] = new Array(n);
+  const done = new Uint8Array(n);
+  for (const lambda of RISK_LAMBDAS) {
+    cost.fill(Infinity); time.fill(Infinity); prev.fill(-1); prevEdge.fill(null); done.fill(0);
+    const heap = new MinHeap();
+    cost[start] = 0;
+    time[start] = startTime;
+    heap.push(0, start);
+    let remaining = targets.size;
+    while (heap.size > 0 && remaining > 0) {
+      const [, u] = heap.pop();
+      if (done[u]) continue;
+      done[u] = 1;
+      if (targets.has(u)) remaining--;
+      for (const e of g.adj[u]) {
+        const v = e.to;
+        if (done[v] || isBlocked(v) || crossesBlocked(u, v)) continue;
+        const dt = e.lengthM / (speedKph(e.weight) / 3.6) / 60;
+        const pass = time[u] + dt;
+        const slack = etaAt(v) - pass - marginMin;
+        if (slack < 0) continue;
+        const share = shareOf(u, v, e.lengthM);
+        const risk = e.lengthM * (share + (nearAt(u) + nearAt(v)) / 2 + Math.max(0, 1 - slack / ETA_SLACK_MIN));
+        const nc = cost[u] + dt + lambda * risk / 1000;
+        if (nc < cost[v]) {
+          cost[v] = nc;
+          time[v] = pass;
+          prev[v] = u;
+          prevEdge[v] = { lengthM: e.lengthM, name: e.name, cautionM: e.lengthM * share, risk, timeMin: dt };
+          heap.push(nc, v);
+        }
+      }
+    }
+    for (const [t, list] of targets) {
+      if (!done[t]) continue;
+      const nodes: number[] = [];
+      const names: string[] = [];
+      const edgeRisk: number[] = [];
+      let lengthM = 0, cautionM = 0, riskM = 0;
+      const roadMeters: Record<string, number> = {};
+      for (let i = t; i !== -1; i = prev[i]) {
+        nodes.push(i);
+        const e = prevEdge[i];
+        if (e) {
+          lengthM += e.lengthM; cautionM += e.cautionM; riskM += e.risk;
+          names.push(e.name); edgeRisk.push(e.risk);
+          if (e.name) roadMeters[e.name] = (roadMeters[e.name] ?? 0) + e.lengthM;
+        }
+      }
+      nodes.reverse(); names.reverse(); edgeRisk.reverse();
+      const key = nodes.join(',');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const roads: string[] = [];
+      for (const name of names) if (name && roads[roads.length - 1] !== name) roads.push(name);
+      for (const exit of list) out.push({ exit, nodes, lengthM, timeMin: time[t], riskM, cautionM, roads, roadMeters, edgeRisk });
+    }
+  }
+  return out;
+}
+
+/** Google Maps URL waypoint limit: 3 on mobile browsers, 9 otherwise (Maps URLs documentation). */
+export const mapsWaypointLimit = (mobile: boolean) => (mobile ? 3 : 9);

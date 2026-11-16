@@ -1,6 +1,6 @@
 import type { Geo } from '../../contracts';
-import { fieldEtaAt, type SpreadField } from '../../agents/spread';
-import { alertStage, pointInPolygon, type Hazard, type Road } from './evac';
+import { fieldEtaAt, fieldMinAt, type SpreadField } from '../../agents/spread';
+import { alertStage, pointInPolygon, routeOptions, type Exit, type Hazard, type Road, type RoadGraph, type RouteOptions } from './evac';
 
 interface HazardEntry { t: number; bands: { horizonMin: number; polygon: Geo[] }[]; field?: SpreadField | null }
 interface KnownPerimeter { t: number; polygon: Geo[][] }
@@ -10,7 +10,19 @@ export function routingHazardAt(t: number, entries: HazardEntry[], perimeters: K
   if (!entry) return null;
   const perimeter = perimeters.filter((p) => p.t <= t).sort((a, b) => b.t - a.t)[0];
   const band = (h: number) => entry.bands.filter((b) => b.horizonMin === h && b.polygon.length >= 3).map((b) => b.polygon);
-  return { blocked: [...band(60), ...(perimeter?.polygon ?? [])], caution: band(180) };
+  return { blocked: [...band(60), ...(perimeter?.polygon ?? [])], caution: band(180), fire: perimeter?.polygon ?? [] };
+}
+
+/** Fastest / balanced / safest routes at sim time t using only the latest issued projection, its spread field and the known perimeter. */
+export function residentRouteOptions(g: RoadGraph, from: Geo, t: number, entries: HazardEntry[], perimeters: KnownPerimeter[], exits: Exit[], places: { name: string; pos: Geo }[] = []): RouteOptions | null {
+  const hazard = routingHazardAt(t, entries, perimeters);
+  if (!hazard) return null;
+  const field = entries.filter((e) => e.t <= t).sort((a, b) => b.t - a.t)[0]?.field;
+  const etaMinAt = field && field.issuedAt <= t ? (p: Geo) => {
+    const m = fieldMinAt(field, p, 0);
+    return m < 0 || !Number.isFinite(m) ? null : (field.issuedAt + m * 60000 - t) / 60000;
+  } : undefined;
+  return routeOptions(g, from, hazard, exits, { etaMinAt, places });
 }
 
 export function residentEstimateAt(pos: Geo, t: number, entries: HazardEntry[], perimeters: KnownPerimeter[]) {
