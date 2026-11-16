@@ -440,7 +440,7 @@ Local Ops backend-to-frontend simulated execution and completion receipts are co
 ## Roadmap and current gates
 
 1. Review current-source receipts and outstanding issue cards. Preserve the owner-approved resident-first direction and existing appearance; new interface changes still require approval.
-2. Approve explicit producer/coordinate/feed/clock/command mapping, then connect backend-approved commands to frontend execution and factual receipts. Do not replace the received-only reader with simulator fallback.
+2. Extend acceptance of PR #67's local producer/coordinate/feed/clock/command mapping and backend-approved simulated execution/receipts, especially loss/retry/rejoin. Do not replace the received-only reader with simulator fallback; production integration remains deferred.
 3. Review ten-minute browser acceptance beyond the bounded 20-export check, including source labels, uncertainty, human approval, loss/rejoin and replay. Existing channels alone do not close these gates.
 4. Resolve provider model/runtime/configuration, rights and budget gates before any genuine inference/retrieval. Cloud/auth/persistence and media integration need separate approval.
 5. Freeze reviewed evidence and attribution before separately authorizing any public deployment or submission.
