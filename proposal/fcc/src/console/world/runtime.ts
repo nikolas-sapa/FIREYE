@@ -1,11 +1,9 @@
 import type { ConsoleState, Ms, ScenarioPack } from '../contracts';
 import type { Bus } from '../bus';
 import type { Sim } from './sim';
-import { MIN, clamp } from './geo';
+import { clamp } from './geo';
 import { contextFor, createSim, fastForward, stepSim } from './engine';
 import { Director, type DirectorRuntime } from '../director';
-
-const MAX_FF_MS = 6 * 60 * MIN;
 
 /** Owns the current Sim, rebuilds it on backward seeks, and drives the Demo Director. */
 export class Runtime implements DirectorRuntime {
@@ -66,7 +64,10 @@ export class Runtime implements DirectorRuntime {
     stepSim(this.sim, dtReal);
   }
 
-  /** User seek: forward up to 6 h is simulated (keeps decisions and drones consistent), otherwise rebuilt. */
+  /**
+   * User seek. The world advances in fixed steps, so simulating forward from the current state or from a rebuild
+   * yields the same state as continuous play. Backward seeks rebuild from the start (legacy: from T0, or at t before it).
+   */
   seek(t: Ms): void {
     const c = this.sim.ctx;
     const to = clamp(t, c.start, c.end);
@@ -74,9 +75,8 @@ export class Runtime implements DirectorRuntime {
     const paused = this.sim.paused;
     this.setMuted(true);
     try {
-      if (this.profile === 'recon' && Math.abs(to - this.sim.t) > 1000) this.rebuild(to);
-      else if (to > this.sim.t && to - this.sim.t <= MAX_FF_MS) fastForward(this.sim, to, { speed: Math.max(this.sim.speed, 120), dtReal: 0.5 });
-      else if (Math.abs(to - this.sim.t) > 1000) this.rebuild(to);
+      if (to < this.sim.t + this.sim.carryMs) this.rebuild(this.profile === 'recon' || to < c.T0 ? to : c.T0);
+      if (to > this.sim.t + this.sim.carryMs) fastForward(this.sim, to, { speed: Math.max(this.sim.speed, 120), dtReal: 0.5 });
     } finally {
       this.setMuted(false);
     }

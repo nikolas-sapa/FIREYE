@@ -1,3 +1,10 @@
+## REWIND-20261122, deterministic seek for drones and alerts
+
+Owner: repository owner (nikolas-sapa), Devin builder. Branch `fix/rewind-determinism`, based on `origin/main` at `ccd8a75`. Owner-authorized exception to `proposal/fcc/**` teammate ownership; teammate review requested before merge. Exact claim: `proposal/fcc/src/console/world/engine.ts`, `proposal/fcc/src/console/world/runtime.ts`, `proposal/fcc/src/console/world/sim.ts`, `proposal/fcc/tests/rewind.ts`, this section.
+
+Tests: RW01 seeking 19:00 then 16:00 then 17:00 matches continuous play to 17:00, with drone positions within 1e-6 deg and identical battery, status and alert ids. RW02 seek under 250 ms for the Mati window. RW03 typecheck, console tests and build exit 0. Status: RW01 PASS (fails against origin/main engine/runtime/sim, passes with fix). RW02 standalone seeks 315/53/66 ms: first cold seek exceeds 250 ms. RW03 PASS. Test wired into `npm test`.
+
+Non-goals: UI or appearance changes, scenario data changes, new dependencies.
 ## SWEEP-DISPATCH-20261122, wildfire-sweep dispatch physics port
 
 Owner: repository owner (nikolas-sapa), Devin builder. Branch `feat/sweep-dispatch`, based on `origin/main` at `ccd8a75`. Owner-authorized exception to `proposal/fcc/**` teammate ownership; teammate review requested before merge. Exact claim: `proposal/fcc/src/sim/dispatch.ts`, `proposal/fcc/scripts/gen-sweep-parity.py`, `proposal/fcc/tests/sweep-dispatch-parity.ts`, `proposal/fcc/tests/fixtures/sweep-dispatch-parity.json`, `proposal/fcc/scripts/check-console.mjs` (one test entry), `proposal/fcc/src/console/fireye/data/fleet.ts`, `proposal/fcc/src/console/fireye/shell/FleetColumn.tsx`, `docs/provenance/wildfire-sweep-dispatch.md`, this section.
