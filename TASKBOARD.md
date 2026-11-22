@@ -2,7 +2,7 @@
 
 Owner: repository owner (nikolas-sapa), Devin builder. Branch `feat/sweep-dispatch`, based on `origin/main` at `ccd8a75`. Owner-authorized exception to `proposal/fcc/**` teammate ownership; teammate review requested before merge. Exact claim: `proposal/fcc/src/sim/dispatch.ts`, `proposal/fcc/scripts/gen-sweep-parity.py`, `proposal/fcc/tests/sweep-dispatch-parity.ts`, `proposal/fcc/tests/fixtures/sweep-dispatch-parity.json`, `proposal/fcc/scripts/check-console.mjs` (one test entry), `proposal/fcc/src/console/fireye/data/fleet.ts`, `proposal/fcc/src/console/fireye/shell/FleetColumn.tsx`, `docs/provenance/wildfire-sweep-dispatch.md`, this section.
 
-Tests: SD01 48 golden cases generated from wildfire-sweep `66bb3c9` `research.py`; every finite time within 1e-6 s, status/selected base/reason exact (PASS; sign-flip mutation went RED). SD02 typecheck, `node scripts/check-console.mjs`, `npm run build` exit 0 (PASS at `a860012`). SD03 Fleet panel Dispatch check screenshot at 17:00 and absent before ignition: NOT RUN; `9eb1133` FleetColumn wiring is unverified WIP.
+Tests: SD01 48 golden cases generated from wildfire-sweep `66bb3c9` `research.py`; every finite time within 1e-6 s, status/selected base/reason exact (PASS; sign-flip mutation went RED). SD02 typecheck, `node scripts/check-console.mjs`, `npm run build` exit 0 (PASS at `a860012`). SD02 re-run PASS at `9eb1133` (FleetColumn wiring). SD03 Fleet panel Dispatch check screenshot at 17:00 and absent before ignition: NOT RUN.
 
 Provenance: [file-level record](docs/provenance/wildfire-sweep-dispatch.md); wildfire-sweep frozen outputs untouched; license unstated, same owner. Non-goals: real flight control or authorization, queueing, calibrated geography, changes to wildfire-sweep.
 
