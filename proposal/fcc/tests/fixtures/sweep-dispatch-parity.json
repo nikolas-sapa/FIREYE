@@ -1,0 +1,4769 @@
+{
+  "source": {
+    "repo": "https://github.com/nikolas-sapa/wildfire-sweep",
+    "commit": "66bb3c9f72f0a820c79eb2b495fc80a4ce1a4da6",
+    "research_py_sha256": "45ddfd1837602061adc2914b575787498921a276110c6cbee33d312b38fa5301"
+  },
+  "defaults": {
+    "airspeedMps": 18.0,
+    "windMps": [
+      0.0,
+      0.0
+    ],
+    "enduranceMin": 46.0,
+    "reserveFraction": 0.25,
+    "launchLatencyS": 60.0,
+    "maxWindMps": 12.0,
+    "dwellS": 120.0
+  },
+  "cases": [
+    {
+      "name": "calm-3bases",
+      "point": [
+        10.0,
+        6.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 217.13484026367723,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 411.36418446315326,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 157.13484026367723,
+            "returnS": 157.13484026367723,
+            "airborneS": 434.26968052735447,
+            "arrivalS": 217.13484026367723,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 566.5577237325316,
+            "returnS": 566.5577237325316,
+            "airborneS": 1253.1154474650632,
+            "arrivalS": 626.5577237325316,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calm-5bases",
+      "point": [
+        10.0,
+        6.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 217.13484026367723,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 411.36418446315326,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 157.13484026367723,
+            "returnS": 157.13484026367723,
+            "airborneS": 434.26968052735447,
+            "arrivalS": 217.13484026367723,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 566.5577237325316,
+            "returnS": 566.5577237325316,
+            "airborneS": 1253.1154474650632,
+            "arrivalS": 626.5577237325316,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 471.40452079103164,
+            "returnS": 471.40452079103164,
+            "airborneS": 1062.8090415820634,
+            "arrivalS": 531.4045207910317,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 411.36418446315326,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calm-9bases",
+      "point": [
+        10.0,
+        6.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b6",
+          "xKm": 4.0,
+          "yKm": 20.0,
+          "available": true
+        },
+        {
+          "id": "b7",
+          "xKm": 12.0,
+          "yKm": 20.0,
+          "available": true
+        },
+        {
+          "id": "b8",
+          "xKm": 20.0,
+          "yKm": 20.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 217.13484026367723,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 411.36418446315326,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 157.13484026367723,
+            "returnS": 157.13484026367723,
+            "airborneS": 434.26968052735447,
+            "arrivalS": 217.13484026367723,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 566.5577237325316,
+            "returnS": 566.5577237325316,
+            "airborneS": 1253.1154474650632,
+            "arrivalS": 626.5577237325316,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 471.40452079103164,
+            "returnS": 471.40452079103164,
+            "airborneS": 1062.8090415820634,
+            "arrivalS": 531.4045207910317,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 411.36418446315326,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 647.8835438717001,
+            "returnS": 647.8835438717001,
+            "airborneS": 1415.7670877434002,
+            "arrivalS": 707.8835438717001,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b6",
+            "outboundS": 846.1970117626565,
+            "returnS": 846.1970117626565,
+            "airborneS": 1812.394023525313,
+            "arrivalS": 906.1970117626565,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b7",
+            "outboundS": 785.6742013183862,
+            "returnS": 785.6742013183862,
+            "airborneS": 1691.3484026367723,
+            "arrivalS": 845.6742013183862,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b8",
+            "outboundS": 955.8139185602918,
+            "returnS": 955.8139185602918,
+            "airborneS": 2031.6278371205835,
+            "arrivalS": 1015.8139185602918,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tailwind-east",
+      "point": [
+        16.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          8.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 213.84615384615384,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 461.53846153846155,
+            "returnS": 1200.0,
+            "airborneS": 1781.5384615384614,
+            "arrivalS": 521.5384615384615,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 153.84615384615384,
+            "returnS": 400.0,
+            "airborneS": 673.8461538461538,
+            "arrivalS": 213.84615384615384,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 400.0,
+            "returnS": 153.84615384615384,
+            "airborneS": 673.8461538461538,
+            "arrivalS": 460.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "headwind-west",
+      "point": [
+        16.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          -8.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b2",
+        "responseS": 213.84615384615384,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1200.0,
+            "returnS": 461.53846153846155,
+            "airborneS": 1781.5384615384614,
+            "arrivalS": 1260.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 400.0,
+            "returnS": 153.84615384615384,
+            "airborneS": 673.8461538461538,
+            "arrivalS": 460.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 153.84615384615384,
+            "returnS": 400.0,
+            "airborneS": 673.8461538461538,
+            "arrivalS": 213.84615384615384,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tailwind-north",
+      "point": [
+        4.0,
+        16.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          7.5
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b3",
+        "responseS": 216.86274509803923,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 470.5882352941176,
+            "returnS": 1142.857142857143,
+            "airborneS": 1733.4453781512605,
+            "arrivalS": 530.5882352941176,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 607.1737895730728,
+            "returnS": 1279.442697136098,
+            "airborneS": 2006.6164867091709,
+            "arrivalS": 667.1737895730728,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 931.5079550683206,
+            "returnS": 1603.776862631346,
+            "airborneS": 2655.2848176996667,
+            "arrivalS": 991.5079550683206,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 156.86274509803923,
+            "returnS": 380.95238095238096,
+            "airborneS": 657.8151260504202,
+            "arrivalS": 216.86274509803923,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "headwind-south",
+      "point": [
+        4.0,
+        16.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          -7.5
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b3",
+        "responseS": 440.95238095238096,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1142.857142857143,
+            "returnS": 470.5882352941176,
+            "airborneS": 1733.4453781512605,
+            "arrivalS": 1202.857142857143,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1279.442697136098,
+            "returnS": 607.1737895730728,
+            "airborneS": 2006.6164867091709,
+            "arrivalS": 1339.442697136098,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1603.776862631346,
+            "returnS": 931.5079550683206,
+            "airborneS": 2655.2848176996667,
+            "arrivalS": 1663.776862631346,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 380.95238095238096,
+            "returnS": 156.86274509803923,
+            "airborneS": 657.8151260504202,
+            "arrivalS": 440.95238095238096,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "crosswind-pure",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          9.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 513.2002392796674,
+            "returnS": 513.2002392796674,
+            "airborneS": 1146.4004785593347,
+            "arrivalS": 573.2002392796674,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 513.2002392796674,
+            "returnS": 513.2002392796674,
+            "airborneS": 1146.4004785593347,
+            "arrivalS": 573.2002392796674,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1080.2226106858047,
+            "returnS": 487.6300180932121,
+            "airborneS": 1687.8526287790169,
+            "arrivalS": 1140.2226106858047,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "crosswind-diagonal",
+      "point": [
+        14.0,
+        10.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          5.0,
+          6.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b4",
+        "responseS": 242.1785594410494,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 462.96378828201307,
+            "returnS": 1116.9561837192753,
+            "airborneS": 1699.9199720012884,
+            "arrivalS": 522.9637882820131,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 252.50936871167747,
+            "returnS": 602.3192546432364,
+            "airborneS": 974.8286233549138,
+            "arrivalS": 312.50936871167744,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 500.90830189729263,
+            "returnS": 546.5356783231481,
+            "airborneS": 1167.4439802204406,
+            "arrivalS": 560.9083018972926,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 500.7370416825775,
+            "returnS": 789.7104257129957,
+            "airborneS": 1410.4474673955733,
+            "arrivalS": 560.7370416825775,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 182.1785594410494,
+            "returnS": 166.96943396576424,
+            "airborneS": 469.1479934068136,
+            "arrivalS": 242.1785594410494,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 581.1148593915561,
+            "returnS": 261.7232244105676,
+            "airborneS": 962.8380838021237,
+            "arrivalS": 641.1148593915561,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-0",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          17.5
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1898.8506531101652,
+            "returnS": 1898.8506531101652,
+            "airborneS": 3917.7013062203305,
+            "arrivalS": 1958.8506531101652,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1898.8506531101652,
+            "returnS": 1898.8506531101652,
+            "airborneS": 3917.7013062203305,
+            "arrivalS": 1958.8506531101652,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 16219.259288940244,
+            "returnS": 444.61140161629334,
+            "airborneS": 16783.870690556538,
+            "arrivalS": 16279.259288940244,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-1",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          17.99
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 13335.185571076265,
+            "returnS": 13335.185571076265,
+            "airborneS": 26790.37114215253,
+            "arrivalS": 13395.185571076265,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 13335.185571076265,
+            "returnS": 13335.185571076265,
+            "airborneS": 26790.37114215253,
+            "arrivalS": 13395.185571076265,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 800222.1605451321,
+            "returnS": 444.4445129934885,
+            "airborneS": 800786.6050581256,
+            "arrivalS": 800282.1605451321,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-2",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          18.0
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": null,
+            "returnS": 444.44444444444446,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-3",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          18.5
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": null,
+            "returnS": 444.6209534046196,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-4",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          20.0
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": null,
+            "returnS": 447.57728968172404,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-airspeed-5",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          0.0,
+          25.0
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": null,
+            "returnS": 536.9878664900278,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-beyond-mixed",
+      "point": [
+        9.0,
+        11.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          14.0,
+          13.0
+        ],
+        "maxWindMps": 30.0
+      },
+      "expected": {
+        "status": "flight_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 236.96340981766784,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": 296.96340981766787,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1078.1504506509123,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": 1138.1504506509123,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 250.66864524647153,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": 310.66864524647156,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": null,
+            "returnS": 94.2177877516492,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "flight"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cross-near-slow-drone",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 12.5,
+        "windMps": [
+          0.0,
+          12.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 2285.714285714286,
+            "returnS": 2285.714285714286,
+            "airborneS": 4691.428571428572,
+            "arrivalS": 2345.714285714286,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 2285.714285714286,
+            "returnS": 2285.714285714286,
+            "airborneS": 4691.428571428572,
+            "arrivalS": 2345.714285714286,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 16313.962439671603,
+            "returnS": 640.493051916519,
+            "airborneS": 17074.45549158812,
+            "arrivalS": 16373.962439671603,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "weather-closed-0",
+      "point": [
+        10.0,
+        8.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          12.5,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "weather_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 266.9635611178084,
+            "returnS": 1161.1513405514895,
+            "airborneS": 1548.114901669298,
+            "arrivalS": 326.9635611178084,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 525.1102305952311,
+            "returnS": 227.04763745067078,
+            "airborneS": 872.1578680459019,
+            "arrivalS": 585.1102305952311,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1861.7420819292702,
+            "returnS": 371.4291162064686,
+            "airborneS": 2353.171198135739,
+            "arrivalS": 1921.7420819292702,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 266.9635611178084,
+            "returnS": 1161.1513405514895,
+            "airborneS": 1548.114901669298,
+            "arrivalS": 326.9635611178084,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 525.1102305952311,
+            "returnS": 227.04763745067078,
+            "airborneS": 872.1578680459019,
+            "arrivalS": 585.1102305952311,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          }
+        ]
+      }
+    },
+    {
+      "name": "weather-closed-1",
+      "point": [
+        10.0,
+        8.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          15.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "weather_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 253.53491474247744,
+            "returnS": 2071.7167329242952,
+            "airborneS": 2445.2516476667724,
+            "arrivalS": 313.53491474247744,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 845.1073884847974,
+            "returnS": 239.04678242419143,
+            "airborneS": 1204.1541709089888,
+            "arrivalS": 905.1073884847974,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 3377.2474540287535,
+            "returnS": 346.94442372572314,
+            "airborneS": 3844.1918777544765,
+            "arrivalS": 3437.2474540287535,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 253.53491474247744,
+            "returnS": 2071.7167329242952,
+            "airborneS": 2445.2516476667724,
+            "arrivalS": 313.53491474247744,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 845.1073884847974,
+            "returnS": 239.04678242419143,
+            "airborneS": 1204.1541709089888,
+            "arrivalS": 905.1073884847974,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "weather"
+          }
+        ]
+      }
+    },
+    {
+      "name": "weather-closed-2",
+      "point": [
+        10.0,
+        8.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          20.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "weather_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 234.0071221915118,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": 294.0071221915118,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": null,
+            "returnS": 408.6280011842216,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": null,
+            "returnS": 308.02736266904043,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 234.0071221915118,
+            "returnS": null,
+            "airborneS": null,
+            "arrivalS": 294.0071221915118,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": null,
+            "returnS": 408.6280011842216,
+            "airborneS": null,
+            "arrivalS": null,
+            "flightOk": false,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "weather"
+          }
+        ]
+      }
+    },
+    {
+      "name": "weather-closed-higher-max",
+      "point": [
+        10.0,
+        8.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          14.0,
+          0.0
+        ],
+        "maxWindMps": 20.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b0",
+        "responseS": 318.5800730190279,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 258.5800730190279,
+            "returnS": 1571.0800730190274,
+            "airborneS": 1949.6601460380552,
+            "arrivalS": 318.5800730190279,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 670.52600921253,
+            "returnS": 233.02600921253003,
+            "airborneS": 1023.5520184250599,
+            "arrivalS": 730.52600921253,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 2543.763469765023,
+            "returnS": 356.2634697650225,
+            "airborneS": 3020.026939530045,
+            "arrivalS": 2603.763469765023,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 258.5800730190279,
+            "returnS": 1571.0800730190274,
+            "airborneS": 1949.6601460380552,
+            "arrivalS": 318.5800730190279,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 670.52600921253,
+            "returnS": 233.02600921253003,
+            "airborneS": 1023.5520184250599,
+            "arrivalS": 730.52600921253,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-0",
+      "point": [
+        30.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b2",
+        "responseS": 658.3516452371671,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1461.4384931073228,
+            "returnS": 1461.4384931073228,
+            "airborneS": 3042.8769862146455,
+            "arrivalS": 1521.4384931073228,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1024.3938285880986,
+            "returnS": 1024.3938285880986,
+            "airborneS": 2168.787657176197,
+            "arrivalS": 1084.3938285880986,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 598.3516452371671,
+            "returnS": 598.3516452371671,
+            "airborneS": 1316.7032904743342,
+            "arrivalS": 658.3516452371671,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1590.869007030706,
+            "returnS": 1590.869007030706,
+            "airborneS": 3301.738014061412,
+            "arrivalS": 1650.869007030706,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 1201.850425154663,
+            "returnS": 1201.850425154663,
+            "airborneS": 2523.700850309326,
+            "arrivalS": 1261.850425154663,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-1",
+      "point": [
+        60.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "battery_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 3119.0375216929333,
+            "returnS": 3119.0375216929333,
+            "airborneS": 6358.075043385867,
+            "arrivalS": 3179.0375216929333,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 2675.909906398288,
+            "returnS": 2675.909906398288,
+            "airborneS": 5471.819812796576,
+            "arrivalS": 2735.909906398288,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 2233.3056935824197,
+            "returnS": 2233.3056935824197,
+            "airborneS": 4586.6113871648395,
+            "arrivalS": 2293.3056935824197,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 3181.738014061412,
+            "returnS": 3181.738014061412,
+            "airborneS": 6483.476028122824,
+            "arrivalS": 3241.738014061412,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 2748.737083745107,
+            "returnS": 2748.737083745107,
+            "airborneS": 5617.474167490214,
+            "arrivalS": 2808.737083745107,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-2",
+      "point": [
+        120.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "battery_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 6448.274723798626,
+            "returnS": 6448.274723798626,
+            "airborneS": 13016.549447597252,
+            "arrivalS": 6508.274723798626,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 6004.113816047243,
+            "returnS": 6004.113816047243,
+            "airborneS": 12128.227632094486,
+            "arrivalS": 6064.113816047243,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 5559.998223643024,
+            "returnS": 5559.998223643024,
+            "airborneS": 11239.996447286048,
+            "arrivalS": 5619.998223643024,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 6478.835438717,
+            "returnS": 6478.835438717,
+            "airborneS": 13077.670877434,
+            "arrivalS": 6538.835438717,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 6036.923425424944,
+            "returnS": 6036.923425424944,
+            "airborneS": 12193.846850849888,
+            "arrivalS": 6096.923425424944,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-3",
+      "point": [
+        300.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "battery_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 16445.94587740301,
+            "returnS": 16445.94587740301,
+            "airborneS": 33011.89175480602,
+            "arrivalS": 16505.94587740301,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 16001.543135461947,
+            "returnS": 16001.543135461947,
+            "airborneS": 32123.086270923894,
+            "arrivalS": 16061.543135461947,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 15557.142776166344,
+            "returnS": 15557.142776166344,
+            "airborneS": 31234.285552332687,
+            "arrivalS": 15617.142776166344,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 16457.952410031576,
+            "returnS": 16457.952410031576,
+            "airborneS": 33035.90482006315,
+            "arrivalS": 16517.952410031576,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 16013.882865952419,
+            "returnS": 16013.882865952419,
+            "airborneS": 32147.765731904838,
+            "arrivalS": 16073.882865952419,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-no-dwell",
+      "point": [
+        40.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "dwellS": 0.0
+      },
+      "expected": {
+        "status": "battery_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 2012.3078084749816,
+            "returnS": 2012.3078084749816,
+            "airborneS": 4024.615616949963,
+            "arrivalS": 2072.3078084749814,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1571.3484026367723,
+            "returnS": 1571.3484026367723,
+            "airborneS": 3142.6968052735447,
+            "arrivalS": 1631.3484026367723,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1133.1154474650632,
+            "returnS": 1133.1154474650632,
+            "airborneS": 2266.2308949301264,
+            "arrivalS": 1193.1154474650632,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 2108.1851067789194,
+            "returnS": 2108.1851067789194,
+            "airborneS": 4216.370213557839,
+            "arrivalS": 2168.1851067789194,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 1692.394023525313,
+            "returnS": 1692.394023525313,
+            "airborneS": 3384.788047050626,
+            "arrivalS": 1752.394023525313,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-long-endurance",
+      "point": [
+        40.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "enduranceMin": 90.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b2",
+        "responseS": 1193.1154474650632,
+        "within15min": false,
+        "usableAirborneS": 4050.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 2012.3078084749816,
+            "returnS": 2012.3078084749816,
+            "airborneS": 4144.615616949963,
+            "arrivalS": 2072.3078084749814,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1571.3484026367723,
+            "returnS": 1571.3484026367723,
+            "airborneS": 3262.6968052735447,
+            "arrivalS": 1631.3484026367723,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1133.1154474650632,
+            "returnS": 1133.1154474650632,
+            "airborneS": 2386.2308949301264,
+            "arrivalS": 1193.1154474650632,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 2108.1851067789194,
+            "returnS": 2108.1851067789194,
+            "airborneS": 4336.370213557839,
+            "arrivalS": 2168.1851067789194,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 1692.394023525313,
+            "returnS": 1692.394023525313,
+            "airborneS": 3504.788047050626,
+            "arrivalS": 1752.394023525313,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "far-tight-reserve",
+      "point": [
+        30.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "reserveFraction": 0.5
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b2",
+        "responseS": 658.3516452371671,
+        "within15min": true,
+        "usableAirborneS": 1380.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1461.4384931073228,
+            "returnS": 1461.4384931073228,
+            "airborneS": 3042.8769862146455,
+            "arrivalS": 1521.4384931073228,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 1024.3938285880986,
+            "returnS": 1024.3938285880986,
+            "airborneS": 2168.787657176197,
+            "arrivalS": 1084.3938285880986,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 598.3516452371671,
+            "returnS": 598.3516452371671,
+            "airborneS": 1316.7032904743342,
+            "arrivalS": 658.3516452371671,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1590.869007030706,
+            "returnS": 1590.869007030706,
+            "airborneS": 3301.738014061412,
+            "arrivalS": 1650.869007030706,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 1201.850425154663,
+            "returnS": 1201.850425154663,
+            "airborneS": 2523.700850309326,
+            "arrivalS": 1261.850425154663,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "all-offline",
+      "point": [
+        8.0,
+        8.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": false
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": false
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": false
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": false
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": false
+        }
+      ],
+      "expected": {
+        "status": "flight_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 314.26968052735447,
+            "returnS": 314.26968052735447,
+            "airborneS": 748.5393610547089,
+            "arrivalS": 374.26968052735447,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 314.26968052735447,
+            "returnS": 314.26968052735447,
+            "airborneS": 748.5393610547089,
+            "arrivalS": 374.26968052735447,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 702.7283689263065,
+            "returnS": 702.7283689263065,
+            "airborneS": 1525.456737852613,
+            "arrivalS": 762.7283689263065,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 314.26968052735447,
+            "returnS": 314.26968052735447,
+            "airborneS": 748.5393610547089,
+            "arrivalS": 374.26968052735447,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 314.26968052735447,
+            "returnS": 314.26968052735447,
+            "airborneS": 748.5393610547089,
+            "arrivalS": 374.26968052735447,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          }
+        ]
+      }
+    },
+    {
+      "name": "some-offline",
+      "point": [
+        4.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": false
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": false
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b0",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 444.44444444444446,
+            "returnS": 444.44444444444446,
+            "airborneS": 1008.8888888888889,
+            "arrivalS": 504.44444444444446,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 888.8888888888889,
+            "returnS": 888.8888888888889,
+            "airborneS": 1897.7777777777778,
+            "arrivalS": 948.8888888888889,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 444.44444444444446,
+            "returnS": 444.44444444444446,
+            "airborneS": 1008.8888888888889,
+            "arrivalS": 504.44444444444446,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 628.5393610547089,
+            "returnS": 628.5393610547089,
+            "airborneS": 1377.0787221094179,
+            "arrivalS": 688.5393610547089,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nearest-offline",
+      "point": [
+        4.2,
+        4.1
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": false
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 493.36894440569756,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 12.42259987499883,
+            "returnS": 12.42259987499883,
+            "airborneS": 144.84519974999768,
+            "arrivalS": 72.42259987499884,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 433.36894440569756,
+            "returnS": 433.36894440569756,
+            "airborneS": 986.7378888113951,
+            "arrivalS": 493.36894440569756,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 877.7953584737303,
+            "returnS": 877.7953584737303,
+            "airborneS": 1875.5907169474606,
+            "arrivalS": 937.7953584737303,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 439.02951333622997,
+            "returnS": 439.02951333622997,
+            "airborneS": 998.0590266724598,
+            "arrivalS": 499.02951333622997,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-distance",
+      "point": [
+        4.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b0",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 444.44444444444446,
+            "returnS": 444.44444444444446,
+            "airborneS": 1008.8888888888889,
+            "arrivalS": 504.44444444444446,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 888.8888888888889,
+            "returnS": 888.8888888888889,
+            "airborneS": 1897.7777777777778,
+            "arrivalS": 948.8888888888889,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 444.44444444444446,
+            "returnS": 444.44444444444446,
+            "airborneS": 1008.8888888888889,
+            "arrivalS": 504.44444444444446,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-distance-wind",
+      "point": [
+        4.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          9.0,
+          4.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b0",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 935.6803092434975,
+            "returnS": 301.3190757633214,
+            "airborneS": 1356.999385006819,
+            "arrivalS": 995.6803092434975,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1871.360618486995,
+            "returnS": 602.6381515266428,
+            "airborneS": 2593.998770013638,
+            "arrivalS": 1931.360618486995,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 690.3421063654589,
+            "returnS": 408.40378037426945,
+            "airborneS": 1218.7458867397283,
+            "arrivalS": 750.3421063654589,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tie-equidistant",
+      "point": [
+        8.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "west",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "east",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "far",
+          "xKm": 40.0,
+          "yKm": 4.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "west",
+        "responseS": 282.22222222222223,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "west",
+            "outboundS": 222.22222222222223,
+            "returnS": 222.22222222222223,
+            "airborneS": 564.4444444444445,
+            "arrivalS": 282.22222222222223,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "east",
+            "outboundS": 222.22222222222223,
+            "returnS": 222.22222222222223,
+            "airborneS": 564.4444444444445,
+            "arrivalS": 282.22222222222223,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "far",
+            "outboundS": 1777.7777777777778,
+            "returnS": 1777.7777777777778,
+            "airborneS": 3675.5555555555557,
+            "arrivalS": 1837.7777777777778,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tie-equidistant-wind",
+      "point": [
+        8.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "west",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "east",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "north",
+          "xKm": 8.0,
+          "yKm": 20.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          3.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "west",
+        "responseS": 250.47619047619048,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "west",
+            "outboundS": 190.47619047619048,
+            "returnS": 266.6666666666667,
+            "airborneS": 577.1428571428571,
+            "arrivalS": 250.47619047619048,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "east",
+            "outboundS": 266.6666666666667,
+            "returnS": 190.47619047619048,
+            "airborneS": 577.1428571428571,
+            "arrivalS": 326.6666666666667,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "north",
+            "outboundS": 901.4978717104176,
+            "returnS": 901.4978717104176,
+            "airborneS": 1922.9957434208352,
+            "arrivalS": 961.4978717104176,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "airspeed-0",
+      "point": [
+        15.0,
+        9.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 10.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b4",
+        "responseS": 484.2640687119285,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1208.3045973594571,
+            "returnS": 1208.3045973594571,
+            "airborneS": 2536.6091947189143,
+            "arrivalS": 1268.3045973594571,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 583.09518948453,
+            "returnS": 583.09518948453,
+            "airborneS": 1286.19037896906,
+            "arrivalS": 643.09518948453,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 707.1067811865476,
+            "returnS": 707.1067811865476,
+            "airborneS": 1534.213562373095,
+            "arrivalS": 767.1067811865476,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1140.1754250991378,
+            "returnS": 1140.1754250991378,
+            "airborneS": 2400.3508501982756,
+            "arrivalS": 1200.1754250991378,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 424.2640687119285,
+            "returnS": 424.2640687119285,
+            "airborneS": 968.5281374238571,
+            "arrivalS": 484.2640687119285,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 583.09518948453,
+            "returnS": 583.09518948453,
+            "airborneS": 1286.19037896906,
+            "arrivalS": 643.09518948453,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "airspeed-1",
+      "point": [
+        15.0,
+        9.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 18.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b4",
+        "responseS": 295.70226039551585,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 671.280331866365,
+            "returnS": 671.280331866365,
+            "airborneS": 1462.56066373273,
+            "arrivalS": 731.280331866365,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 323.94177193585006,
+            "returnS": 323.94177193585006,
+            "airborneS": 767.8835438717001,
+            "arrivalS": 383.94177193585006,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 392.8371006591931,
+            "returnS": 392.8371006591931,
+            "airborneS": 905.6742013183862,
+            "arrivalS": 452.8371006591931,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 633.4307917217433,
+            "returnS": 633.4307917217433,
+            "airborneS": 1386.8615834434866,
+            "arrivalS": 693.4307917217433,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 235.70226039551582,
+            "returnS": 235.70226039551582,
+            "airborneS": 591.4045207910317,
+            "arrivalS": 295.70226039551585,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 323.94177193585006,
+            "returnS": 323.94177193585006,
+            "airborneS": 767.8835438717001,
+            "arrivalS": 383.94177193585006,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "airspeed-2",
+      "point": [
+        15.0,
+        9.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 25.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b4",
+        "responseS": 229.70562748477138,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 483.32183894378284,
+            "returnS": 483.32183894378284,
+            "airborneS": 1086.6436778875657,
+            "arrivalS": 543.3218389437828,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 233.23807579381202,
+            "returnS": 233.23807579381202,
+            "airborneS": 586.476151587624,
+            "arrivalS": 293.238075793812,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 282.842712474619,
+            "returnS": 282.842712474619,
+            "airborneS": 685.685424949238,
+            "arrivalS": 342.842712474619,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 456.0701700396551,
+            "returnS": 456.0701700396551,
+            "airborneS": 1032.1403400793101,
+            "arrivalS": 516.0701700396551,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 169.70562748477138,
+            "returnS": 169.70562748477138,
+            "airborneS": 459.4112549695428,
+            "arrivalS": 229.70562748477138,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 233.23807579381202,
+            "returnS": 233.23807579381202,
+            "airborneS": 586.476151587624,
+            "arrivalS": 293.238075793812,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "airspeed-3",
+      "point": [
+        15.0,
+        9.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 40.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b4",
+        "responseS": 166.06601717798213,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 302.0761493398643,
+            "returnS": 302.0761493398643,
+            "airborneS": 724.1522986797286,
+            "arrivalS": 362.0761493398643,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 145.7737973711325,
+            "returnS": 145.7737973711325,
+            "airborneS": 411.547594742265,
+            "arrivalS": 205.7737973711325,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 176.7766952966369,
+            "returnS": 176.7766952966369,
+            "airborneS": 473.5533905932738,
+            "arrivalS": 236.7766952966369,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 285.04385627478445,
+            "returnS": 285.04385627478445,
+            "airborneS": 690.0877125495689,
+            "arrivalS": 345.04385627478445,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 106.06601717798212,
+            "returnS": 106.06601717798212,
+            "airborneS": 332.13203435596427,
+            "arrivalS": 166.06601717798213,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 145.7737973711325,
+            "returnS": 145.7737973711325,
+            "airborneS": 411.547594742265,
+            "arrivalS": 205.7737973711325,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "slow-airspeed-headwind",
+      "point": [
+        12.0,
+        4.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "airspeedMps": 10.0,
+        "windMps": [
+          -9.0,
+          0.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 60.0,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 8000.0,
+            "returnS": 421.05263157894734,
+            "airborneS": 8541.052631578947,
+            "arrivalS": 8060.0,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 0.0,
+            "returnS": 0.0,
+            "airborneS": 120.0,
+            "arrivalS": 60.0,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 421.05263157894734,
+            "returnS": 8000.0,
+            "airborneS": 8541.052631578947,
+            "arrivalS": 481.05263157894734,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 8382.615627215038,
+            "returnS": 803.668258793985,
+            "airborneS": 9306.283886009023,
+            "arrivalS": 8442.615627215038,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "long-launch-latency",
+      "point": [
+        10.0,
+        6.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "launchLatencyS": 300.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 457.13484026367723,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 351.36418446315326,
+            "returnS": 351.36418446315326,
+            "airborneS": 822.7283689263065,
+            "arrivalS": 651.3641844631533,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 157.13484026367723,
+            "returnS": 157.13484026367723,
+            "airborneS": 434.26968052735447,
+            "arrivalS": 457.13484026367723,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 566.5577237325316,
+            "returnS": 566.5577237325316,
+            "airborneS": 1253.1154474650632,
+            "arrivalS": 866.5577237325316,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 471.40452079103164,
+            "returnS": 471.40452079103164,
+            "airborneS": 1062.8090415820634,
+            "arrivalS": 771.4045207910317,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "no-reserve",
+      "point": [
+        20.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "reserveFraction": 0.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b2",
+        "responseS": 282.22222222222223,
+        "within15min": true,
+        "usableAirborneS": 2760.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 916.2456945817024,
+            "returnS": 916.2456945817024,
+            "airborneS": 1952.491389163405,
+            "arrivalS": 976.2456945817024,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 496.9039949999533,
+            "returnS": 496.9039949999533,
+            "airborneS": 1113.8079899999066,
+            "arrivalS": 556.9039949999533,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 222.22222222222223,
+            "returnS": 222.22222222222223,
+            "airborneS": 564.4444444444445,
+            "arrivalS": 282.22222222222223,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1111.111111111111,
+            "returnS": 1111.111111111111,
+            "airborneS": 2342.222222222222,
+            "arrivalS": 1171.111111111111,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "high-dwell",
+      "point": [
+        15.0,
+        0.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "dwellS": 600.0
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b1",
+        "responseS": 337.77777777777777,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 650.2611061510903,
+            "returnS": 650.2611061510903,
+            "airborneS": 1900.5222123021804,
+            "arrivalS": 710.2611061510903,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 277.77777777777777,
+            "returnS": 277.77777777777777,
+            "airborneS": 1155.5555555555557,
+            "arrivalS": 337.77777777777777,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 355.7291243018249,
+            "returnS": 355.7291243018249,
+            "airborneS": 1311.4582486036497,
+            "arrivalS": 415.7291243018249,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 904.3789220055392,
+            "returnS": 904.3789220055392,
+            "airborneS": 2408.7578440110783,
+            "arrivalS": 964.3789220055392,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oblique-wind-mixed",
+      "point": [
+        18.0,
+        7.0
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b6",
+          "xKm": 4.0,
+          "yKm": 20.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          -4.0,
+          -6.5
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b5",
+        "responseS": 271.40125739921126,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 1207.2025753143478,
+            "returnS": 638.9993768195218,
+            "airborneS": 1966.2019521338696,
+            "arrivalS": 1267.2025753143478,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 606.5485286005576,
+            "returnS": 279.173175825393,
+            "airborneS": 1005.7217044259505,
+            "arrivalS": 666.5485286005576,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 268.6418389040684,
+            "returnS": 182.0943318485651,
+            "airborneS": 570.7361707526335,
+            "arrivalS": 328.6418389040684,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 1004.632193487541,
+            "returnS": 827.7742442871647,
+            "airborneS": 1952.4064377747056,
+            "arrivalS": 1064.632193487541,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 448.18385264970874,
+            "returnS": 512.1537491689938,
+            "airborneS": 1080.3376018187028,
+            "arrivalS": 508.18385264970874,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 211.40125739921126,
+            "returnS": 516.1989996381576,
+            "airborneS": 847.6002570373689,
+            "arrivalS": 271.40125739921126,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b6",
+            "outboundS": 1069.604899297931,
+            "returnS": 1284.0921993920044,
+            "airborneS": 2473.6970986899355,
+            "arrivalS": 1129.604899297931,
+            "flightOk": true,
+            "batteryOk": false,
+            "eligible": false,
+            "reason": "battery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tiny-scene",
+      "point": [
+        0.5,
+        0.5
+      ],
+      "bases": [
+        {
+          "id": "a",
+          "xKm": 0.0,
+          "yKm": 0.0,
+          "available": true
+        },
+        {
+          "id": "b",
+          "xKm": 1.0,
+          "yKm": 1.0,
+          "available": true
+        },
+        {
+          "id": "c",
+          "xKm": 2.0,
+          "yKm": 0.0,
+          "available": false
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "a",
+        "responseS": 99.28371006591931,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "a",
+            "outboundS": 39.28371006591931,
+            "returnS": 39.28371006591931,
+            "airborneS": 198.56742013183862,
+            "arrivalS": 99.28371006591931,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b",
+            "outboundS": 39.28371006591931,
+            "returnS": 39.28371006591931,
+            "airborneS": 198.56742013183862,
+            "arrivalS": 99.28371006591931,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "c",
+            "outboundS": 87.84104611578832,
+            "returnS": 87.84104611578832,
+            "airborneS": 295.68209223157663,
+            "arrivalS": 147.84104611578832,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          }
+        ]
+      }
+    },
+    {
+      "name": "single-base",
+      "point": [
+        6.0,
+        3.0
+      ],
+      "bases": [
+        {
+          "id": "only",
+          "xKm": 2.0,
+          "yKm": 2.0,
+          "available": true
+        }
+      ],
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "only",
+        "responseS": 289.06142364542563,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "only",
+            "outboundS": 229.0614236454256,
+            "returnS": 229.0614236454256,
+            "airborneS": 578.1228472908513,
+            "arrivalS": 289.06142364542563,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    },
+    {
+      "name": "single-base-offline",
+      "point": [
+        6.0,
+        3.0
+      ],
+      "bases": [
+        {
+          "id": "only",
+          "xKm": 2.0,
+          "yKm": 2.0,
+          "available": false
+        }
+      ],
+      "expected": {
+        "status": "flight_rejected",
+        "selectedBaseId": null,
+        "responseS": null,
+        "within15min": false,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "only",
+            "outboundS": 229.0614236454256,
+            "returnS": 229.0614236454256,
+            "airborneS": 578.1228472908513,
+            "arrivalS": 289.06142364542563,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": false,
+            "reason": "offline"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nine-bases-oblique",
+      "point": [
+        13.5,
+        17.25
+      ],
+      "bases": [
+        {
+          "id": "b0",
+          "xKm": 4.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b1",
+          "xKm": 12.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b2",
+          "xKm": 20.0,
+          "yKm": 4.0,
+          "available": true
+        },
+        {
+          "id": "b3",
+          "xKm": 4.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b4",
+          "xKm": 12.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b5",
+          "xKm": 20.0,
+          "yKm": 12.0,
+          "available": true
+        },
+        {
+          "id": "b6",
+          "xKm": 4.0,
+          "yKm": 20.0,
+          "available": true
+        },
+        {
+          "id": "b7",
+          "xKm": 12.0,
+          "yKm": 20.0,
+          "available": true
+        },
+        {
+          "id": "b8",
+          "xKm": 20.0,
+          "yKm": 20.0,
+          "available": true
+        }
+      ],
+      "params": {
+        "windMps": [
+          6.0,
+          -2.0
+        ]
+      },
+      "expected": {
+        "status": "served",
+        "selectedBaseId": "b7",
+        "responseS": 201.7072632840985,
+        "within15min": true,
+        "usableAirborneS": 2070.0,
+        "candidates": [
+          {
+            "baseId": "b0",
+            "outboundS": 865.998184078988,
+            "returnS": 1080.7869164733543,
+            "airborneS": 2066.785100552342,
+            "arrivalS": 925.998184078988,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b1",
+            "outboundS": 855.2804404054298,
+            "returnS": 732.0410037857114,
+            "airborneS": 1707.3214441911412,
+            "arrivalS": 915.2804404054298,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b2",
+            "outboundS": 1136.248165300733,
+            "returnS": 674.9805596669302,
+            "airborneS": 1931.2287249676633,
+            "arrivalS": 1196.248165300733,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b3",
+            "outboundS": 500.8283955121715,
+            "returnS": 828.2931842445659,
+            "airborneS": 1449.1215797567374,
+            "arrivalS": 560.8283955121715,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b4",
+            "outboundS": 329.3210207784077,
+            "returnS": 318.75764049671756,
+            "airborneS": 768.0786612751253,
+            "arrivalS": 389.3210207784077,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b5",
+            "outboundS": 699.8409002383908,
+            "returnS": 351.24935094261616,
+            "airborneS": 1171.0902511810068,
+            "arrivalS": 759.8409002383908,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b6",
+            "outboundS": 406.70003157253626,
+            "returnS": 846.840876642959,
+            "airborneS": 1373.5409082154952,
+            "arrivalS": 466.70003157253626,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b7",
+            "outboundS": 141.7072632840985,
+            "returnS": 243.81993934043655,
+            "airborneS": 505.5272026245351,
+            "arrivalS": 201.7072632840985,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          },
+          {
+            "baseId": "b8",
+            "outboundS": 553.0556167505371,
+            "returnS": 317.1401237927906,
+            "airborneS": 990.1957405433277,
+            "arrivalS": 613.0556167505371,
+            "flightOk": true,
+            "batteryOk": true,
+            "eligible": true,
+            "reason": "eligible"
+          }
+        ]
+      }
+    }
+  ]
+}
