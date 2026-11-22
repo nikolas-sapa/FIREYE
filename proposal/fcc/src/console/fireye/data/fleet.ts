@@ -2,7 +2,7 @@ import type { ConsoleState, Geo, Ms, ScenarioPack } from '../../contracts';
 import type { ChronicleEntry } from './types';
 import { CrewStore, type CrewOptions } from '../../bus/crew-transport';
 import { cellToGeo } from '../../scenario';
-import { planDispatch, toLocalKm, windVector, type DispatchBase } from '../../../sim/dispatch';
+import { planDispatch, toLocalKm, windVector, type DispatchBase, type DispatchResult } from '../../../sim/dispatch';
 
 /* ------------------------------------------------------------------ mirrored backend shapes (backend-protocol.v1) */
 
@@ -167,6 +167,32 @@ function hourlyWeatherAt(pack: ScenarioPack, t: Ms) {
 }
 
 /**
+ * Deterministic wildfire-sweep dispatch check for the current fire: best eligible station by
+ * arrival time under the hourly wind. Null when there are no stations, no fire yet, or no weather.
+ */
+export function dispatchCheck(state: Pick<ConsoleState, 'clock' | 'pack' | 'recon'>): {
+  result: DispatchResult;
+  stationName: string | null;
+  windKph: number;
+  note: string;
+} | null {
+  const stations = state.recon?.stations;
+  const fire = state.pack ? fireCentroid(state.pack, state.clock.t) : null;
+  const wx = state.pack ? hourlyWeatherAt(state.pack, state.clock.t) : undefined;
+  if (!stations?.length || !fire || !wx) return null;
+  const origin = state.pack!.manifest.center;
+  const point = toLocalKm(origin, fire);
+  const bases: DispatchBase[] = stations.map((s) => ({ id: s.id, ...toLocalKm(origin, s.pos), available: true }));
+  const result = planDispatch(point, bases, { windMps: windVector(wx.windKph, wx.windDirDeg) });
+  const station = result.selectedBaseId ? stations.find((s) => s.id === result.selectedBaseId) : undefined;
+  const windKph = Math.round(wx.windKph);
+  const note = result.status === 'served' && station && result.responseS != null
+    ? `${station.name} · arrival ${(result.responseS / 60).toFixed(1)} min · ${result.within15min ? 'within 15 min' : 'over 15 min'} · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`
+    : `No eligible station (${result.status.replace(/_/g, ' ')}) · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`;
+  return { result, stationName: station?.name ?? null, windKph, note };
+}
+
+/**
  * Fleet view of the running replay. Positions come from the simulation; commands come from the
  * deterministic chronicle (and the user's approvals), so they are identical after any scrub.
  */
@@ -214,24 +240,12 @@ export function simFleet(state: Pick<ConsoleState, 'clock' | 'pack' | 'units' | 
       note: 'Toy estimate. Minimum travel time on DEM, fuel and hourly wind.',
     });
   }
-  const stations = state.recon?.stations;
-  const fire = state.pack ? fireCentroid(state.pack, t) : null;
-  const wx = state.pack ? hourlyWeatherAt(state.pack, t) : undefined;
-  if (stations?.length && fire && wx) {
-    const origin = state.pack!.manifest.center;
-    const point = toLocalKm(origin, fire);
-    const bases: DispatchBase[] = stations.map((s) => ({ id: s.id, ...toLocalKm(origin, s.pos), available: true }));
-    const windMps = windVector(wx.windKph, wx.windDirDeg);
-    const dispatch = planDispatch(point, bases, { windMps });
-    const station = dispatch.selectedBaseId ? stations.find((s) => s.id === dispatch.selectedBaseId) : undefined;
-    const windKph = Math.round(wx.windKph);
-    const note = dispatch.status === 'served' && station && dispatch.responseS != null
-      ? `${station.name} · arrival ${(dispatch.responseS / 60).toFixed(1)} min · ${dispatch.within15min ? 'within 15 min' : 'over 15 min'} · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`
-      : `No eligible station (${dispatch.status.replace(/_/g, ' ')}) · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`;
+  const dispatch = dispatchCheck(state);
+  if (dispatch) {
     assessments.push({
       id: `dispatch-${state.projection?.rev ?? Math.floor(t / 60000)}`, label: 'Dispatch check',
       status: 'review_only', ranking_source: 'deterministic-fallback',
-      note,
+      note: dispatch.note,
     });
   }
   for (const p of (state.predictions ?? []).slice(0, 2)) {
