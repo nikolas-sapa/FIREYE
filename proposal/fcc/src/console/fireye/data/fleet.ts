@@ -1,6 +1,8 @@
-import type { ConsoleState, Geo, Ms } from '../../contracts';
+import type { ConsoleState, Geo, Ms, ScenarioPack } from '../../contracts';
 import type { ChronicleEntry } from './types';
 import { CrewStore, type CrewOptions } from '../../bus/crew-transport';
+import { cellToGeo } from '../../scenario';
+import { planDispatch, toLocalKm, windVector, type DispatchBase } from '../../../sim/dispatch';
 
 /* ------------------------------------------------------------------ mirrored backend shapes (backend-protocol.v1) */
 
@@ -141,11 +143,34 @@ export function commandAt(e: ChronicleEntry, t: Ms): FleetCommand | null {
   return cur ? { id: c.id, label: c.label, status: cur.status, at: cur.t, version: c.version } : null;
 }
 
+/** Centroid of cells ignited so far, or null when nothing has burned at t. */
+function fireCentroid(pack: ScenarioPack, t: Ms): Geo | null {
+  const rel = t - pack.manifest.start;
+  const { w, h } = pack.raster;
+  let sx = 0, sy = 0, n = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0, i = y * w; x < w; x++, i++) {
+      if (pack.arrival[i]! <= rel) { sx += x; sy += y; n++; }
+    }
+  }
+  return n ? cellToGeo(pack, sx / n, sy / n) : null;
+}
+
+/** Hourly weather row in effect at t (latest sample at or before t). */
+function hourlyWeatherAt(pack: ScenarioPack, t: Ms) {
+  let best = pack.weather[0];
+  for (const w of pack.weather) {
+    if (w.t <= t) best = w;
+    else break;
+  }
+  return best;
+}
+
 /**
  * Fleet view of the running replay. Positions come from the simulation; commands come from the
  * deterministic chronicle (and the user's approvals), so they are identical after any scrub.
  */
-export function simFleet(state: Pick<ConsoleState, 'clock' | 'units' | 'feeds' | 'projection' | 'predictions' | 'actions'>, fleetLog: ChronicleEntry[]): FleetSnapshot {
+export function simFleet(state: Pick<ConsoleState, 'clock' | 'pack' | 'units' | 'feeds' | 'projection' | 'predictions' | 'actions' | 'recon'>, fleetLog: ChronicleEntry[]): FleetSnapshot {
   const t = state.clock.t;
   const latest = new Map<string, ChronicleEntry>();
   for (const e of fleetLog) {
@@ -187,6 +212,26 @@ export function simFleet(state: Pick<ConsoleState, 'clock' | 'units' | 'feeds' |
       id: `proj-${state.projection.rev}`, label: `Spread projection rev ${state.projection.rev}`,
       status: 'review_only', ranking_source: 'deterministic-fallback',
       note: 'Toy estimate. Minimum travel time on DEM, fuel and hourly wind.',
+    });
+  }
+  const stations = state.recon?.stations;
+  const fire = state.pack ? fireCentroid(state.pack, t) : null;
+  const wx = state.pack ? hourlyWeatherAt(state.pack, t) : undefined;
+  if (stations?.length && fire && wx) {
+    const origin = state.pack!.manifest.center;
+    const point = toLocalKm(origin, fire);
+    const bases: DispatchBase[] = stations.map((s) => ({ id: s.id, ...toLocalKm(origin, s.pos), available: true }));
+    const windMps = windVector(wx.windKph, wx.windDirDeg);
+    const dispatch = planDispatch(point, bases, { windMps });
+    const station = dispatch.selectedBaseId ? stations.find((s) => s.id === dispatch.selectedBaseId) : undefined;
+    const windKph = Math.round(wx.windKph);
+    const note = dispatch.status === 'served' && station && dispatch.responseS != null
+      ? `${station.name} · arrival ${(dispatch.responseS / 60).toFixed(1)} min · ${dispatch.within15min ? 'within 15 min' : 'over 15 min'} · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`
+      : `No eligible station (${dispatch.status.replace(/_/g, ' ')}) · wind ${windKph} km/h. Synthetic wildfire-sweep model, not flight authorization.`;
+    assessments.push({
+      id: `dispatch-${state.projection?.rev ?? Math.floor(t / 60000)}`, label: 'Dispatch check',
+      status: 'review_only', ranking_source: 'deterministic-fallback',
+      note,
     });
   }
   for (const p of (state.predictions ?? []).slice(0, 2)) {
