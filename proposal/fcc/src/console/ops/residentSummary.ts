@@ -2,8 +2,12 @@ import type { Geo, ScenarioPack } from '../contracts';
 import { localTime } from '../ui/format';
 import { polygonDistanceM } from './geo/evac';
 
+export function leaveByPassed(leaveAt: number, now: number): boolean {
+  return leaveAt <= now;
+}
+
 export function leaveByText(leaveAt: number | null, now: number, tz: string): string {
-  return leaveAt == null ? '—' : leaveAt <= now ? 'Leave now' : `${localTime(leaveAt, tz)} ${tz}`;
+  return leaveAt == null ? '—' : leaveByPassed(leaveAt, now) ? 'Leave now' : `${localTime(leaveAt, tz)} ${tz}`;
 }
 
 export function residentSummary(pack: Pick<ScenarioPack, 'perimeters'> | null, now: number,

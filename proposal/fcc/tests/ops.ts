@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { leaveByText, residentSummary } from '../src/console/ops/residentSummary';
+import { leaveByPassed, leaveByText, residentSummary } from '../src/console/ops/residentSummary';
 import { answer, RESIDENT_SUGGESTIONS, setResidentContext, type ResidentInfo } from '../src/console/orchestrator/conversation';
 import { updateSuggestions } from '../src/console/orchestrator/brief';
 import { stepSim } from '../src/console/world/engine';
@@ -21,6 +21,9 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
   assert.equal(leaveByText(now, now, 'EEST'), 'Leave now');
   assert.equal(leaveByText(now + 60000, now, 'EEST'), '16:01 EEST');
   assert.equal(leaveByText(null, now, 'EEST'), '—');
+  assert.equal(leaveByPassed(now - 1, now), true);
+  assert.equal(leaveByPassed(now, now), true);
+  assert.equal(leaveByPassed(now + 60000, now), false);
   const home = { name: 'Mati', pos: { lon: 24, lat: 38 } };
   const polygon = [[{ lon: 23.98, lat: 37.99 }, { lon: 23.99, lat: 37.99 }, { lon: 23.99, lat: 38.01 }, { lon: 23.98, lat: 38.01 }]];
   assert.match(residentSummary(null, now, null, null, 'EEST'), /Choose your location/);
@@ -31,7 +34,7 @@ import { commVersion, filterCommRows, getCommRows, ingestSnapshot, jobStatusOf, 
   assert.match(residentSummary(pack, now, home, null, 'EEST'), /not currently projected to reach you/);
   assert.match(residentSummary(pack, now, { ...home, pos: { lon: 23.985, lat: 38 } }, null, 'EEST'), /Fire has reached Mati/);
   assert.match(residentSummary({ perimeters: [{ t: now, acres: 0, polygon: [[]] }] }, now, home, null, 'EEST'), /No fire reported/);
-  console.log('resident summary: 10 deadline, perimeter and projection assertions PASS');
+  console.log('resident summary: 13 deadline, perimeter and projection assertions PASS');
 }
 
 {
