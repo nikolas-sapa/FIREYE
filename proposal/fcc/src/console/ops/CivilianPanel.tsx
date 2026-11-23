@@ -6,7 +6,8 @@ import { localTime, packZone } from '../ui/format';
 import {
   STAGE_RANK, alertFeed, fireUpdates, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
-import { STAGE_LABEL, VERY_CLOSE_TEXT, type AlertStage } from './geo/evac';
+import { ROUTE_LABEL, STAGE_LABEL, VERY_CLOSE_TEXT, googleMapsDirectionsUrl, steeringWaypoints, type AlertStage } from './geo/evac';
+import { leaveByPassed, leaveByText, residentSummary } from './residentSummary';
 import { Character } from './characters/Character';
 import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
@@ -75,18 +76,34 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
   const leaveAt = homeAlert?.eta != null ? leaveBy(homeAlert.eta, 45) : null;
   const placeOptions = useMemo(() => (pack?.manifest.places ?? []).filter((p) => (HOME_OPTIONS as readonly string[]).includes(p.id)), [pack]);
   const best = routes.best;
+  const routeKind = routes.choice ?? 'balanced';
 
   return (
     <aside className="civilian-sheet flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l border-line bg-ink-950 sm:w-[400px] sm:flex-none sm:overflow-visible" aria-label="Civilian panel">
-      <button type="button" aria-expanded={expanded} aria-controls="resident-details" onClick={() => setExpanded(!expanded)}
-        className="resident-summary hidden shrink-0 border-b border-line px-4 py-2 text-left">
-        <span className="flex items-center justify-between gap-2"><span className={cn('font-semibold', copy.cls)}>{copy.title}</span><span className="text-xs text-bone-dim">{expanded ? 'Less' : 'Details'} {expanded ? '−' : '+'}</span></span>
-        <span className="mt-1 flex flex-wrap gap-x-6 text-xs text-bone-dim">
-          <span>Fire ETA <span className="fcc-num text-bone">{homeAlert?.eta != null ? `${localTime(homeAlert.eta, tz)} ${tz}` : '—'}</span></span>
-          <span>Leave by <span className="fcc-num text-ember">{leaveAt != null ? `${localTime(leaveAt, tz)} ${tz}` : '—'}</span></span>
-        </span>
-        <span className="mt-1 block text-micro text-bone-mute">Simulation · follow 112 / civil protection</span>
-      </button>
+      <div className="resident-summary hidden shrink-0 border-b border-line px-4 py-2 text-left">
+        <div className="flex items-center justify-between gap-2">
+          <div className={cn('text-2xl font-bold leading-none tracking-tight', copy.cls)}>{copy.title}</div>
+          <button type="button" aria-expanded={expanded} aria-controls="resident-details" onClick={() => setExpanded(!expanded)}
+            className="shrink-0 text-xs text-bone-dim focus-visible:outline">{expanded ? 'Less −' : 'Details +'}</button>
+        </div>
+        <p className="text-sm leading-5 text-bone-dim">{residentSummary(pack, t, home, homeAlert?.eta ?? null, tz)}</p>
+        {leaveAt != null && <p className="mt-1 text-xs text-bone-dim">{leaveByPassed(leaveAt, t)
+          ? <span className="text-ember">Leave now</span>
+          : <>Leave by <span className="fcc-num text-ember">{leaveByText(leaveAt, t, tz)}</span></>}</p>}
+        {stage === 'shelter' ? <p className="mt-2 text-sm text-ember">{VERY_CLOSE_TEXT}</p> :
+          (stage === 'prepare' || stage === 'leave') && best && home &&
+          <a className="mt-2 flex items-center justify-center border border-line-strong bg-ink-900 px-2 py-1.5 font-mono text-micro uppercase text-bone-dim hover:text-bone focus-visible:outline focus-visible:outline-1"
+            href={googleMapsDirectionsUrl({ origin: home.pos, destination: best.exit.pos, waypoints: steeringWaypoints(best.path) })}
+            target="_blank" rel="noopener noreferrer">Open {ROUTE_LABEL[routeKind]} route in Google Maps</a>}
+        {feed[0] && <p className="mt-2 truncate text-xs text-bone-dim" title={feed[0].text}><span className="fcc-num font-mono text-micro">{localTime(feed[0].t, tz)}</span> · {feed[0].text}</p>}
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-micro text-bone-dim" aria-label="Map legend">
+          <span className="flex items-center gap-1"><i aria-hidden className="h-2 w-2 bg-ember/60" />Current fire</span>
+          <span className="flex items-center gap-1"><i aria-hidden className="h-2 w-2 border border-dashed border-ember bg-ember/10" />Predicted spread</span>
+          <span className="flex items-center gap-1"><i aria-hidden className="h-2 w-2 rounded-full bg-signal" />Your location</span>
+          <span className="flex items-center gap-1"><i aria-hidden className="h-0.5 w-3 bg-signal" />Route</span>
+        </div>
+        <p className="mt-2 text-micro text-bone-mute">Simulated Mati 2018 exercise, not official advice · follow 112</p>
+      </div>
       <div id="resident-details" className="resident-details contents" data-expanded={expanded}>
       <div className="shrink-0 border-b border-line px-4 py-3">
         <label className="font-mono text-micro uppercase tracking-[0.14em] text-bone-mute">Your location · simulated resident</label>
@@ -117,7 +134,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
           {leaveAt != null && (
             <div>
               <div className="text-micro uppercase text-bone-mute">Leave by</div>
-              <div className="fcc-num mt-0.5 text-lg text-ember">{localTime(leaveAt, tz)} {tz}</div>
+              <div className="fcc-num mt-0.5 text-lg text-ember">{leaveByText(leaveAt, t, tz)}</div>
             </div>
           )}
         </div>
