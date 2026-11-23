@@ -127,11 +127,15 @@ export interface Sim {
   bus: Bus;
   rng: Rng;
   t: Ms;
+  /** Scenario ms played but not yet simulated; the world only advances in whole WORLD_STEP_MS steps. */
+  carryMs: Ms;
+  /** Scenario time of the last perception/agent step (every PERCEIVE_EVERY_MS of world time). */
+  perceivedAt: Ms;
   speed: number;
   paused: boolean;
   /** Wall-clock seconds the engine has stepped (dwell timers, thinking delays). */
   realS: number;
-  /** Agent-time seconds (scenario time clamped to 20x real so the job stream stays readable). */
+  /** Agent-time seconds (a fixed fraction of scenario time: 20x real at the default speed). */
   agentS: number;
   units: Unit[];
   umeta: Map<string, UnitMeta>;
@@ -177,7 +181,7 @@ export interface Sim {
   cues: Set<string>;
   replies: { id: string; due: number; question: string }[];
   seq: number;
-  /** grade/orch/briefReal: wall-clock seconds (sim.realS); brief/proj/sitrep/cov: scenario ms. */
+  /** orch/briefReal: wall-clock seconds (sim.realS); grade/brief/proj/sitrep/cov: scenario ms. */
   timers: { grade: number; brief: Ms; proj: Ms; sitrep: Ms; orch: number; briefReal: number; cov: Ms };
   notes: Note[];
   fireStep: number;

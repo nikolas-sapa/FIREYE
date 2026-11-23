@@ -6,8 +6,8 @@ import { localTime, packZone } from '../ui/format';
 import {
   STAGE_RANK, alertFeed, fireUpdates, counters, hazardAt, leaveBy, placeAlerts, pointInPolygon, residentAlertAt, routeRoads, useAlertVersion, useRoutes,
 } from './alerts';
-import { STAGE_LABEL, VERY_CLOSE_TEXT, googleMapsDirectionsUrl, steeringWaypoints, type AlertStage } from './geo/evac';
-import { leaveByText, residentSummary } from './residentSummary';
+import { ROUTE_LABEL, STAGE_LABEL, VERY_CLOSE_TEXT, googleMapsDirectionsUrl, steeringWaypoints, type AlertStage } from './geo/evac';
+import { leaveByPassed, leaveByText, residentSummary } from './residentSummary';
 import { Character } from './characters/Character';
 import { useStageAnnouncements } from './announce';
 import { parseLocation } from './geo/saferoute';
@@ -76,6 +76,7 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
   const leaveAt = homeAlert?.eta != null ? leaveBy(homeAlert.eta, 45) : null;
   const placeOptions = useMemo(() => (pack?.manifest.places ?? []).filter((p) => (HOME_OPTIONS as readonly string[]).includes(p.id)), [pack]);
   const best = routes.best;
+  const routeKind = routes.choice ?? 'balanced';
 
   return (
     <aside className="civilian-sheet flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l border-line bg-ink-950 sm:w-[400px] sm:flex-none sm:overflow-visible" aria-label="Civilian panel">
@@ -86,12 +87,14 @@ export function CivilianPanel({ home, ...locationProps }: ResidentLocationProps 
             className="shrink-0 text-xs text-bone-dim focus-visible:outline">{expanded ? 'Less −' : 'Details +'}</button>
         </div>
         <p className="text-sm leading-5 text-bone-dim">{residentSummary(pack, t, home, homeAlert?.eta ?? null, tz)}</p>
-        {leaveAt != null && <p className="mt-1 text-xs text-bone-dim">Leave by <span className="fcc-num text-ember">{leaveByText(leaveAt, t, tz)}</span></p>}
+        {leaveAt != null && <p className="mt-1 text-xs text-bone-dim">{leaveByPassed(leaveAt, t)
+          ? <span className="text-ember">Leave now</span>
+          : <>Leave by <span className="fcc-num text-ember">{leaveByText(leaveAt, t, tz)}</span></>}</p>}
         {stage === 'shelter' ? <p className="mt-2 text-sm text-ember">{VERY_CLOSE_TEXT}</p> :
           (stage === 'prepare' || stage === 'leave') && best && home &&
           <a className="mt-2 flex items-center justify-center border border-line-strong bg-ink-900 px-2 py-1.5 font-mono text-micro uppercase text-bone-dim hover:text-bone focus-visible:outline focus-visible:outline-1"
             href={googleMapsDirectionsUrl({ origin: home.pos, destination: best.exit.pos, waypoints: steeringWaypoints(best.path) })}
-            target="_blank" rel="noopener noreferrer">Open safest route in Google Maps</a>}
+            target="_blank" rel="noopener noreferrer">Open {ROUTE_LABEL[routeKind]} route in Google Maps</a>}
         {feed[0] && <p className="mt-2 truncate text-xs text-bone-dim" title={feed[0].text}><span className="fcc-num font-mono text-micro">{localTime(feed[0].t, tz)}</span> · {feed[0].text}</p>}
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-micro text-bone-dim" aria-label="Map legend">
           <span className="flex items-center gap-1"><i aria-hidden className="h-2 w-2 bg-ember/60" />Current fire</span>

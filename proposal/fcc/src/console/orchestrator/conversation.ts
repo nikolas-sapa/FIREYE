@@ -6,6 +6,7 @@ import { addNote } from './notes';
 import { pushMessage, replaceMessage } from './messages';
 import { etaMin, etaText } from './score';
 import { reconSummary } from '../world/recon';
+import { BALANCED_TIME_CAP } from '../ops/geo/evac';
 
 const THINK_S = 1.2;
 
@@ -14,6 +15,12 @@ export interface ResidentRoute {
   lengthM: number;
   roads: string[];
   cautionM: number;
+  kind?: 'balanced' | 'fastest' | 'safest';
+  timeMin?: number;
+  extraMin?: number;
+  minFireM?: number | null;
+  why?: string;
+  sameAs?: ('balanced' | 'fastest' | 'safest')[];
 }
 
 export interface ResidentInfo {
@@ -25,6 +32,8 @@ export interface ResidentInfo {
   leaveBy: string | null;
   best: ResidentRoute | null;
   second: ResidentRoute | null;
+  /** Fastest / balanced (recommended) / safest prototype routes. */
+  options?: { balanced: ResidentRoute; fastest: ResidentRoute; safest: ResidentRoute } | null;
   threatened: string[];
 }
 
@@ -44,6 +53,15 @@ export function isResidentMode(): boolean {
 
 export function setResidentContext(fn: (() => ResidentInfo | null) | null): void {
   residentContext = fn;
+}
+
+function recommendation(o: NonNullable<ResidentInfo['options']>, route: (r: ResidentRoute) => string): string {
+  const b = o.balanced;
+  const mins = (r: ResidentRoute) => `about ${Math.max(1, Math.round(r.timeMin ?? 0))} min`;
+  const fire = (r: ResidentRoute) => (r.minFireM != null ? `, staying at least ${(r.minFireM / 1000).toFixed(1)} km from the simulated fire` : '');
+  const trade = b.sameAs?.includes('fastest') ? 'it is also the fastest option' : `+${b.extraMin ?? 0} min vs the fastest route toward ${o.fastest.exit} (${mins(o.fastest)})`;
+  const safest = b.sameAs?.includes('safest') ? ' It is also the lowest-exposure option.' : ` Lowest exposure: ${o.safest.exit}, ${mins(o.safest)}${fire(o.safest)}.`;
+  return `Recommended (balanced, least risk within ${Math.round((BALANCED_TIME_CAP - 1) * 100)}% extra drive time): ${route(b)}, ${mins(b)}${fire(b)}; ${trade}. ${b.why ?? ''}${safest} Routes are simulation-derived, not validated evacuation guidance or guaranteed open.`;
 }
 
 function residentAnswer(info: ResidentInfo, q: string, now: number): Reply {
@@ -67,6 +85,7 @@ function residentAnswer(info: ResidentInfo, q: string, now: number): Reply {
       : 'The fire location relative to your home is still computing; no nearby threatened places are available. This does not mean there is no fire.';
   } else if (/\b(route|road|roads|way out|exit)\b/.test(q)) {
     detail = shelter ? 'No validated driving route is shown while the fire is very close; follow 112 instructions now.'
+      : info.options ? recommendation(info.options, route)
       : info.best ? `The prototype route is toward ${route(info.best)}.${info.second ? ` Alternative: ${route(info.second)}.` : ' No second route is available.'} Routes are not validated or guaranteed open.`
         : 'The road exit route is still computing or unavailable. Do not assume an unlisted road is open.';
     detail += ' There is no road exit toward the Mati coast; do not head toward the coast as a road escape.';

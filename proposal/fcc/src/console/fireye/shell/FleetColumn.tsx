@@ -4,6 +4,7 @@ import { Icon, Modal, cn, type IconName } from '@ds';
 import { useConsoleSelector } from '../../store';
 import { useStageWorld } from '../../stage3d/world';
 import { sensorModel } from '../data/sensors';
+import { dispatchCheck } from '../data/fleet';
 import { SOURCE_LABELS } from '../data/source-flow';
 import { SourceFlow } from './SourceFlow';
 import { fireyeUi } from './ui';
@@ -41,6 +42,7 @@ export function FleetColumn({ compact = false, onDive, onFocusUnit, onFocusSenso
   const state = useConsoleSelector(s => s), feeds = useStageWorld(s => s.feeds);
   const [flowId, setFlowId] = useState<string | null>(null);
   const sensors = useMemo(() => state.pack ? sensorModel(state.pack) : null, [state.pack]);
+  const dispatch = useMemo(() => dispatchCheck(state), [state.pack, state.recon?.stations, Math.floor(state.clock.t / 60000)]);
   const cams = feeds.filter(f => f.kind === 'ridge-cam');
   const grid = compact ? 'grid grid-cols-2 gap-1 px-1.5' : 'flex flex-col gap-2 px-3';
   const heading = (text: string) => <h3 className="px-2 pb-1 pt-3 font-mono text-micro uppercase tracking-[0.1em] text-bone-mute">{text}</h3>;
@@ -70,6 +72,13 @@ export function FleetColumn({ compact = false, onDive, onFocusUnit, onFocusSenso
         {heading('Stations')}
         <div className={grid}>{state.recon?.stations?.map((s, i) => <SourceTile key={s.id} compact={compact} icon="battery" code={i ? 'SOUTH' : 'NORTH'} title={s.name}
           detail={`${state.recon?.drones?.filter(d => d.stationId === s.id && (d.phase === 'docked' || d.phase === 'charging')).length} on pad · 3 allocated\n18-minute full recharge · simulated`} onClick={() => setFlowId(s.id)} />)}</div>
+        {!compact && dispatch && <div className="px-3 pt-2">
+          <p className="font-mono text-micro uppercase text-bone-mute">Dispatch check · simulated</p>
+          <p className="text-xs text-bone-dim">{dispatch.result.status === 'served' && dispatch.stationName && dispatch.result.responseS != null
+            ? `${dispatch.stationName} · arrival ${(dispatch.result.responseS / 60).toFixed(1)} min · ${dispatch.result.within15min ? 'within 15 min' : 'over 15 min'} · wind ${dispatch.windKph} km/h`
+            : `No eligible station · ${dispatch.result.status.replace(/_/g, ' ')}`}</p>
+          <p className="text-micro text-bone-mute">wildfire-sweep model · not flight authorization</p>
+        </div>}
         {heading(`Cameras ${cams.length}`)}
         <div className={grid}>{cams.map((c, i) => <SourceTile key={c.id} compact={compact} icon="camera" code={`C${i + 1}`} title={`Open ${c.label.split(' · ')[0]} feed`}
           tone={c.live ? 'text-phosphor' : 'text-bone-mute'} detail={`${c.label}\n${c.live ? 'Live simulated fixed camera' : 'Offline'} · ${c.findingIds.length} findings\nFixed mount · terrain coverage`}
