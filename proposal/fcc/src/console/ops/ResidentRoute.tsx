@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { Geo, ScenarioPack } from '../contracts';
 import { tokenOverride } from '../stage3d/capabilities';
-import { getOsm, type EscapeRoute } from './alerts';
-import { googleMapsDirectionsUrl, googleMapsEmbedUrl, steeringWaypoints } from './geo/evac';
+import { getOsm, getRouteChoice, routesNow, setRouteChoice, useAlertVersion, type EscapeRoute } from './alerts';
+import { googleMapsDirectionsUrl, googleMapsEmbedUrl, mapsWaypointLimit, ROUTE_KINDS, ROUTE_LABEL, steeringWaypoints, ETA_SAFETY_MARGIN_MIN, type RouteOption } from './geo/evac';
 import { inScenario, parseLocation } from './geo/saferoute';
 
 const buttonClass = 'border border-line-strong bg-ink-900 px-2 py-1.5 font-mono text-micro uppercase text-bone-dim hover:text-bone focus-visible:outline focus-visible:outline-1';
@@ -46,10 +46,40 @@ export function ResidentLocationControls({ pack, picking, onPick, locationMessag
   </>;
 }
 
+const isOption = (r: EscapeRoute): r is RouteOption => 'kind' in r && 'timeMin' in r;
+const fmtKm = (m: number) => `${(m / 1000).toFixed(1)} km`;
+
+/** Chosen route's Google Maps hand-off: origin = resident, densified on-path waypoints up to the URL limit. */
+export function routeDirections(origin: Geo, route: EscapeRoute, mobile: boolean) {
+  return { origin, destination: route.exit.pos, waypoints: steeringWaypoints(route.path, mapsWaypointLimit(mobile)), travelmode: 'driving' as const };
+}
+
+export function ResidentRouteChoice({ origin, route }: { origin: Geo; route: RouteOption }) {
+  useAlertVersion();
+  const options = routesNow(origin).options;
+  const choice = getRouteChoice();
+  return <div className="mt-2">
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Route option">
+      {ROUTE_KINDS.map((kind) => <button key={kind} type="button" aria-pressed={choice === kind} onClick={() => setRouteChoice(kind)}
+        className={`${buttonClass} ${choice === kind ? 'border-bone-dim text-bone' : ''}`}>{ROUTE_LABEL[kind]}{kind === 'balanced' ? ' · recommended' : ''}</button>)}
+    </div>
+    <p className="fcc-num mt-1.5 font-mono text-micro uppercase text-bone-dim">
+      {ROUTE_LABEL[route.kind]}{route.sameAs.length ? ` = ${route.sameAs.map((k) => ROUTE_LABEL[k]).join(' = ')}` : ''} · ~{Math.max(1, Math.round(route.timeMin))} min · {fmtKm(route.lengthM)} · {route.extraMin ? `+${route.extraMin} min vs fastest` : 'fastest time'}
+      {route.minFireM !== null && ` · fire ≥ ${fmtKm(route.minFireM)}`} · caution {Math.round(route.cautionM)} m
+    </p>
+    <p className="mt-1 text-xs leading-4 text-bone-dim">{route.why}</p>
+    {options && options.marginMin < ETA_SAFETY_MARGIN_MIN && <p className="mt-0.5 font-mono text-micro uppercase text-amber">Less than {ETA_SAFETY_MARGIN_MIN} min ahead of modeled fire arrival on this road</p>}
+    {route.kind !== 'balanced' && options && <p className="mt-0.5 font-mono text-micro text-bone-mute">Recommended: {ROUTE_LABEL.balanced} · {options.balanced.exit.label} · ~{Math.max(1, Math.round(options.balanced.timeMin))} min</p>}
+    <p className="mt-0.5 font-mono text-micro text-bone-mute">Simulation-derived · nominal speeds · not validated evacuation guidance</p>
+  </div>;
+}
+
 export function ResidentDirections({ origin, route }: { origin: Geo; route: EscapeRoute }) {
-  const directions = { origin, destination: route.exit.pos, waypoints: steeringWaypoints(route.path) };
+  const mobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches;
+  const directions = routeDirections(origin, route, !!mobile);
   const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   return <>
+    {isOption(route) && <ResidentRouteChoice origin={origin} route={route} />}
     <a className={`${buttonClass} mt-2 inline-block`} href={googleMapsDirectionsUrl(directions)} target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
     {mapsKey && tokenOverride() === 'all' && <iframe title="Exercise route in Google Maps" className="mt-2 h-44 w-full border border-line" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={googleMapsEmbedUrl(directions, mapsKey)} />}
     <p className="mt-1 font-mono text-micro text-bone-mute">Google may recalculate this prototype route and does not know the simulated fire.</p>

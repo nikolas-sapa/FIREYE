@@ -24,9 +24,16 @@ import { initializeStations } from './drone-stations';
 
 /** Scenario ms per fire re-render step (fireRev). */
 export const FIRE_STEP_MS = 60_000;
-/** Max scenario seconds per internal sub-step. */
-const SUBSTEP_S = 20;
-/** Agent time runs at most this many times faster than wall clock so the job stream stays readable. */
+/**
+ * Fixed world step (scenario ms). The world advances only in whole steps, so its state at t never depends on
+ * frame timing, playback speed or how a seek got there.
+ */
+export const WORLD_STEP_MS = 1000;
+/** Sensing, agents, projection and tasking run on every fifth world step. */
+const PERCEIVE_EVERY_MS = 5 * WORLD_STEP_MS;
+/** Grade/rules refresh period (scenario ms). */
+const GRADE_EVERY_MS = 30_000;
+/** Agent time runs this many times faster than wall clock at the default speed so the job stream stays readable. */
 export const AGENT_MAX_RATE = 20;
 export const DEFAULT_SPEED = 60;
 /** Fallback seed; each scenario script carries its own. */
@@ -103,6 +110,8 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
     bus: recordingBus(target, () => ref),
     rng,
     t,
+    carryMs: 0,
+    perceivedAt: t,
     speed: opts.speed ?? DEFAULT_SPEED,
     paused: opts.paused ?? false,
     realS: 0,
@@ -172,36 +181,54 @@ export function createSim(pack: ScenarioPack, target: Bus, opts: CreateOpts = {}
   return sim;
 }
 
+function gradeStep(sim: Sim, scheduled: boolean): void {
+  sim.gradeDirty = false;
+  if (scheduled) sim.timers.grade = sim.t + GRADE_EVERY_MS;
+  grade(sim);
+  if (!sim.recon) runRules(sim);
+}
+
+/** Advances the world by one fixed step; everything here reads scenario time only. */
+function worldStep(sim: Sim, dStep: Ms): void {
+  sim.t += dStep;
+  tickUnits(sim, dStep / 1000);
+  if (sim.t - sim.perceivedAt < PERCEIVE_EVERY_MS - 1e-3 && sim.t < sim.ctx.end) return;
+  const dScen = sim.t - sim.perceivedAt;
+  sim.perceivedAt = sim.t;
+  const dAgent = (dScen / 1000) * (AGENT_MAX_RATE / DEFAULT_SPEED);
+  sim.agentS += dAgent;
+  tickReveals(sim);
+  tickSwarm(sim, dScen, dAgent);
+  tickProjection(sim);
+  tickPredictions(sim);
+  if (sim.recon) {
+    tickRecon(sim);
+    for (const u of sim.units) { u.trail = []; u.route = undefined; }
+  } else tickActions(sim);
+  updateFeeds(sim);
+  updateLive(sim);
+  tickReports(sim);
+  tickFindings(sim, (id) => !!sim.imeta.get(id)?.pinned);
+  if (sim.t >= sim.timers.cov) {
+    sim.timers.cov = sim.t + 10 * MIN;
+    rebuildCoverage(sim);
+  }
+  if (sim.t >= sim.timers.grade || (sim.gradeDirty && !sim.recon)) gradeStep(sim, true);
+}
+
 /** One engine tick. `dtReal` is wall-clock seconds (virtual during fast-forward). */
 export function stepSim(sim: Sim, dtReal: number): void {
   const dt = Math.max(0, dtReal);
   sim.realS += dt;
   if (!sim.paused && sim.t < sim.ctx.end) {
-    const scenS = dt * sim.speed;
-    const n = Math.max(1, Math.ceil(scenS / SUBSTEP_S));
-    const dScen = (scenS * 1000) / n;
-    const dAgent = Math.min(scenS, dt * AGENT_MAX_RATE) / n;
-    for (let k = 0; k < n; k++) {
-      sim.t = Math.min(sim.ctx.end, sim.t + dScen);
-      sim.agentS += dAgent;
-      tickUnits(sim, dScen / 1000);
-      tickReveals(sim);
-      tickSwarm(sim, dScen, dAgent);
-      tickProjection(sim);
-      tickPredictions(sim);
-      if (sim.recon) {
-        tickRecon(sim);
-        for (const u of sim.units) { u.trail = []; u.route = undefined; }
-      } else tickActions(sim);
+    sim.carryMs += dt * sim.speed * 1000;
+    while (sim.t < sim.ctx.end && sim.carryMs >= WORLD_STEP_MS - 1e-3) {
+      sim.carryMs = Math.max(0, sim.carryMs - WORLD_STEP_MS);
+      worldStep(sim, Math.min(WORLD_STEP_MS, sim.ctx.end - sim.t));
     }
-    if (sim.t >= sim.ctx.end) sim.paused = true;
-    updateFeeds(sim);
-    updateLive(sim);
-    tickReports(sim);
-    tickFindings(sim, (id) => !!sim.imeta.get(id)?.pinned);
-    if (sim.t >= sim.timers.cov) {
-      sim.timers.cov = sim.t + 10 * MIN;
-      rebuildCoverage(sim);
+    if (sim.t >= sim.ctx.end) {
+      sim.paused = true;
+      sim.carryMs = 0;
     }
     const step = Math.floor(sim.t / FIRE_STEP_MS);
     if (step !== sim.fireStep && sim.realS - sim.fireReal >= 0.25) {
@@ -210,12 +237,8 @@ export function stepSim(sim: Sim, dtReal: number): void {
       sim.fireRev++;
     }
   }
-  if (sim.gradeDirty || sim.realS >= sim.timers.grade) {
-    sim.gradeDirty = false;
-    sim.timers.grade = sim.realS + 0.5;
-    grade(sim);
-    if (!sim.recon) runRules(sim);
-  }
+  // Recon items are display-only and legacy rules only run here on user operations while paused.
+  if (sim.gradeDirty && (sim.recon || sim.paused)) gradeStep(sim, false);
   updateBrief(sim);
   if (sim.realS >= sim.timers.orch) {
     sim.timers.orch = sim.realS + 1;
@@ -233,8 +256,8 @@ export function fastForward(sim: Sim, toT: Ms, opts: { speed?: number; dtReal?: 
   sim.speed = speed;
   sim.paused = false;
   let guard = 0;
-  while (sim.t < toT - 1 && guard++ < 20000) {
-    const need = (toT - sim.t) / 1000 / speed;
+  while (sim.t + sim.carryMs < toT - 1e-3 && guard++ < 20000) {
+    const need = (toT - sim.t - sim.carryMs) / 1000 / speed;
     const d = Math.min(dtReal, need);
     stepSim(sim, d);
     opts.onStep?.(sim, d);

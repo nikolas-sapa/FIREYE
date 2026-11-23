@@ -27,7 +27,7 @@ import { OpsInspect } from './OpsInspect';
 import { OpsComms } from './OpsComms';
 import { OpsPalette } from './OpsPalette';
 import { postSystem, wireComms } from './opsStore';
-import { alertFeed, counters, ensureOsm, hazardNow, leaveBy, placeAlerts, residentAlertAt, routeRoads, routesNow, useAlertVersion, useRoutes, wireAlerts, type EscapeRoute } from './alerts';
+import { alertFeed, counters, ensureOsm, hazardNow, leaveBy, placeAlerts, residentAlertAt, routeRoads, routesNow, useAlertVersion, useRoutes, wireAlerts, type EscapeRoute, type RouteOption } from './alerts';
 import { CivilianPanel, setHome, useHome } from './CivilianPanel';
 import { inScenario } from './geo/saferoute';
 import { OpsOverlay } from './OpsOverlay';
@@ -220,12 +220,15 @@ function Shell() {
       const alerts = placeAlerts(s.pack, s.clock.t);
       const alert = home?.id.startsWith('custom:') ? residentAlertAt(s.pack, s.clock.t, home.pos) : alerts.find(p => p.id === home?.id);
       const r = routesNow(home?.pos ?? null);
-      const route = (v: EscapeRoute | null): ResidentRoute | null => v && ({ exit: v.exit.label, lengthM: v.lengthM, roads: routeRoads(v), cautionM: v.cautionM });
+      const route = (v: EscapeRoute | RouteOption | null): ResidentRoute | null => v && ({ exit: v.exit.label, lengthM: v.lengthM, roads: routeRoads(v), cautionM: v.cautionM,
+        ...('kind' in v ? { kind: v.kind, timeMin: v.timeMin, extraMin: v.extraMin, minFireM: v.minFireM, why: v.why, sameAs: v.sameAs } : {}) });
+      const o = r.options;
       return {
         home, stage: alert?.stage ?? 'monitor', eta: alert?.eta ?? null,
         etaMin: alert?.etaMin ?? null, inBlocked: alert?.inBlocked ?? false,
         leaveBy: alert?.eta != null ? `${localTime(leaveBy(alert.eta, 45), packZone(s.pack).label)} ${packZone(s.pack).label}` : null,
         best: route(r.best), second: route(r.second),
+        options: o ? { balanced: route(o.balanced)!, fastest: route(o.fastest)!, safest: route(o.safest)! } : null,
         threatened: alerts.filter(p => p.stage !== 'monitor' || p.inBlocked)
           .sort((a, b) => home ? distanceM(home.pos, a.pos) - distanceM(home.pos, b.pos) : 0)
           .slice(0, 3).map(p => `${p.name} (${p.stage === 'shelter' ? 'fire very close' : p.stage})`),

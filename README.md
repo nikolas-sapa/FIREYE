@@ -4,13 +4,36 @@
 
 Exercise prototype built at a hackathon (2026-11-14 to 11-15). It replays the Mati, Greece fire of 23 July 2018 as a simulation, scrubbable from 14:00 to 22:00 local time. It is not an emergency service or official evacuation advice. Follow **112 and civil protection** instructions. Its projections and routes are not validated forecasts or operational guidance.
 
+## Why FIREYE
+
+A map and a chatbot are easy to reproduce. FIREYE demonstrates the connection a resident needs: **where is the fire, what does it mean for my location, and what should I do next in this exercise?** The difference must be earned through evidence, validation and trust.
+
+- **Time-aware route selection.** On the existing road graph the prototype compares Fastest, Safest and a default **Balanced** route (lowest simulated risk within 1.4× the fastest drive time). While searching, it skips any road segment the simulated fire reaches before the resident would pass, with a 15-minute margin (or warns when only a smaller margin is possible), and never enters the current perimeter. The chosen route's origin, exit and steering waypoints go to Google Maps. Google Maps does not receive the simulated fire and may recalculate the route. Speeds are nominal, and routes are simulation-derived, not validated evacuation guidance.
+- **A visible leave-by target.** The resident panel shows simulated fire ETA minus a fixed 45-minute preparation buffer. This is an exercise target, not permission to wait or a validated evacuation deadline.
+- **A real place, an honest reconstruction.** The [Mati 2018 pack](proposal/fcc/public/data/mati/README.md) combines terrain, attributed imagery, roads and historical anchors. Roads are current OSM, not a 2018 snapshot; fitted fire replay is a demonstration, not validated forecasting.
+- **One evidence picture.** Simulated drone EO/thermal, fixed cameras and sensors share the exercise picture. Evidence/feed records carry source references, clocks, uncertainty fields and simulated/synthetic flags; unknown metadata stays unknown. Thermal images are false-color simulation, not measured temperature.
+- **Safety boundaries in the system.** Resident stages and safety wording are deterministic. Chief/Scout/orchestrator explain the simulation with scripted replies, not live AI-generated evacuation orders. Local Ops drone tasks require human approval enforced by the backend; the public Pages demo and separate recon simulation do not provide that backend execution path.
+- **A keyless phone entry point.** The resident demo runs without API keys and includes installable PWA support on compatible browsers.
+
+**The moat to build:** a maintained Greek road graph and fire replays, a rights-cleared camera catalog, validation against more historical fires, and a trusted safety/approval architecture. The [camera research in docs/data](docs/data/greece-public-cameras.md) is a starting point, **not rights-cleared or activated feeds**. Civil Protection / 112 partnerships are future goals, not existing relationships. See the [one-page pitch](docs/pitch/why-fireye.md) and [roadmap](#roadmap-and-current-gates).
+
+![Resident flow: simulated fire and location become labelled exercise alerts, route comparisons and a Google Maps handoff, with optional phone updates.](docs/assets/readme/resident-flow.png)
+
+Simulation · not official advice; follow 112 / civil protection. [SVG](docs/assets/readme/resident-flow.svg) · [Mermaid source](docs/assets/readme/resident-flow.mmd) · [Two-minute demo script](docs/pitch/demo-script.md).
+
+## Status (2026-11-16)
+
+- **Done:** local backend-approved Ops → simulated drone → Crew loop (#67); resident default, phone header/alerts/chat/location, Google Maps handoff, bottom sheet and 2D fallback (#68–#75); safety/ETA/fixture audit fixes (#76); camera documentation (#77); `npm run acceptance:local` (#78); candidate registration with dormant providers (#79); pitch/roadmap (#81); Fastest/Safest/Balanced routes and optional Maps Embed (#82). Pages accepts optional Maps/Cesium secrets; keyless demo remains available.
+- **Open:** teammate-owned draft #80 mobile decision card. Issues #9/#13/#15 are **[Partial]**, #10/#14/#16 **[Needs keys]**; #21/#22/#23 closed post-hackathon. Providers remain dormant, not verified live integrations.
+- **Known issues:** rewind/seek changes drone positions and alert history. Play forward for demos. Routes and ETAs remain simulation-derived, not validated evacuation guidance. [Team handoff](TASKBOARD.md#status-20261116-hackathon-demo-state-for-the-team).
+
 ## For judges: the short version
 
 **The problem.** Residents need to understand where a fire is, what information applies to their area and when that information changes. FIREYE brings the exercise picture and announcements together without presenting a historical reconstruction as live safety advice.
 
-**Primary experience: [Civilian view](https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian).** Choose a simulated resident location to see fire location, **MONITOR / PREPARE TO LEAVE / LEAVE NOW / SHELTER IN PLACE**, **Fire ETA**, **Leave by** and **Your route out**. Leave by is the simulated ETA minus 45 minutes; an unavailable ETA displays a dash. The prototype least-risk route uses weighted OSM road paths, excludes blocked areas and penalizes caution zones; it is not a proven safest route. Without a computed route the panel shows “Computing route…”. Location selection currently uses scenario presets, not your own address or GPS.
+**Primary experience: [Civilian view](https://nikolas-sapa.github.io/FIREYE/console.html?view=civilian).** Choose a simulated resident location to see fire location, **MONITOR / PREPARE TO LEAVE / LEAVE NOW / Fire very close: follow 112 instructions now**, **Fire ETA**, **Leave by** and **Your route out**. Leave by is the simulated ETA minus 45 minutes; an unavailable ETA displays a dash. The prototype least-risk route uses weighted OSM road paths, excludes blocked areas and penalizes caution zones; it is not a proven safest route. The panel distinguishes loading from an unavailable route. Select a preset, enter a pack place/road name or coordinates, pick on the map, or use browser geolocation within the exercise area. Open a computed route in Google Maps; Google may recalculate it without the simulated fire information.
 
-**Agents and announcements serve residents.** Chief / Scout and the orchestrator explain the exercise picture and surface changes. Demo replies are scripted/deterministic, not live AI inference. The resident feed is labelled **Official alerts · simulated**; its SMS and voice-call counts are simulation, not messages actually sent. Resident Chief chat and device notifications remain in progress.
+**Agents and announcements serve residents.** Chief / Scout and the orchestrator explain the exercise picture and surface changes. Resident questions receive scripted/deterministic replies, not live AI inference. The resident feed is labelled **Official alerts · simulated**; its SMS and voice-call counts are simulation, not messages actually sent. Optional device notifications and speech announce simulated stage increases with browser permission; these are not official alerts or phone calls.
 
 The secondary responder/ops views are **for authorities**, supporting the exercise's evidence review and human approvals, not a firefighting tool for field use. The existing UI appearance is unchanged.
 
@@ -40,9 +63,9 @@ Open `http://localhost:5173/console.html?view=civilian` (add `&tokens=0` to disa
 
 ### In progress
 
-- Google Maps least-risk/safest-route hand-off and own-location input; no Google Maps route safety guarantee or implemented hand-off is claimed.
-- On-device notifications; simulated announcements do not send real warnings.
-- Resident Chief chat; existing scripted demo chat is not a completed resident assistant.
+- Route validation and preservation through the Google Maps hand-off; the implemented link is not a route safety guarantee.
+- Broader device/browser acceptance of optional exercise notifications and speech; no real public warnings are sent.
+- A validated resident assistant beyond the existing scripted question-and-answer flow.
 
 Backend tests: `cd backend && npm ci --ignore-scripts && npm test`.
 
@@ -123,7 +146,7 @@ The [bounded protocol spec](docs/superpowers/specs/2026-11-14-backend-protocol-d
 
 ![Role map separating human Chief authority, local scripted assistants, simulator ownership and dormant model roles.](docs/assets/readme/agent-roles.png)
 
-Solid paths denote local/fixture responsibilities; dashed model/tool paths remain dormant or pending, not LLM receipts. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
+This historical role map describes the secondary responder/backend exercise, not the resident journey above. Solid paths denote local/fixture responsibilities; dashed model/tool paths remain dormant or pending, not LLM receipts. [Vector image](docs/assets/readme/agent-roles.svg) · [Mermaid source](docs/assets/readme/agent-roles.mmd) · [Editable scene](docs/assets/readme/agent-roles.excalidraw).
 
 | Role | Intended responsibility | Allowed output / authority |
 |---|---|---|
@@ -438,6 +461,20 @@ Local Ops backend-to-frontend simulated execution and completion receipts are co
 | Provider outage / missing calibration / missing receipt | Bounded jobs/deterministic fallback exist; unknown temperature remains unknown, absent progress unconfirmed. Genuine providers and full exercise fault model unverified. |
 
 ## Roadmap and current gates
+
+### Product roadmap — future, not implemented
+
+These are proposed capabilities, not features delivered by the demo:
+
+- Greek voice-agent **phone calls** for elderly residents and people without smartphones, including calls to relatives or volunteers. Existing simulated counters and browser speech do not place calls.
+- An accessibility profile for mobility needs or no car, with earlier alerts and an **“I need help”** request carrying location.
+- Family **“I'm safe”** check-in and multilingual guidance for tourists.
+- Official SMS/cell-broadcast delivery **only through future authorized 112 partners**; no existing partnership or sending capability is claimed.
+- Live NASA FIRMS hotspots and wind, plus news/social leads explicitly marked **unverified** (for example, GDELT/Firecrawl). Historical packs and dormant connectors are not a live resident service.
+- Real drone integration only with authorities and appropriate permissions.
+- Validation against more historical fires before any operational safety claim.
+
+### Current engineering gates
 
 1. Review current-source receipts and outstanding issue cards. Preserve the owner-approved resident-first direction and existing appearance; new interface changes still require approval.
 2. Extend acceptance of PR #67's local producer/coordinate/feed/clock/command mapping and backend-approved simulated execution/receipts, especially loss/retry/rejoin. Do not replace the received-only reader with simulator fallback; production integration remains deferred.

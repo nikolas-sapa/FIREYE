@@ -8,8 +8,9 @@ import { loadScenario } from '../src/console/scenario';
 import { consoleStore } from '../src/console/store';
 import { Runtime } from '../src/console/world/runtime';
 import { leaveBy, placeAlerts, residentAlertAt, wireAlerts } from '../src/console/ops/alerts';
-import { buildRoadGraph, escapeRoutes, googleMapsDirectionsUrl, googleMapsEmbedUrl, MATI_EXITS, pointInPolygon, polygonDistanceM, steeringWaypoints, type Road } from '../src/console/ops/geo/evac';
-import { parseLocation, residentEstimateAt, routingHazardAt } from '../src/console/ops/geo/saferoute';
+import { BALANCED_TIME_CAP, buildRoadGraph, ETA_SAFETY_MARGIN_MIN, escapeRoutes, googleMapsDirectionsUrl, googleMapsEmbedUrl, mapsWaypointLimit, MATI_EXITS, pointInPolygon, polygonDistanceM, routeOptions, ROUTE_KINDS, steeringWaypoints, type RouteOption, type RouteOptions, type Road } from '../src/console/ops/geo/evac';
+import { parseLocation, residentEstimateAt, residentRouteOptions, routingHazardAt } from '../src/console/ops/geo/saferoute';
+import { routeDirections } from '../src/console/ops/ResidentRoute';
 
 const osm = JSON.parse(readFileSync('public/data/mati/osm.json', 'utf8')) as { roads: Road[] };
 const manifest = JSON.parse(readFileSync('public/data/mati/manifest.json', 'utf8')) as { places: { id: string; name: string; pos: Geo }[] };
@@ -55,7 +56,7 @@ const entries = [
   { t: 30, bands: [{ horizonMin: 60, polygon: square(place('neos-voutzas'), 0.02) }] },
 ];
 const perimeters = [{ t: 5, polygon: [burning] }, { t: 25, polygon: [caution] }];
-const at20 = { blocked: [predicted, burning], caution: [caution] };
+const at20 = { blocked: [predicted, burning], caution: [caution], fire: [burning] };
 assert.deepEqual(routingHazardAt(20, entries, perimeters), at20);
 assert.equal(routingHazardAt(0, entries, perimeters), null);
 assert.deepEqual(routingHazardAt(20, entries.slice().reverse(), perimeters.slice().reverse()), at20);
@@ -106,6 +107,90 @@ console.log('SAFEROUTE Maps: exact five-decimal encoded fields, empty waypoints 
   assert.ok(Math.abs(full.cautionM - full.lengthM) < 1, 'fully covered edge counts whole length');
   console.log(`SAFEROUTE caution: thin/long-edge crossings counted (${run([strip(23.921, 23.922)]).cautionM.toFixed(0)} m of ${clear.lengthM.toFixed(0)} m), disjoint 0, full edge = length`);
 }
+
+const checkOptions = (label: string, o: RouteOptions | null, blockedPolys: Geo[][]) => {
+  assert.ok(o, `${label}: options exist`);
+  const { fastest, balanced, safest } = o;
+  assert.ok(balanced.timeMin <= fastest.timeMin * BALANCED_TIME_CAP + 1e-9, `${label}: balanced ${balanced.timeMin.toFixed(1)} <= cap ${(fastest.timeMin * BALANCED_TIME_CAP).toFixed(1)} min`);
+  assert.ok(fastest.timeMin <= balanced.timeMin + 1e-9 && fastest.timeMin <= safest.timeMin + 1e-9, `${label}: fastest has min time`);
+  assert.ok(safest.riskM <= balanced.riskM + 1e-9 && balanced.riskM <= fastest.riskM + 1e-9, `${label}: risk safest ${safest.riskM.toFixed(0)} <= balanced ${balanced.riskM.toFixed(0)} <= fastest ${fastest.riskM.toFixed(0)}`);
+  for (const kind of ROUTE_KINDS) {
+    const r: RouteOption = o[kind];
+    assert.equal(r.kind, kind);
+    assert.ok(r.why.length > 10 && !r.why.includes('undefined') && !r.why.includes('NaN'), `${label}: ${kind} why '${r.why}'`);
+    for (let i = 0; i < r.path.length; i++) {
+      const mid = { lon: (r.path[i].lon + r.path[Math.max(0, i - 1)].lon) / 2, lat: (r.path[i].lat + r.path[Math.max(0, i - 1)].lat) / 2 };
+      for (const poly of blockedPolys) assert.ok(!pointInPolygon(r.path[i], poly) && !pointInPolygon(mid, poly), `${label}: ${kind} never enters blocked/perimeter`);
+    }
+  }
+  return o;
+};
+for (const id of ['neos-voutzas', 'nea-makri', 'kokkino-limanaki', 'mati']) {
+  const t0 = performance.now();
+  const o = checkOptions(id, routeOptions(graph, place(id), { ...hazard, fire: [burning] }, MATI_EXITS, { places: manifest.places }), hazard.blocked);
+  console.log(`SAFEROUTE options ${id}: fastest ${o.fastest.timeMin.toFixed(1)} min/${o.fastest.exit.id}, balanced ${o.balanced.timeMin.toFixed(1)} min/${o.balanced.exit.id} (${o.balanced.why}), safest ${o.safest.timeMin.toFixed(1)} min/${o.safest.exit.id} · ${(performance.now() - t0).toFixed(0)} ms`);
+}
+{
+  // Two-road ladder: the straight road crosses predicted spread; a short northern detour avoids it.
+  const A = { lon: 23.9, lat: 38.0 }, B = { lon: 23.93, lat: 38.0 };
+  const n1 = { lon: 23.905, lat: 38.002 }, n2 = { lon: 23.925, lat: 38.002 };
+  const straight = [A, { lon: 23.905, lat: 38.0 }, { lon: 23.915, lat: 38.0 }, { lon: 23.925, lat: 38.0 }, B];
+  const g = buildRoadGraph([
+    { id: 's', name: 'Coast Rd', kind: 'road', coords: straight },
+    { id: 'n', name: 'Ridge Rd', kind: 'road', coords: [{ lon: 23.905, lat: 38.0 }, n1, { lon: 23.915, lat: 38.002 }, n2, { lon: 23.925, lat: 38.0 }] },
+  ]);
+  const exit = [{ id: 'east', label: 'East', pos: B }];
+  const spread = square({ lon: 23.915, lat: 37.9995 }, 0.0012);
+  const places = [{ name: 'Testville', pos: { lon: 23.915, lat: 37.999 } }];
+  const o = checkOptions('ladder', routeOptions(g, A, { blocked: [], caution: [spread], fire: [] }, exit, { places }), []);
+  assert.ok(o.fastest.cautionM > 100, 'fastest crosses predicted spread');
+  assert.equal(o.balanced.cautionM, 0, 'balanced avoids predicted spread');
+  assert.ok(o.balanced.extraMin >= 0 && o.balanced.timeMin < o.fastest.timeMin * 1.25, 'small detour');
+  assert.ok(o.balanced.why.startsWith('Avoids the predicted spread near Testville;') && /\+\d+ min vs fastest|no extra time/.test(o.balanced.why), o.balanced.why);
+  assert.ok(o.balanced.path.some((p) => p.lat > 38.0015), 'balanced uses the detour');
+  // Fire ETA field: the straight road is reached 3 min from now; fastest must not pass it either.
+  const etaMinAt = (p: Geo) => (Math.abs(p.lat - 38.0) < 0.0005 && p.lon > 23.906 && p.lon < 23.924 ? 3 : null);
+  const timed = checkOptions('ladder-eta', routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt }), []);
+  for (const kind of ROUTE_KINDS) assert.ok(timed[kind].path.every((p) => etaMinAt(p) === null), `${kind} avoids edges the fire reaches before the resident (+margin)`);
+  assert.equal(timed.marginMin, 15);
+  // Fire reaches only the interior of a straight-road edge (no node there): still excluded.
+  const interior = (p: Geo) => (Math.abs(p.lon - 23.91) < 0.0004 && Math.abs(p.lat - 38.0) < 0.0003 ? 3 : null);
+  const mid = routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: interior })!;
+  for (const kind of ROUTE_KINDS) assert.ok(!mid[kind].path.some((p, i) => i > 0 && p.lat < 38.0005 && mid[kind].path[i - 1].lat < 38.0005 && Math.min(p.lon, mid[kind].path[i - 1].lon) < 23.91 && Math.max(p.lon, mid[kind].path[i - 1].lon) > 23.91), `${kind} avoids an edge whose interior the fire reaches first`);
+  assert.equal(mid.marginMin, ETA_SAFETY_MARGIN_MIN);
+  // Minimum fire distance is measured along road segments, not only at nodes.
+  const nearEdge = square({ lon: 23.91, lat: 37.9985 }, 0.0005);
+  const fd = routeOptions(g, A, { blocked: [], caution: [], fire: [nearEdge] }, exit)!;
+  assert.ok(fd.fastest.minFireM! < 150, `min fire distance on straight road ${fd.fastest.minFireM?.toFixed(0)} m`);
+  // Fire arrives after the resident would pass but inside the 15-min margin: still excluded.
+  const inMargin = routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: (p) => (etaMinAt(p) === null ? null : 10) })!;
+  for (const kind of ROUTE_KINDS) assert.ok(inMargin[kind].path.every((p) => etaMinAt(p) === null), `${kind} keeps ${ETA_SAFETY_MARGIN_MIN} min ahead of modeled fire`);
+  assert.equal(inMargin.marginMin, ETA_SAFETY_MARGIN_MIN);
+  // Every road inside the margin: margin drops to 0 (surfaced in the UI) but fire must still arrive after the resident passes.
+  const tightEta = routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: () => 10 })!;
+  assert.equal(tightEta.marginMin, 0);
+  assert.ok(tightEta.fastest.timeMin < 10);
+  assert.equal(routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: () => 0.2 }), null, 'fire reaches every road before the resident: no route');
+  // Late fire arrival (well after passing) leaves the straight road usable.
+  assert.ok(routeOptions(g, A, { blocked: [], caution: [], fire: [] }, exit, { etaMinAt: (p) => (etaMinAt(p) === null ? null : 300) })!.fastest.path.every((p) => p.lat < 38.001));
+  // Balanced respects a tight cap even when the detour is safer.
+  const tight = routeOptions(g, A, { blocked: [], caution: [spread], fire: [] }, exit, { places, capRatio: 1.0001 })!;
+  assert.ok(tight.balanced.timeMin <= tight.fastest.timeMin * 1.0001 + 1e-9 && tight.safest.cautionM === 0);
+  // Google hand-off carries the chosen route's on-path waypoints, origin = resident, driving.
+  for (const mobile of [false, true]) {
+    const d = routeDirections(A, o.balanced, mobile);
+    const url = new URL(googleMapsDirectionsUrl(d));
+    const wp = url.searchParams.get('waypoints')!.split('|');
+    assert.ok(wp.length >= 1 && wp.length <= mapsWaypointLimit(mobile));
+    assert.deepEqual(wp, steeringWaypoints(o.balanced.path, mapsWaypointLimit(mobile)).map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`));
+    assert.ok(wp.some((w) => Number(w.split(',')[0]) > 38.0015), 'waypoints follow the detour');
+    assert.equal(url.searchParams.get('origin'), '38.00000,23.90000');
+    assert.equal(url.searchParams.get('travelmode'), 'driving');
+  }
+  console.log(`SAFEROUTE balanced: fastest crosses ${o.fastest.cautionM.toFixed(0)} m spread, balanced 0 m (+${o.balanced.extraMin} min); ETA-reached edges excluded; cap honoured; Maps URL carries chosen waypoints`);
+}
+const longPath = routeOptions(graph, place('neos-voutzas'), hazard, MATI_EXITS)!.balanced.path;
+assert.equal(steeringWaypoints(longPath, mapsWaypointLimit(false)).length, 9);
 
 assert.deepEqual(parseLocation('38.04, 23.98', [], [], bbox), { name: 'Custom location', pos: { lat: 38.04, lon: 23.98 } });
 for (const p of manifest.places) {
@@ -173,6 +258,28 @@ try {
     assert.equal(clear.stage, clear.etaMin! <= 60 ? 'leave' : clear.etaMin! <= 180 ? 'prepare' : 'monitor');
     const blocked = residentEstimateAt(mati.pos, t, [current], [{ t: 0, polygon: [square(mati.pos, 0.001)] }]);
     assert.equal(blocked.stage, 'shelter', 'blocked origin still shelters regardless of model ETA');
+  }
+  {
+    consoleStore.api.seek(at1723);
+    consoleStore.api.setPaused(true);
+    const pr = consoleStore.runtime.sim.projection!;
+    const entry: Parameters<typeof residentRouteOptions>[3][number] = { t: pr.issuedAt, bands: pr.bands, field: consoleStore.runtime.sim.projField! };
+    const late = residentRouteOptions(graph, place('kokkino-limanaki'), at1723, [entry], pack.perimeters, MATI_EXITS, pack.manifest.places, at1723 + 6 * 3600000);
+    assert.equal(late, null, 'departing after modeled fire arrival at the origin: no route');
+  }
+  for (const t of [at1723, at1723 + 37 * 60000]) {
+    consoleStore.api.seek(t);
+    consoleStore.api.setPaused(true);
+    const field = consoleStore.runtime.sim.projField!;
+    const projection = consoleStore.runtime.sim.projection!;
+    const perim = pack.perimeters.filter((p) => p.t <= t).sort((a, b) => b.t - a.t)[0];
+    for (const id of ['neos-voutzas', 'nea-makri', 'kokkino-limanaki']) {
+      const t0 = performance.now();
+      const o = residentRouteOptions(graph, place(id), t, [{ t: projection.issuedAt, bands: projection.bands, field }], pack.perimeters, MATI_EXITS, pack.manifest.places);
+      if (!o) { console.log(`SAFEROUTE real ${id}: no safe road route (legacy escapeRoutes: ${escapeRoutes(graph, place(id), routingHazardAt(t, [{ t: projection.issuedAt, bands: projection.bands }], pack.perimeters)!, MATI_EXITS).length})`); continue; }
+      checkOptions(`real ${id}`, o, [...(perim?.polygon ?? []), ...projection.bands.filter((b) => b.horizonMin === 60).map((b) => b.polygon)]);
+      console.log(`SAFEROUTE real ${new Date(t).toISOString().slice(11, 16)}Z ${id}: balanced ${o.balanced.exit.id} ${o.balanced.timeMin.toFixed(1)} min +${o.balanced.extraMin} · fire ${o.balanced.minFireM?.toFixed(0)} m · ${o.balanced.why} · fastest ${o.fastest.exit.id} ${o.fastest.timeMin.toFixed(1)} · safest ${o.safest.exit.id} ${o.safest.timeMin.toFixed(1)} · ${(performance.now() - t0).toFixed(0)} ms`);
+    }
   }
   console.log('F01 resident ETA: 5 presets x 3 paused/seek states; coordinate and map/GPS storage paths match ETA/leave-by exactly (0 ms); missing/future/outside/horizon/burned cases PASS');
 } finally {
